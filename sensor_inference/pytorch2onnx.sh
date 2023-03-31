@@ -1,0 +1,2 @@
+python sensor_inference/lidar_pytorch2onnx.py --ckpt ~/shared/wangliang/lp-01-model/lidar_large.pth --data_path ~/shared/data/OpenDataset/kitti/odometry/data_odometry_velodyne/dataset/sequences/00/velodyne/000010.bin --cfg_file sensor_inference/cfgs/detection_lidar_large.yaml
+python sensor_inference/image_pytorch2onnx.py --ckpt ~/shared/wangliang/lp-01-model/image.pth --data_path sensor_inference/data/test_image.png

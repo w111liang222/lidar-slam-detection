@@ -1,0 +1,16 @@
+package nav_msgs;
+struct Odometry
+{
+    .std_msgs.Header header;
+    string child_frame_id;
+    .geometry_msgs.PoseWithCovariance pose;
+    .geometry_msgs.TwistWithCovariance twist;
+}
+
+package nav_msgs;
+struct Path
+{
+    .std_msgs.Header header;
+    int32_t size;
+    .geometry_msgs.PoseStamped poses[size];
+}

@@ -1,0 +1,10 @@
+*.pyc
+detection_image.trt
+detection_lidar_l.trt
+detection_lidar_s.trt
+dataset/__pycache__/
+model/__pycache__/
+utils/__pycache__/
+utils/iou3d_nms/__pycache__/
+utils/iou3d_nms/*.so
+

@@ -1,0 +1,76 @@
+CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
+
+ONNX_FILE: 'sensor_inference/detection_lidar_l.onnx'
+TRT_FILE: 'sensor_inference/detection_lidar_l.trt'
+DATA_CONFIG:
+    POINT_CLOUD_RANGE: [-30.0, -33.28, -2, 46.8, 33.28, 4]
+    POINT_FEATURE_ENCODING: {
+        encoding_type: absolute_coordinates_encoding,
+        used_feature_list: ['x', 'y', 'z', 'intensity'],
+        src_feature_list: ['x', 'y', 'z', 'intensity'],
+    }
+    DATA_PROCESSOR:
+        - NAME: transform_points_to_voxels
+          MAX_POINTS: 100000
+          VOXEL_SIZE: [0.32, 0.32, 6]
+          MAX_POINTS_PER_VOXEL: 20
+          MAX_NUMBER_OF_VOXELS: {
+            'train': 40000,
+            'test': 40000
+          }
+
+MODEL:
+    NAME: PointPillar
+
+    VFE:
+        NAME: PillarVFE
+        WITH_DISTANCE: False
+        USE_ABSLOTE_XYZ: True
+        USE_NORM: True
+        NUM_FILTERS: [64]
+
+    MAP_TO_BEV:
+        NAME: PointPillarScatter
+        NUM_BEV_FEATURES: 64
+
+    BACKBONE_2D:
+        NAME: CSPDarknet53Large
+
+    DENSE_HEAD:
+        NAME: CenterHead
+        CLASS_AGNOSTIC: False
+        FEATURE_MAP_STRIDE: 1
+
+        CLASS_NAMES_EACH_HEAD: [
+            ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
+        ]
+
+        COMMON_HEADS: {
+            'center': {'out_channels': 2, 'num_conv': 2},
+            'center_z': {'out_channels': 1, 'num_conv': 2},
+            'dim': {'out_channels': 3, 'num_conv': 2},
+            'rot': {'out_channels': 2, 'num_conv': 2},
+            'iou': {'out_channels': 1, 'num_conv': 2},
+        }
+
+        LOSS_CONFIG:
+            CODE_WEIGHTS: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+    POST_PROCESSING:
+        RECALL_THRESH_LIST: [0.3, 0.5, 0.7]
+        SCORE_THRESH: {
+            'Vehicle': 0.20,
+            'Pedestrian': 0.10,
+            'Cyclist': 0.10,
+            'Traffic_Cone': 0.10,
+        }
+        OUTPUT_RAW_SCORE: False
+
+        EVAL_METRIC: waymo
+
+        NMS_CONFIG:
+            MULTI_CLASSES_NMS: False
+            NMS_TYPE: nms_gpu
+            NMS_THRESH: 0.4
+            NMS_PRE_MAXSIZE: 2048
+            NMS_POST_MAXSIZE: 256

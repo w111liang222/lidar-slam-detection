@@ -1,0 +1,28 @@
+CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
+
+ONNX_FILE: 'sensor_inference/detection_image.onnx'
+TRT_FILE: 'sensor_inference/detection_image.trt'
+MODEL:
+    NAME: RTM3D
+    IMG_SHAPE: [352, 640]
+    OUTPUT_DOWN_SCALE: 4
+    SCORE_THRESH: 0.30
+
+    DENSE_HEAD:
+        NAME: RTM3DHEAD
+        CLASS_AGNOSTIC: False
+
+        COMMON_HEADS: {
+            'hps': [18, 2],
+            'dep': [1, 2],
+            'dim': [3, 2],
+            'rot': [2, 2]
+        }
+
+        NMS_PRE_MAXSIZE: 1024
+
+    NMS_CONFIG:
+            MULTI_CLASSES_NMS: False
+            NMS_TYPE: nms_gpu
+            NMS_THRESH: 0.1
+            NMS_POST_MAXSIZE: 256

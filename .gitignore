@@ -1,0 +1,17 @@
+.vscode/
+.pytest_cache/
+output/
+server.build/
+server.bin
+upgrade_daemon.build/
+web_backend/log.txt
+service/cloud_service/frpc.ini
+service/cloud_service/frpc_driving.ini
+hardware/nvivafilter/gst-custom-opencv_cudaprocess.o
+**/__pycache__
+*.patch
+service/upgrade/cache
+/build/
+/dist/
+/perception.egg-info/
+/tools/build/resources/

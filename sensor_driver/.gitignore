@@ -1,0 +1,5 @@
+build/
+__pycache__/
+dist/
+sensor_driver_wrapper.egg-info/
+*.so

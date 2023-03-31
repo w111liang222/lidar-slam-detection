@@ -1,0 +1,113 @@
+{
+    "PreprocessParam" : {
+        "range_front_x" : 20,
+        "range_rear_x" : -20,
+        "range_left_y" : 10,
+        "range_right_y" : -10,
+        "range_up_z" : 2.6,
+        "range_down_z" : -0.2,
+        "range_radius" : 40,
+
+        "vehicle_front_x" : 3.1,
+        "vehicle_rear_x" : -0.5,
+        "vehicle_left_y" : 0.91,
+        "vehicle_right_y" : -0.91,
+        "vehicle_up_z" : 2.6,
+        "vehicle_down_z" : 0,
+        "region_num_x" : 16,
+        "region_num_y" : 8,
+        "downsample_option" : true,
+        "filter_resol" : 0.1
+    },
+
+    "SegmentationParam" : {
+        "grid_max_x" : 40,
+        "grid_min_x" : 0,
+        "grid_max_y" : 10,
+        "grid_min_y" : -10,
+        "grid_max_z" : 2.6,
+        "grid_min_z" : 0,        
+        "grid_size_x" : 0.1,
+        "grid_size_y" : 0.1,
+        "num_thres" : 2,
+        "min_z_thres" : 2.5,
+      
+        "theta_divider" : 2,
+        "lidar_fov" : 360
+    },
+
+    "RemoveGroundParam" : {
+        "range_front_x" : 20,
+        "range_rear_x" : -20,
+        "range_left_y" : 10,
+        "range_right_y" : -10,
+        "region_num_x" : 16,
+        "region_num_y" : 8,
+
+        "num_iter" : 5,
+        "num_LPR" : 50,
+        "Th_seed" : 0.2,
+        "Th_dist" : 0.25        
+    },
+
+    "PatchParam" : {
+        "sensor_height" : 0,
+        "verbose" : false,
+        "ATAT_ON" : false,
+        "max_r_for_ATAT" : 5,
+        "num_sectors_for_ATAT" : 20,
+        "noise_bound" : 0.2,
+
+        "num_iter" : 5,
+        "num_lpr" : 10,
+        "num_min_pts" : 5,
+        "th_seeds" : 0.2,
+        "th_dist" : 0.2,
+        "max_range" : 80,
+        "min_range" : 0.9,
+        "num_rings" : 30,
+        "num_sectors" : 100,
+        "uprightness_thr" : 0.707,
+        "adaptive_seed_selection_margin" : -1.2,
+
+        "using_global_thr" : false,
+        "global_elevation_thr" : -0.5,
+
+        "num_zones" : 4,
+        "num_sectors_each_zone" : [1, 1, 1, 1],
+        "num_rings_each_zone" : [4, 4, 4, 2],
+        "min_ranges_each_zone" : [0.9, 8.3625, 19.025, 30.35],
+        "elevation_thresholds" :  [0.423, 0.646, 0.679, 0.825],
+        "flatness_thresholds" :  [0.0005, 0.000725, 0.001, 0.001],
+
+        "visualize" : false
+    },
+
+    "visualize" : true,
+    "rotation" : false,
+    "lidar_16_6699_transform" : {
+        "x" : -0.433861285,
+        "y" : 0.8328745055,
+        "z" : 0.6943784666,
+        "roll" : 0.5669509410,
+        "pitch" : 1.915893328,
+        "yaw" : 89.156669616
+    },
+    "lidar_16_7799_transform" : {
+        "x" : 2.8363519193,
+        "y" : -0.865952377,
+        "z" : 0.6531415176,
+        "roll" : -182.0427246,
+        "pitch" : -180.8147125,
+        "yaw" : 90.92939147949219
+    },
+    "lidar_80_5599_transform" : {
+        "x" : 2.3458528518,
+        "y" : -0.037961360,
+        "z" : 2.2983272075,
+        "roll" : -0.497104406,
+        "pitch" : -0.506203711,
+        "yaw" : 0.0860518455
+    }  
+    
+}

@@ -1,0 +1,7 @@
+stages:
+   - build
+   - upgrade
+   - test
+   - deploy
+
+include: 'tests/CI/*.yml'

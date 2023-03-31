@@ -1,0 +1,87 @@
+# commit test nx
+commit_build_nx:
+  extends: .commit_build_template
+  tags:
+    - JetPack5-NX-CI0
+
+commit_test_nx:
+  extends: .commit_test_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: commit_build_nx
+      artifacts: false
+
+# stress test nx
+release_build_nx:
+  extends: .release_build_template
+  tags:
+    - JetPack5-NX-CI0
+
+release_upgrade_nx:
+  extends: .release_upgrade_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: release_build_nx
+      artifacts: false
+
+release_test_nx:
+  extends: .release_test_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: release_upgrade_nx
+      artifacts: false
+
+# daily build nx
+daily_build_nx:
+  extends: .daily_build_template
+  tags:
+    - JetPack5-NX-CI0
+
+daily_upgrade_nx:
+  extends: .daily_upgrade_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: daily_build_nx
+      artifacts: false
+
+daily_test_nx:
+  extends: .daily_test_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: daily_upgrade_nx
+      artifacts: false
+
+# version release nx
+version_build_nx:
+  extends: .version_build_template
+  tags:
+    - JetPack5-NX-CI0
+
+version_upgrade_nx:
+  extends: .version_upgrade_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: version_build_nx
+      artifacts: false
+
+version_test_nx:
+  extends: .version_test_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: version_upgrade_nx
+      artifacts: false
+
+version_deploy_nx:
+  extends: .version_deploy_template
+  tags:
+    - JetPack5-NX-CI0
+  needs:
+    - job: version_test_nx
+      artifacts: false

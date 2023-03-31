@@ -1,0 +1,67 @@
+package geometry_msgs;
+struct Vector3
+{
+    double x;
+    double y;
+    double z;
+}
+
+package geometry_msgs;
+struct Quaternion
+{
+    double x;
+    double y;
+    double z;
+    double w;
+}
+
+package geometry_msgs;
+struct Point32
+{
+    float x;
+    float y;
+    float z;
+}
+
+package geometry_msgs;
+struct Point
+{
+    double x;
+    double y;
+    double z;
+}
+
+package geometry_msgs;
+struct Pose
+{
+    .geometry_msgs.Point position;
+    .geometry_msgs.Quaternion orientation;
+}
+
+package geometry_msgs;
+struct PoseStamped
+{
+    .std_msgs.Header header;
+    .geometry_msgs.Pose pose;
+}
+
+package geometry_msgs;
+struct Twist
+{
+    .geometry_msgs.Vector3 linear;
+    .geometry_msgs.Vector3 angular;
+}
+
+package geometry_msgs;
+struct PoseWithCovariance
+{
+    .geometry_msgs.Pose pose;
+    double covariance[36];
+}
+
+package geometry_msgs;
+struct TwistWithCovariance
+{
+    .geometry_msgs.Twist twist;
+    double covariance[36];
+}
