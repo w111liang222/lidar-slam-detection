@@ -5,6 +5,7 @@ server.build/
 server.bin
 upgrade_daemon.build/
 web_backend/log.txt
+slam/data/ORBvoc.txt
 service/cloud_service/frpc.ini
 service/cloud_service/frpc_driving.ini
 hardware/nvivafilter/gst-custom-opencv_cudaprocess.o

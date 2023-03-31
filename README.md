@@ -16,7 +16,7 @@ Auto IPU can be worked on x86 PC and Nvidia embedded board (Xavier-NX, Xavier-AG
 
 ### Basic Enviroment
 
-Ubuntu20.04, python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, G2O, OpenCV 4.5.5, PCL 1.9.1, GTSAM 4.0
+Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, G2O, OpenCV 4.5.5, PCL 1.9.1, GTSAM 4.0
 
 ### Nvidia Embedded Board
 
@@ -24,7 +24,7 @@ The Auto IPU is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2
 
 # Getting Started
 
-A x86-64 docker image is provided to test.
+A x86_64 docker image is provided to test.
 ```bash
 docker pull 15liangwang/auto-ipu
 sudo docker run -it -d --net=host --privileged --shm-size=4g --name="AutoIPU" -v /media:/root/exchange 15liangwang/auto-ipu
@@ -44,16 +44,19 @@ Run Auto IPU
 ```bash
 tools/scripts/start_system.sh
 ```
-Open http://localhost(or http://localhost:1234) in your browser, e.g. Chrome, and you can see this screen.
+Open http://localhost (or http://localhost:1234) in your browser, e.g. Chrome, and you can see this screen.
 
 <img src="docs/home.png" width="720pix" />
 
 
 ## Example Data
 
-Download the demo data [here](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing)
+Download the demo data [here](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing) and unzip
 
-Unzip the demo_data.zip to /home/znqc/work/ directory and re-run the Auto IPU.
+```bash
+unzip demo_data.zip -d /home/znqc/work/
+tools/scripts/start_system.sh # re-run Auto IPU
+```
 
 # License
 
