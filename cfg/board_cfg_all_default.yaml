@@ -1,33 +1,4 @@
 board:
-    network:
-        - {
-            DHCP: false,
-            IP: 192.168.1.100,
-            mask: 255.255.255.0,
-            gateway: 192.168.1.1,
-          }
-
-    time_sync:
-        ptp:
-          - {
-              interface: eth0,
-              mode: master, # slave
-            }
-        ntp:
-          - {
-              server: ntp.aliyun.com,
-            }
-        gps:
-            use: false
-            device: /dev/ttyTHS0
-        pps_out:
-            use: false
-            gpio: 491
-        gpio_trigger:
-            use: false
-            gpio: 492
-            freq: 10
-
     inference_engine:
         lidar_cfg_file: sensor_inference/cfgs/detection_lidar_large.yaml
         image_cfg_file: sensor_inference/cfgs/detection_image.yaml
