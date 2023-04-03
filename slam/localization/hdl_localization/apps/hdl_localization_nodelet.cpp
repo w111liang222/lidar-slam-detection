@@ -58,7 +58,7 @@ public:
     pose_data.clear();
     imu_data.clear();
     ins_data.clear();
-    globalmap = nullptr;
+
     pose_estimator.reset(nullptr);
     delta_estimator.reset(nullptr);
     RegistrationType *registration_ptr = nullptr;
@@ -103,23 +103,35 @@ public:
     imu_data.push_back(imu);
   }
 
+  void update_pose(uint64_t stamp, const Eigen::Matrix4d& pose) {
+    std::lock_guard<std::mutex> lock(pose_data_mutex);
+    while (pose_data.size() >= 10) {
+      pose_data.erase(pose_data.begin());
+    }
+
+    std::shared_ptr<PoseType> pose_ptr(new PoseType());
+    pose_ptr->timestamp = stamp;
+    pose_ptr->T = pose;
+    pose_data.push_back(pose_ptr);
+  }
+
   bool get_timed_pose(uint64_t timestamp, Eigen::Matrix4d &pose) {
     pose_data_mutex.lock();
     std::vector<std::shared_ptr<PoseType>> pose_data_snapshot = pose_data;
     pose_data_mutex.unlock();
     if (pose_data_snapshot.empty()) {
-      LOG_WARN("Localization(get_timed_pose): pose data is empty");
+      LOG_WARN("pose data is empty");
       return false;
     }
 
     if (timestamp < pose_data_snapshot.front()->timestamp) {
-      LOG_WARN("Localization(get_timed_pose): timestamp is out of date");
+      LOG_WARN("query timestamp is out of date");
       return false;
     }
 
     if (timestamp > pose_data_snapshot.back()->timestamp) {
       if ((timestamp - pose_data_snapshot.back()->timestamp) > 1000000) {
-        // LOG_WARN("Localization(get_timed_pose): timestamp is larger than current of 1s");
+        // LOG_WARN("query timestamp is in the future (>1s)");
         return false;
       }
       // predict
@@ -129,7 +141,7 @@ public:
       pose = pose_estimator->predict_nostate(timestamp);
     } else {
       if (pose_data_snapshot.size() < 2) {
-        LOG_WARN("Localization(get_timed_pose): need two pose data for interplate");
+        LOG_WARN("need two pose data for interplate");
         return false;
       }
       // interplate
@@ -151,11 +163,12 @@ public:
   }
 
   bool get_timed_pose(RTKType &ins, Eigen::Matrix4d &pose) {
-    if (pose_estimator == nullptr || globalmap == nullptr) {
-      return false;
+    bool result = false;
+    if (pose_estimator && pose_estimator->is_registration()) {
+      result = pose_estimator->get_timed_pose(ins, pose);
     }
 
-    return pose_estimator->get_timed_pose(ins, pose);
+    return result;
   }
 
   /**
@@ -261,13 +274,13 @@ public:
     Eigen::VectorXf observation(7);
     Eigen::MatrixXf observation_cov = Eigen::MatrixXf::Identity(7, 7);
     bool result = false;
-    if(globalmap && pose_estimator->is_registration()) {
+    if(pose_estimator->is_registration()) {
       result = pose_estimator->match(observation, observation_cov, stamp, filtered, gps_observation, fitness_score);
     } else {
       result = pose_estimator->match(observation, observation_cov, gps_observation);
       if (!result) {
-        pose_estimator->reset_registration();
-        LOG_WARN("global map for localization match is invalid");
+        LOG_WARN("Both map and GPS is invalid for localization");
+        return LocType::ERROR;
       }
     }
 
@@ -279,21 +292,10 @@ public:
         delta_observation = delta;
       }
     }
-    if (result) {
-      pose_estimator->correct(stamp, observation, observation_cov, delta_observation);
-      pose = Eigen::Isometry3d(pose_estimator->matrix().cast<double>());
 
-      // store 1s history pose
-      pose_data_mutex.lock();
-      if (pose_data.size() >= 10) {
-        pose_data.erase(pose_data.begin());
-      }
-      std::shared_ptr<PoseType> pose_ptr(new PoseType());
-      pose_ptr->timestamp = stamp;
-      pose_ptr->T = pose.matrix();
-      pose_data.push_back(pose_ptr);
-      pose_data_mutex.unlock();
-    }
+    pose_estimator->correct(stamp, observation, observation_cov, delta_observation);
+    pose = Eigen::Isometry3d(pose_estimator->matrix().cast<double>());
+    update_pose(stamp, pose.matrix());
 
     // check registration fitness score
     if (fitness_score > 0.5) {
@@ -314,12 +316,15 @@ public:
       return;
     }
 
-    globalmap = cloud;
-    if (globalmap == nullptr) {
-      return;
+    RegistrationType *registration_ptr = nullptr;
+    if (cloud != nullptr && !cloud->empty()) {
+      registration[pingpong_idx]->setInputTarget(cloud);
+      registration_ptr = new RegistrationType(registration[pingpong_idx]);
+    } else {
+      registration_ptr = new RegistrationType(nullptr);
     }
-    registration[pingpong_idx]->setInputTarget(globalmap);
-    hdlRegistrationQueue.enqueue(new RegistrationType(registration[pingpong_idx]));
+
+    hdlRegistrationQueue.enqueue(registration_ptr);
     pingpong_idx.store(last_pingpong_idx);
   }
 
@@ -371,7 +376,6 @@ private:
   std::mutex imu_data_mutex;
   std::vector<ImuType> imu_data;
 
-  pcl::PointCloud<PointT>::Ptr globalmap;
   pcl::Filter<PointT>::Ptr downsample_filter;
 
   // pose estimator

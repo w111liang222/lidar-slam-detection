@@ -188,6 +188,7 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
                           const uint64_t& stamp, const pcl::PointCloud<PointT>::ConstPtr& cloud,
                           boost::optional<std::shared_ptr<RTKType>> &gps_observation,
                           double &fitness_score) {
+  bool result = true;
   Eigen::Matrix4f imu_guess;
   Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
 
@@ -242,10 +243,10 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
 
   if(!registration->hasConverged()) {
     LOG_WARN("localization matching has not converged!!");
-    return false;
+    result = false;
   }
 
-#ifndef XavierNX
+#ifdef INTELIPC
   const uint64_t WARM_UP_TIME = std::numeric_limits<uint64_t>::max();
 #else
   const uint64_t WARM_UP_TIME = 5000000;
@@ -264,7 +265,7 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
     float da = Eigen::AngleAxisf(delta.linear()).angle() / M_PI * 180;
     if(dx > 5.0 || da > 10.0) {
       LOG_WARN("too large transform!!  {} [m], {} [deg]", dx, da);
-      return false;
+      result = false;
     }
   }
 
@@ -292,7 +293,7 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
     }
   }
   observation_cov = fused_cov;
-  return true;
+  return result;
 }
 
 bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,

@@ -50,7 +50,7 @@ public:
   }
 
   bool is_registration() {
-    return is_set_registration;
+    return (is_set_registration && registration != nullptr);
   }
 
   Eigen::Matrix4d predict_nostate(const uint64_t& stamp);
