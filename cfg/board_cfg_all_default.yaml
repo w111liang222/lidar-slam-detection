@@ -28,18 +28,6 @@ board:
             gpio: 492
             freq: 10
 
-    cloud_server:
-        IP: ipu-cloud.tsinghua-auto.cn
-        port: 443
-
-    audio_service:
-        capture:
-            use: false
-            port: 9088
-            audio_name: "Y02"
-        stream:
-            use: false
-
     inference_engine:
         lidar_cfg_file: sensor_inference/cfgs/detection_lidar_large.yaml
         image_cfg_file: sensor_inference/cfgs/detection_image.yaml
