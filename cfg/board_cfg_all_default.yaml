@@ -8,11 +8,11 @@ board:
     fusion:
         source: ['camera']
 
-pipeline: [['Source', 'Sink']]
+pipeline: [['Source', 'SLAM', 'Sink']]
 
 slam:
     mode: 'mapping'
-    method: 'RTKM' # FLOAM, GICPM, FastLIO
+    method: 'FastLIO' # FLOAM, GICPM, FastLIO
     origin: {
         use: true,
         latitude: 0.0,
@@ -21,7 +21,7 @@ slam:
     }
 
     mapping:
-        sensor_input: []
+        sensor_input: ["1-Ouster-OS1-128", "IMU"]
         ground_constraint: true
         loop_closure: true
         key_frames_interval: [4.0, 20.0]  # distance and degree threshold
