@@ -24,15 +24,6 @@ class ConfigManager():
 
     def get_config(self):
         config = copy.deepcopy(self.config)
-        for idx, net in enumerate(config.board.network):
-            if not net.DHCP:
-                continue
-            network = get_network('eth' + str(idx))
-            if network:
-                net.IP, net.mask, net.gateway = network
-            else:
-                net.IP, net.mask, net.gateway = "0.0.0.0", "0.0.0.0", "0.0.0.0"
-
         return config
 
     def set_temporary(self, config):
@@ -43,19 +34,6 @@ class ConfigManager():
 
     def check_config(self, config):
         old_cfg = self.config
-        # check network setting validation
-        is_valid, err_msg = network_validation(config)
-        if not is_valid:
-            self.logger.error(err_msg)
-            return 'Error', config
-
-        # restore the network config when DHCP enabled
-        if len(old_cfg.board.network) == len(config.board.network):
-            for idx in range(len(config.board.network)):
-                if old_cfg.board.network[idx].DHCP and config.board.network[idx].DHCP:
-                    config.board.network[idx].IP = old_cfg.board.network[idx].IP
-                    config.board.network[idx].mask = old_cfg.board.network[idx].mask
-                    config.board.network[idx].gateway = old_cfg.board.network[idx].gateway
 
         if old_cfg.board != config.board or old_cfg.pipeline != config.pipeline:
             return 'Reboot', config
@@ -111,36 +89,11 @@ class ConfigManager():
         self.dump_config(self.config_path)
         self.dump_config('/home/znqc/work/cfg/board_cfg_all.yaml')
 
-        # get the modified network config interface
-        init_interface = ""
-        network_num = min(len(old_cfg.board.network), len(config.board.network))
-        for idx in range(network_num):
-            if old_cfg.board.network[idx] != config.board.network[idx]:
-                init_interface = init_interface + str(idx) + " "
-                self.logger.info('network interface: %d need to be re-init' % (idx))
-
-        if init_interface != "":
-            with open('/tmp/init_interface', 'w') as f:
-                f.write(init_interface)
-                os.fsync(f)
-
-        # find the current access network card
-        new_hostname = config.board.network[0].IP
-        for idx, net in enumerate(old_cfg.board.network):
-            if net.DHCP:
-                network = get_network('eth' + str(idx), gw = False)
-                ip_addr = net.IP if network is None else network[0]
-            else:
-                ip_addr = net.IP
-            if hostname == ip_addr:
-                new_hostname = hostname if (net.DHCP and config.board.network[idx].DHCP) else config.board.network[idx].IP
-                break
-
         if restart_service and (old_cfg.board != config.board or old_cfg.pipeline != config.pipeline):
             self.timed_task = Thread(target=self.timed_restart, daemon=True)
             self.timed_task.start()
 
-        return new_hostname
+        return "localhost"
 
     def dump_config(self, path, sync=True):
         _d = json.loads(json.dumps(self.config))
