@@ -1,16 +1,16 @@
-# Auto IPU
+# LSD (LiDAR SLAM & Detection)
 
-Auto IPU is an open source perception architecture for autonomous vehicle/robotics.
+LSD is an open source perception architecture for autonomous vehicle and robotics.
 
 <img src="docs/home.gif" width="720pix" />
 
-Auto IPU has many features (sensor config, calibration, data recording/playback, object detection and SLAM), it is written by python3 and c++.
+LSD has many features (sensor config, calibration, data recording/playback, object detection and SLAM), it is written by python3 and c++.
 
-Auto IPU can be worked on x86 PC and Nvidia embedded board (Xavier-NX, Xavier-AGX and Orin).
+LSD can be worked on x86 PC and Nvidia embedded board (Xavier-NX, Xavier-AGX and Orin).
 
 # Overview
 
-[Quick Demo](https://github.com/w111liang222/auto-ipu-demo)
+[Quick Demo](docs/demo/README.md)
 
 # Prerequisites
 
@@ -20,27 +20,27 @@ Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, 
 
 ### Nvidia Embedded Board
 
-The Auto IPU is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2
+The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2
 
 # Getting Started
 
 A x86_64 docker image is provided to test.
 ```bash
 docker pull 15liangwang/auto-ipu
-sudo docker run -it -d --net=host --privileged --shm-size=4g --name="AutoIPU" -v /media:/root/exchange 15liangwang/auto-ipu
-docker exec -it AutoIPU /bin/bash
+sudo docker run -it -d --net=host --privileged --shm-size=4g --name="LSD" -v /media:/root/exchange 15liangwang/auto-ipu
+docker exec -it LSD /bin/bash
 ```
 
 Clone this repository and build the source code
 ```bash
 cd /home/znqc/work/
-git clone https://github.com/w111liang222/auto-ipu.git
-cd auto-ipu/
+git clone https://github.com/w111liang222/lidar-slam-detection.git
+cd lidar-slam-detection/
 unzip slam/data/ORBvoc.zip -d slam/data/
 python setup.py install
 ```
 
-Run Auto IPU
+Run LSD
 ```bash
 tools/scripts/start_system.sh
 ```
@@ -55,16 +55,16 @@ Download the demo data [here](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0B
 
 ```bash
 unzip demo_data.zip -d /home/znqc/work/
-tools/scripts/start_system.sh # re-run Auto IPU
+tools/scripts/start_system.sh # re-run LSD
 ```
 
 # License
 
-Auto IPU is released under the [Apache 2.0 license](LICENSE).
+LSD is released under the [Apache 2.0 license](LICENSE).
 
 # Acknowledgments
 
-In the development of Auto IPU, we stand on the shoulders of the following repositories:
+In the development of LSD, we stand on the shoulders of the following repositories:
 
 - [lidar_align](https://github.com/ethz-asl/lidar_align): A simple method for finding the extrinsic calibration between a 3D lidar and a 6-dof pose sensor.
 - [lidar_imu_calib](https://github.com/chennuo0125-HIT/lidar_imu_calib): automatic calibration of 3D lidar and IMU extrinsics.
