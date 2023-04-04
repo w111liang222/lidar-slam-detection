@@ -58,6 +58,7 @@ unzip demo_data.zip -d /home/znqc/work/
 tools/scripts/start_system.sh # re-run LSD
 ```
 
+More usages can be found [here](docs/guide.md)
 # License
 
 LSD is released under the [Apache 2.0 license](LICENSE).
