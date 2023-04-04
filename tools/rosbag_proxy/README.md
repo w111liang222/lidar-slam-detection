@@ -17,7 +17,7 @@ rosbag play xxx.bag
 
 ## Sample
 
-The example rosbag can be downloaded [here](https://drive.google.com/file/d/1ED7BYVzpvKATieZQetqkcPP395wGwIIV/view?usp=sharing)
+The example rosbag can be downloaded [Google Drive](https://drive.google.com/file/d/1ED7BYVzpvKATieZQetqkcPP395wGwIIV/view?usp=sharing) | [百度网盘,密码8m6n](https://pan.baidu.com/s/1LZ2KCd2gE5XttUkzfV0C-g)
 
 ```shell
 # follow the above doc and build the rosbag proxy tool, then roslaunch it

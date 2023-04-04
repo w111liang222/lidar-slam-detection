@@ -20,7 +20,7 @@ Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, 
 
 ### Nvidia Embedded Board
 
-The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2, [README](docs/nvidia/README.md)
+The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2, [Installation](docs/nvidia/README.md)
 
 # Getting Started
 
@@ -51,7 +51,7 @@ Open http://localhost (or http://localhost:1234) in your browser, e.g. Chrome, a
 
 ## Example Data
 
-Download the demo data [here](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing) and unzip
+Download the demo data [Google Drive](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing) | [百度网盘,密码sk5h](https://pan.baidu.com/s/1N7-w-Ls294MzfvX2X866Uw) and unzip it
 
 ```bash
 unzip demo_data.zip -d /home/znqc/work/
