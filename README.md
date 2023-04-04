@@ -65,6 +65,7 @@ More usages can be found [here](docs/guide.md)
 LSD is NOT built on the Robot Operating System (ROS), but we provides some tools to bridge the communication with ROS.
 
 - [pickle to rosbag](tools/pkl_to_rosbag/README.md): a convenient tool to convert the pickle files which are recorded by LSD to rosbag.
+- [rosbag proxy](tools/rosbag_proxy/README.md): a tool which send the ros topic data to LSD.
 
 # License
 

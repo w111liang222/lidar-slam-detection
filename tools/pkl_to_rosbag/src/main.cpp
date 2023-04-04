@@ -132,10 +132,10 @@ int main(int argc, char *argv[])
       {
         imagename.erase(pos, 1);
       }
-      wbag.writeCompressedImage(imagename, "base_link", timestamp, image_compressed);
+      // wbag.writeCompressedImage(imagename, "base_link", timestamp, image_compressed);
 
-      // cv::Mat image_bgr = cv::imdecode(image_compressed, CV_LOAD_IMAGE_UNCHANGED);
-      // wbag.writeImage(imagename, "base_link", timestamp, image_bgr);
+      cv::Mat image_bgr = cv::imdecode(image_compressed, CV_LOAD_IMAGE_UNCHANGED);
+      wbag.writeImage(imagename, "base_link", timestamp, image_bgr);
     }
 
     // INS data
