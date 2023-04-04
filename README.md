@@ -20,7 +20,7 @@ Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, 
 
 ### Nvidia Embedded Board
 
-The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2
+The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2, [README](docs/nvidia/README.md)
 
 # Getting Started
 
