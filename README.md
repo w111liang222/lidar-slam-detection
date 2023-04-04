@@ -64,8 +64,8 @@ More usages can be found [here](docs/guide.md)
 
 LSD is NOT built on the Robot Operating System (ROS), but we provides some tools to bridge the communication with ROS.
 
-- [pickle to rosbag](tools/pkl_to_rosbag/README.md): a convenient tool to convert the pickle files which are recorded by LSD to rosbag.
 - [rosbag proxy](tools/rosbag_proxy/README.md): a tool which send the ros topic data to LSD.
+- [pickle to rosbag](tools/pkl_to_rosbag/README.md): a convenient tool to convert the pickle files which are recorded by LSD to rosbag.
 
 # License
 
@@ -85,6 +85,18 @@ In the development of LSD, we stand on the shoulders of the following repositori
 - [hdl_localization](https://github.com/koide3/hdl_localization): Real-time 3D localization using a (velodyne) 3D LIDAR.
 - [ORB_SLAM2](https://github.com/raulmur/ORB_SLAM2): Real-Time SLAM for Monocular, Stereo and RGB-D Cameras, with Loop Detection and Relocalization Capabilities.
 - [scancontext](https://github.com/irapkaist/scancontext): Global LiDAR descriptor for place recognition and long-term localization.
+
+# Citation
+If you find this project useful in your research, please consider cite and star this project:
+
+```
+@misc{LiDAR-SLAM-Detection,
+    title={LiDAR SLAM & Detection: an open source perception architecture for autonomous vehicle and robotics},
+    author={LiangWang},
+    howpublished = {\url{https://github.com/w111liang222/lidar-slam-detection}},
+    year={2023}
+}
+```
 
 # Contact
 
