@@ -174,12 +174,6 @@ py::dict get_graph_map() {
   return keyframe_to_pydict(frames);
 }
 
-py::dict get_graph_edges() {
-  std::vector<EdgeType> edges;
-  slam_ptr->getGraphEdges(edges);
-  return vector_to_pydict(edges);
-}
-
 PYBIND11_MODULE(slam_wrapper, m) {
   m.doc() = "mapping python interface";
   m.def("init_slam", &init_slam, "init slam",

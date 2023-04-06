@@ -118,10 +118,6 @@ Eigen::Matrix4d RTKM::getPose(PointCloudAttrImagePose &frame) {
   return odom;
 }
 
-void RTKM::getGraphEdges(std::vector<EdgeType> &edges) {
-  graph_get_edges(edges);
-}
-
 void RTKM::computeRTKTransform(const RTKType &origin, std::shared_ptr<RTKType> &data) {
   double originX, originY;
   double dataX, dataY, dataZ;

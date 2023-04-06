@@ -181,10 +181,6 @@ Eigen::Matrix4d HDL_FLOAM::getPose(PointCloudAttrImagePose &frame) {
   return (get_odom2map() * odom).matrix();
 }
 
-void HDL_FLOAM::getGraphEdges(std::vector<EdgeType> &edges) {
-  graph_get_edges(edges);
-}
-
 void HDL_FLOAM::runFloor() {
   prctl(PR_SET_NAME, "FLOAM Floor", 0, 0, 0);
   while (mThreadStart) {

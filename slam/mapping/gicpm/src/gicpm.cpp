@@ -148,10 +148,6 @@ Eigen::Matrix4d HDL_GICP::getPose(PointCloudAttrImagePose &frame) {
   return (get_odom2map() * odom).matrix();
 }
 
-void HDL_GICP::getGraphEdges(std::vector<EdgeType> &edges) {
-  graph_get_edges(edges);
-}
-
 void HDL_GICP::runScanMatch() {
   prctl(PR_SET_NAME, "GICP Odom", 0, 0, 0);
   while (mThreadStart) {

@@ -787,10 +787,12 @@ public:
 hdl_graph_slam::HdlGraphSlamNodelet graphNode;
 
 void init_graph_node(InitParameter &param) {
+  std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
   graphNode.onInit(param);
 }
 
 void deinit_graph_node() {
+  std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
   graphNode.deInit();
 }
 

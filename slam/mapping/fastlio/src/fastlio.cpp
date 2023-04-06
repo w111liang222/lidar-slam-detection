@@ -170,10 +170,6 @@ Eigen::Matrix4d HDL_FastLIO::getPose(PointCloudAttrImagePose &frame) {
   return (get_odom2map() * odom).matrix();
 }
 
-void HDL_FastLIO::getGraphEdges(std::vector<EdgeType> &edges) {
-  graph_get_edges(edges);
-}
-
 void HDL_FastLIO::runLio() {
   prctl(PR_SET_NAME, "FLIO Odom", 0, 0, 0);
   while (mThreadStart) {

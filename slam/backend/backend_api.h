@@ -1,3 +1,6 @@
+#ifndef __BACKEND_API__H
+#define __BACKEND_API__H
+
 // floor detection nodelet
 void init_floor_node();
 void deinit_floor_node();
@@ -55,3 +58,5 @@ void graph_get_edges(std::vector<EdgeType> &edges);
 void graph_set_vertex_fix(int id, bool fix);
 void graph_optimize(std::map<int, Eigen::Matrix4d> &odoms);
 void graph_get_info(GraphInfo &info);
+
+#endif //__BACKEND_API__H

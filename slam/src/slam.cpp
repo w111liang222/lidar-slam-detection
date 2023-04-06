@@ -188,10 +188,6 @@ void SLAM::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
   return mSlam->getGraphMap(frames);
 }
 
-void SLAM::getGraphEdges(std::vector<EdgeType> &edges) {
-  mSlam->getGraphEdges(edges);
-}
-
 bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
   InsConfig match_config;
   match_config.priority = -1;

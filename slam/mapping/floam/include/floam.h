@@ -29,7 +29,6 @@ class HDL_FLOAM : public SlamBase {
                      std::map<std::string, cv::Mat> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
-  void getGraphEdges(std::vector<EdgeType> &edges) override;
 
  private:
   void runFloor();

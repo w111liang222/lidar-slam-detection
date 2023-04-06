@@ -25,7 +25,6 @@ class RTKM : public SlamBase{
                      std::map<std::string, cv::Mat> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
-  void getGraphEdges(std::vector<EdgeType> &edges) override;
 
  private:
   bool getInterpolatedTransform(uint64_t timeStamp, Eigen::Matrix4d& trans);

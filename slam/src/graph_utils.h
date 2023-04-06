@@ -10,6 +10,7 @@ void set_mapping_ground_constraint(bool enable);
 bool get_mapping_ground_constraint();
 void set_mapping_loop_closure(bool enable);
 
+py::dict get_graph_edges();
 py::dict get_graph_meta();
 void del_graph_vertex(int id);
 void add_graph_edge(py::array_t<float> &prev, int prev_id,

@@ -44,6 +44,12 @@ void set_mapping_loop_closure(bool enable) {
   set_loop_closure(enable);
 }
 
+py::dict get_graph_edges() {
+  std::vector<EdgeType> edges;
+  graph_get_edges(edges);
+  return vector_to_pydict(edges);
+}
+
 py::dict get_graph_meta() {
   GraphInfo meta;
   graph_get_info(meta);

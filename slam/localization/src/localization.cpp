@@ -226,10 +226,6 @@ Eigen::Matrix4d Localization::getPose(PointCloudAttrImagePose &frame) {
   return mLastOdom.matrix();
 }
 
-void Localization::getGraphEdges(std::vector<EdgeType> &edges) {
-  mMap->getGraphEdges(edges);
-}
-
 bool Localization::getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) {
   std::lock_guard<std::mutex> lock(mLocalizerMutex);
   if (mInitialized && mLocalizer != nullptr) {
