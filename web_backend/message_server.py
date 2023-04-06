@@ -175,6 +175,8 @@ class MessageServer():
         lidar = proto_points.lp.add()
         lidar.lidar_name = str(msg.header.stamp)
         lidar.points = points[:, :3].tobytes()
+        lidar.attr = points[:, 4].tobytes()
+        lidar.type = msg.fields[3].name
 
         response = make_response(proto_points.SerializeToString())
         response.headers["Content-Type"] = "application/octet-stream"

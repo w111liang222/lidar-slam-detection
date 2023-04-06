@@ -8,6 +8,12 @@ void toPCL(sensor_msgs::PointCloud &msg, pcl::PointCloud<pcl::PointXYZI> &pcl) {
   pcl::fromPCLPointCloud2(pcl2, pcl);
 }
 
+void toPCL(sensor_msgs::PointCloud &msg, pcl::PointCloud<pcl::PointXYZRGB> &pcl) {
+  pcl::PCLPointCloud2 pcl2;
+  toPCL(msg, pcl2, true);
+  pcl::fromPCLPointCloud2(pcl2, pcl);
+}
+
 void toPCL(sensor_msgs::PointCloud &msg, pcl::PCLPointCloud2 &pcl, bool move) {
   pcl.header.stamp = msg.header.stamp;
   pcl.height = msg.height;
@@ -37,6 +43,12 @@ void toPCL(sensor_msgs::PointCloud &msg, pcl::PCLPointCloud2 &pcl, bool move) {
 }
 
 void fromPCL(pcl::PointCloud<pcl::PointXYZI> &pcl, sensor_msgs::PointCloud &msg) {
+  pcl::PCLPointCloud2 pcl2;
+  pcl::toPCLPointCloud2(pcl, pcl2);
+  fromPCL(pcl2, msg, true);
+}
+
+void fromPCL(pcl::PointCloud<pcl::PointXYZRGB> &pcl, sensor_msgs::PointCloud &msg) {
   pcl::PCLPointCloud2 pcl2;
   pcl::toPCLPointCloud2(pcl, pcl2);
   fromPCL(pcl2, msg, true);

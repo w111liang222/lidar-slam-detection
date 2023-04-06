@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x0einternal.proto\"5\n\x0fLidarPointcloud\x12\x12\n\nlidar_name\x18\x01 \x01(\t\x12\x0e\n\x06points\x18\x02 \x01(\x0c\"6\n\x10\x43\x61meraImageBytes\x12\x13\n\x0b\x63\x61mera_name\x18\x01 \x01(\t\x12\r\n\x05image\x18\x02 \x01(\x0c\"T\n\x12LidarPointcloudMap\x12\x1c\n\x02lp\x18\x01 \x03(\x0b\x32\x10.LidarPointcloud\x12 \n\x05image\x18\x02 \x03(\x0b\x32\x11.CameraImageBytes')
+  serialized_pb=_b('\n\x0einternal.proto\"Q\n\x0fLidarPointcloud\x12\x12\n\nlidar_name\x18\x01 \x01(\t\x12\x0e\n\x06points\x18\x02 \x01(\x0c\x12\x0c\n\x04\x61ttr\x18\x03 \x01(\x0c\x12\x0c\n\x04type\x18\x04 \x01(\t\"6\n\x10\x43\x61meraImageBytes\x12\x13\n\x0b\x63\x61mera_name\x18\x01 \x01(\t\x12\r\n\x05image\x18\x02 \x01(\x0c\"T\n\x12LidarPointcloudMap\x12\x1c\n\x02lp\x18\x01 \x03(\x0b\x32\x10.LidarPointcloud\x12 \n\x05image\x18\x02 \x03(\x0b\x32\x11.CameraImageBytes')
 )
 
 
@@ -47,6 +47,20 @@ _LIDARPOINTCLOUD = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='LidarPointcloud.attr', index=2,
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b(""),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='LidarPointcloud.type', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -60,7 +74,7 @@ _LIDARPOINTCLOUD = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=18,
-  serialized_end=71,
+  serialized_end=99,
 )
 
 
@@ -97,8 +111,8 @@ _CAMERAIMAGEBYTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=73,
-  serialized_end=127,
+  serialized_start=101,
+  serialized_end=155,
 )
 
 
@@ -135,8 +149,8 @@ _LIDARPOINTCLOUDMAP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=129,
-  serialized_end=213,
+  serialized_start=157,
+  serialized_end=241,
 )
 
 _LIDARPOINTCLOUDMAP.fields_by_name['lp'].message_type = _LIDARPOINTCLOUD
