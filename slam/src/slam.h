@@ -84,7 +84,7 @@ class SLAM {
   std::string mDestinationIP;
   int mDestinationPort;
 
-  int mCurrentInsStatus;
+  int mLastInsPriority;
   double mLastInsTimestamp;
   boost::optional<Eigen::Vector3d> mZeroUtm;
 

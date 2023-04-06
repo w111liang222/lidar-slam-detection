@@ -157,7 +157,7 @@ void SLAM::setDestination(bool enable, std::string dest, int port) {
 }
 
 bool SLAM::setup() {
-  mCurrentInsStatus = -1;
+  mLastInsPriority = -1;
   mLastInsTimestamp = 0;
   bool result = mSlam->init(mInitParameter);
 
@@ -191,6 +191,8 @@ void SLAM::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
 bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
   // check the valid of INS data
   if (rtk->status == 0 && fabs(rtk->longitude) < 1e-4 && fabs(rtk->latitude) < 1e-4) {
+    mLastInsPriority = -1;
+    mLastInsTimestamp = 0;
     return false;
   }
 
@@ -199,6 +201,7 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
     return true;
   }
 
+  // to find a matching config
   InsConfig match_config;
   match_config.priority = -1;
   for (auto &config : mInsConfig) {
@@ -208,40 +211,49 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
     }
   }
 
-  if (fabs(mLastInsTimestamp) < 1e-2) {
-    mLastInsTimestamp = rtk->timestamp / 1000000.0;
-    return false;
+  // if no match, check if "any" status is set
+  if (match_config.priority == -1) {
+    for (auto &config : mInsConfig) {
+      if (config.second.status == -1) {
+        match_config = config.second;
+        break;
+      }
+    }
   }
 
-  if (match_config.priority == mCurrentInsStatus) {
+  if (fabs(mLastInsTimestamp) < 1e-4) {
+    mLastInsTimestamp = rtk->timestamp / 1000000.0;
+  }
+
+  if (match_config.priority == mLastInsPriority) {
     // status is not changed
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
-  } else if (match_config.priority < mCurrentInsStatus) {
+  } else if (match_config.priority < mLastInsPriority) {
     // status downgrade immediately
     LOG_WARN("SLAM: rtk status downgrade from {} to {}",
-      mInsConfig[mCurrentInsStatus].status_name,
+      mInsConfig[mLastInsPriority].status_name,
       (match_config.priority == -1 ? "invalid" : mInsConfig[match_config.priority].status_name)
     );
-    mCurrentInsStatus = match_config.priority;
+    mLastInsPriority = match_config.priority;
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
-  } else if (match_config.priority > mCurrentInsStatus) {
+  } else if (match_config.priority > mLastInsPriority) {
     double keep_time = rtk->timestamp / 1000000.0 - mLastInsTimestamp;
     if (keep_time >= mInsConfig[match_config.priority].stable_time) {
       LOG_INFO("SLAM: rtk status upgrade from {} to {}",
-        (mCurrentInsStatus == -1 ? "invalid" : mInsConfig[mCurrentInsStatus].status_name),
+        (mLastInsPriority == -1 ? "invalid" : mInsConfig[mLastInsPriority].status_name),
         mInsConfig[match_config.priority].status_name
       );
-      mCurrentInsStatus = match_config.priority;
+      mLastInsPriority = match_config.priority;
       mLastInsTimestamp = rtk->timestamp / 1000000.0;
     }
   }
 
-  if (mCurrentInsStatus == -1) {
+  if (mLastInsPriority == -1) {
     return false;
   }
 
   rtk->dimension = mInsDim;
-  rtk->precision = mInsConfig[mCurrentInsStatus].precision;
+  rtk->precision = mInsConfig[mLastInsPriority].precision;
   return true;
 }
 
