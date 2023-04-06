@@ -189,6 +189,16 @@ void SLAM::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
 }
 
 bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
+  // check the valid of INS data
+  if (rtk->status == 0 && fabs(rtk->longitude) < 1e-4 && fabs(rtk->latitude) < 1e-4) {
+    return false;
+  }
+
+  // don't check the status when doing RTK Mapping
+  if (mMappingMode == modeType::RTKM) {
+    return true;
+  }
+
   InsConfig match_config;
   match_config.priority = -1;
   for (auto &config : mInsConfig) {
