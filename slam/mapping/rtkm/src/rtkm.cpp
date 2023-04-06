@@ -1,4 +1,6 @@
 #include "rtkm.h"
+
+#include <sys/prctl.h>
 #include "backend_api.h"
 
 using namespace Mapping;
@@ -9,6 +11,10 @@ RTKM::RTKM() : SlamBase(), mOriginIsSet(false), mFrameAttr(nullptr) {
 }
 
 RTKM::~RTKM() {
+  mThreadStart = false;
+  mGraphThread->join();
+  mGraphThread.reset(nullptr);
+
   mTimedInsData.clear();
   deinit_backend();
 }
@@ -18,6 +24,9 @@ bool RTKM::init(InitParameter &param) {
   mLastOdom.setIdentity();
   // backend init
   init_backend(param);
+
+  mThreadStart = true;
+  mGraphThread.reset(new std::thread(&RTKM::runGraph, this));
   return true;
 }
 
@@ -199,4 +208,23 @@ bool RTKM::getInterpolatedTransform(uint64_t timestamp, Eigen::Matrix4d &trans) 
   }
 
   return true;
+}
+
+void RTKM::runGraph() {
+  prctl(PR_SET_NAME, "RTKM Graph", 0, 0, 0);
+  while (mThreadStart) {
+    auto clock = std::chrono::steady_clock::now();
+    graph_optimization(mThreadStart);
+    auto elapseMs = since(clock).count();
+
+    int sleep_count = 0;
+    int time_to_sleep = std::max(int((3000 - elapseMs) / 100), 1);
+    while (sleep_count < time_to_sleep && mThreadStart) {
+      usleep(100000);
+      sleep_count++;
+    }
+    if (!mThreadStart) {
+      break;
+    }
+  }
 }

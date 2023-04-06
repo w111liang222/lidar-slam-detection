@@ -30,6 +30,10 @@ class RTKM : public SlamBase{
  private:
   bool getInterpolatedTransform(uint64_t timeStamp, Eigen::Matrix4d& trans);
   void computeRTKTransform(const RTKType &origin, std::shared_ptr<RTKType> &data);
+
+ private:
+  void runGraph();
+
  protected:
   InitParameter mConfig;
   bool mOriginIsSet;
@@ -44,6 +48,9 @@ class RTKM : public SlamBase{
 
  private:
   std::unique_ptr<UTMProjector> mProjector;
+
+  bool mThreadStart;
+  std::unique_ptr<std::thread> mGraphThread;
 };
 
 }
