@@ -51,7 +51,7 @@ Open http://localhost (or http://localhost:1234) in your browser, e.g. Chrome, a
 
 ## Example Data
 
-Download the demo data [Google Drive](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing) | [百度网盘,密码sk5h](https://pan.baidu.com/s/1N7-w-Ls294MzfvX2X866Uw) and unzip it
+Download the demo data [Google Drive](https://drive.google.com/file/d/1wi3KATudMX3b4Wz0Bu-qcScaFuQDvXwW/view?usp=sharing) | [百度网盘(密码sk5h)](https://pan.baidu.com/s/1N7-w-Ls294MzfvX2X866Uw) and unzip it
 
 ```bash
 unzip demo_data.zip -d /home/znqc/work/
