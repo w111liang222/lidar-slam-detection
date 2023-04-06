@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=${prefix}
+datarootdir=${prefix}/share
+jardir=${datarootdir}/java
+
+Name: zcm
+Description: Zero Communications and Marshalling (ZCM) Java Tools
+Requires:
+Version: @version@
+classpath=${jardir}/zcm-tools.jar

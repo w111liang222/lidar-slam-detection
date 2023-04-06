@@ -1,0 +1,11 @@
+Package: zcm
+Version: @version@
+Maintainer: Jonathan Bendes <jonathan@skyspecs.com>
+Section: devel
+Priority: optional
+Build-Essential: yes
+Architecture: @arch@
+Depends: default-jre, libzmq5, python3, libc6, libelf1, libgtk-3-0
+Description: Zero Communications and Marshalling Library
+ Communication middleware for various transport layers.
+

@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    DEPS = ['default', 'zcm', 'julia']
+
+    ctx.shlib(target = 'zcmjulia',
+              # Note that we DO NOT depend on libuv here since most runtimes
+              # you'd use this library in will have their own libuv.
+              # Technically you still need libuv on your system to be able
+              # to compile this library because you need the header files
+              use = DEPS,
+              source = ctx.path.ant_glob(['uv_zcm_msg_handler.cpp']))
+
+    ctx.install_as('${PREFIX}/share/julia/ZCM.jl', 'ZCM.jl')

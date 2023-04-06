@@ -1,0 +1,29 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def configure(ctx):
+    # Nuke the zcm.pc in build/ to ensure it's correct after a build
+    # We need to do this because we're generating the file with the substring tool
+    # And waf is not treating Environment Vars as a dependency for the file
+    ctx.exec_command('rm -f ' + ctx.path.get_bld().abspath() + '/zcm.pc')
+
+def build(ctx):
+    ctx(features="subst",
+        source="zcm.pc.in",
+        target="zcm.pc",
+        install_path="${LIBDIR}/pkgconfig",
+        always=True)
+
+    if ctx.env.USING_ELF:
+        ctx(features="subst",
+            source="zcm-tools-util.pc.in",
+            target="zcm-tools-util.pc",
+            install_path="${LIBDIR}/pkgconfig",
+            always=True)
+
+    if ctx.env.USING_JAVA:
+        ctx(features="subst",
+            source="zcm-tools.pc.in",
+            target="zcm-tools.pc",
+            install_path="${LIBDIR}/pkgconfig",
+            always=True)

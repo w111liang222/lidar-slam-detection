@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+datarootdir=${prefix}/share
+jardir=${datarootdir}/java
+
+Name: zcm
+Description: Zero Communications and Marshalling (ZCM) Tools Utils
+Requires:
+Version: @version@
+Libs: -L${libdir} -lzcm_tools_util
+Cflags: -I${includedir}

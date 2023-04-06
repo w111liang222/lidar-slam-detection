@@ -1,0 +1,4 @@
+#!/bin/sh
+prefix=@prefix@
+jars=$prefix/share/java/zcm.jar:$prefix/share/java/zcm-tools.jar
+exec java -server -Xmx64m -Xms32m -ea -cp $jars zcm.logging.LogPlayer $*

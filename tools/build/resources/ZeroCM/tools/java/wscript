@@ -1,0 +1,50 @@
+#! /usr/bin/env python
+# encoding: utf-8
+from waflib import Utils
+
+def build(ctx):
+    ctx(name       = 'zcmtoolsjar',
+        features   = 'javac jar',
+        use        = 'zcmjar',
+        srcdir     = ['zcm'],
+        outdir     = 'classes',  # path to output (for .class)
+        basedir    = 'classes',  # basedir for jar
+        destfile   = 'zcm-tools.jar')
+
+    ctx.install_as('${PREFIX}/share/java/zcm-tools.jar', 'zcm-tools.jar')
+
+    ctx(features='subst',
+        source='zcm-spy.in',
+        target='zcm-spy',
+        install_path='${BINDIR}',
+        chmod=Utils.O755,
+        always=True)
+
+    if not ctx.env.USING_GTK3:
+        ctx(features='subst',
+            source='zcm-logplayer-gui.in',
+            target='zcm-logplayer-gui',
+            install_path='${BINDIR}',
+            chmod=Utils.O755,
+            always=True)
+
+    ctx(features='subst',
+        source='zcm-csv-writer.in',
+        target='zcm-csv-writer',
+        install_path='${BINDIR}',
+        chmod=Utils.O755,
+        always=True)
+
+    ctx(features='subst',
+        source='zcm-csv-reader.in',
+        target='zcm-csv-reader',
+        install_path='${BINDIR}',
+        chmod=Utils.O755,
+        always=True)
+
+    ctx(features='subst',
+        source='zcm-log-transcoder-java.in',
+        target='zcm-log-transcoder-java',
+        install_path='${BINDIR}',
+        chmod=Utils.O755,
+        always=True)

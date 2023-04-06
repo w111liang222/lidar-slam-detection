@@ -1,0 +1,24 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+import os
+
+def build(ctx):
+
+    def cythonize(task):
+        cmd = 'cython %s -o %s' % (task.inputs[0].abspath(), task.outputs[0].abspath())
+        task.exec_command(cmd)
+
+    ctx(name = 'cyzcm',
+        rule = cythonize,
+        color = 'GREEN',
+        source = 'zerocm.pyx',
+        target = 'zerocm.c')
+
+    ctx.shlib(name = 'pyzcm',
+              target = 'zerocm',
+              features = 'pyext',
+              source = 'zerocm.c',
+              # PYTHON here for safety (mainly copying java). Seems to compile
+              # fine when omitted as well, but better safe than....
+              use = 'zcm PYTHON').init_pyext()

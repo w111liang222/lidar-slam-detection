@@ -1,0 +1,10 @@
+#! /usr/bin/env python
+
+def build(ctx):
+    DEPS = ['default']
+    THIS_LIB = 'zcm_json'
+
+    ctx.stlib(target   = THIS_LIB,
+              use      = DEPS,
+              source   = ctx.path.ant_glob('**/*.cpp', excl='test'),
+              includes = [ '.' ])

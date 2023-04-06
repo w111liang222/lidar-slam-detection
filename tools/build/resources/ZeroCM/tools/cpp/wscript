@@ -1,0 +1,21 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    ctx.recurse('util');
+    ctx.recurse('logplayer');
+    ctx.recurse('log-repair');
+    ctx.recurse('repeater');
+    ctx.recurse('spy-peek');
+
+    if ctx.env.USING_ELF:
+        ctx.recurse('spy-lite');
+        ctx.recurse('indexer');
+        ctx.recurse('transcoder');
+        ctx.recurse('logger');
+        ctx.recurse('bridge');
+        ctx.recurse('topology-visualizer');
+        ctx.recurse('filter');
+
+    if ctx.env.USING_GTK3:
+        ctx.recurse('logplayer-gui');

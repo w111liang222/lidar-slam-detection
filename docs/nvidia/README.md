@@ -22,7 +22,7 @@ sudo update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
 ```bash
 sudo apt install libboost-dev libboost-filesystem-dev libboost-date-time-dev libboost-iostreams-dev
 sudo apt install libopenmpi-dev libtbb-dev libopenblas-dev busybox cmake
-sudo apt install gfortran libjpeg-dev libgeos-dev libturbojpeg clang-12
+sudo apt install gfortran libjpeg-dev libgeos-dev libturbojpeg clang-12 libelf-dev
 sudo apt install libzmq3-dev gpsd libflann-dev libqhull-dev libgps-dev libgstrtspserver-1.0-dev
 sudo apt install libeigen3-dev libceres-dev
 
