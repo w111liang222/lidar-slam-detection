@@ -4,15 +4,22 @@ LSD is an open source perception architecture for autonomous vehicle and robotic
 
 <img src="docs/home.gif" width="720pix" />
 
-LSD has many features (sensor config, calibration, data recording/playback, object detection and SLAM), it is written by python3 and c++.
+LSD currently supports many features:
 
-LSD can be worked on x86 PC and Nvidia embedded board (Xavier-NX, Xavier-AGX and Orin).
+- [x] support multiple LiDAR, camera, radar and INS/IMU sensors.
+- [x] support user-friendly calibration for LiDAR and camera etc.
+- [x] support software time sync, data record and playback.
+- [x] support CNN based pointcloud object detection, tracking and prediction.
+- [x] support GICP, FLOAM and FastLIO based frontend odometry and G2O based pose graph optimization.
+- [x] support Web based interactive map correction tool(editor).
 
 # Overview
 
 [Quick Demo](docs/demo/README.md)
 
 # Prerequisites
+
+LSD can be worked both on x86 PC and Nvidia embedded boards (Xavier-NX, Xavier-AGX and Orin).
 
 ### Basic Enviroment
 
