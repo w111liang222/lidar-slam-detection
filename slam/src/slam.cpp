@@ -107,6 +107,11 @@ void SLAM::setParams(const std::string& map_path, const double resolution,
   mInitParameter.key_frame_degree = degree_threshold;
   mInitParameter.key_frame_range = frame_range;
   mInitParameter.scan_period = 0.1; // assume 10 Hz
+
+  pcl::RadiusOutlierRemoval<Point>::Ptr rad(new pcl::RadiusOutlierRemoval<Point>());
+  rad->setRadiusSearch(1.5);
+  rad->setMinNeighborsInRadius(10);
+  mOutlierRemoval = rad;
 }
 
 void SLAM::setCameraParameter(const std::map<std::string, CamParamType>& camParam) {
@@ -361,12 +366,18 @@ void SLAM::runMappingThread() {
     PointCloudAttrImagePose keyframe;
     bool is_key_frame = enqueue_graph(frame, keyframe);
     if (is_key_frame) {
-      // distance filter
+      // outlier remove
       PointCloud::Ptr filtered(new PointCloud());
-      pointsDistanceFilter(keyframe.points->cloud, filtered, 0, mInitParameter.key_frame_range);
+      mOutlierRemoval->setInputCloud(keyframe.points->cloud);
+      mOutlierRemoval->filter(*filtered);
+      filtered->header = keyframe.points->cloud->header;
+
+      // distance filter
+      PointCloud::Ptr dist_filtered(new PointCloud());
+      pointsDistanceFilter(filtered, dist_filtered, 0, mInitParameter.key_frame_range);
 
       // enqueue keyframe queue
-      keyframe.points->cloud = filtered;
+      keyframe.points->cloud = dist_filtered;
       mKeyframeQueue.enqueue(keyframe);
     }
   }
