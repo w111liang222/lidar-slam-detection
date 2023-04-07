@@ -5,7 +5,6 @@
 #include <vector>
 #include <thread>
 #include <boost/format.hpp>
-#include <pcl/filters/voxel_grid.h>
 
 #include "slam_base.h"
 #include "UTMProjector.h"
@@ -71,7 +70,6 @@ class SLAM {
   bool mUseGPS;
   bool mUseIMU;
 
-  pcl::Filter<Point>::Ptr mDownsampler;
   std::unique_ptr<SlamBase> mSlam;
   std::unique_ptr<UTMProjector> mProjector;
   std::unique_ptr<UnixSocketServer> mUnixServer;

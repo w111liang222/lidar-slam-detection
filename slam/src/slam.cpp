@@ -107,10 +107,6 @@ void SLAM::setParams(const std::string& map_path, const double resolution,
   mInitParameter.key_frame_degree = degree_threshold;
   mInitParameter.key_frame_range = frame_range;
   mInitParameter.scan_period = 0.1; // assume 10 Hz
-
-  auto voxelgrid = new pcl::VoxelGrid<Point>();
-  voxelgrid->setLeafSize(resolution, resolution, resolution);
-  mDownsampler.reset(voxelgrid);
 }
 
 void SLAM::setCameraParameter(const std::map<std::string, CamParamType>& camParam) {
@@ -369,14 +365,8 @@ void SLAM::runMappingThread() {
       PointCloud::Ptr filtered(new PointCloud());
       pointsDistanceFilter(keyframe.points->cloud, filtered, 0, mInitParameter.key_frame_range);
 
-      // downsample the keyframe
-      PointCloud::Ptr downsampled(new PointCloud());
-      mDownsampler->setInputCloud(filtered);
-      mDownsampler->filter(*downsampled);
-      downsampled->header.stamp = keyframe.points->cloud->header.stamp;
-
       // enqueue keyframe queue
-      keyframe.points->cloud = downsampled;
+      keyframe.points->cloud = filtered;
       mKeyframeQueue.enqueue(keyframe);
     }
   }

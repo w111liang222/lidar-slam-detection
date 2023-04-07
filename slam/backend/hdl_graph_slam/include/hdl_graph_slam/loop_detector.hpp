@@ -41,10 +41,10 @@ public:
     distance_thresh = 15.0;
     accum_distance_thresh = 25.0;
     distance_from_last_edge_thresh = 15.0;
-    distance_new_keyframe_thresh = 1.0;
-    distance_keyframe_thresh = 1.0;
+    distance_new_keyframe_thresh = 2.0;
+    distance_keyframe_thresh = 2.0;
 
-    fitness_score_max_range = std::numeric_limits<double>::max();
+    fitness_score_max_range = 25.0; // 5m
     fitness_score_thresh = 1.5;
 
     LOG_INFO("initializing loop detection...");
@@ -54,6 +54,7 @@ public:
     registration = select_registration_method("FAST_VGICP");
 #endif
     registration_accurate = select_registration_method("FAST_GICP");
+    registration_accurate->setMaxCorrespondenceDistance(0.5);
     last_edge_accum_distance = 0.0;
   }
 
@@ -167,8 +168,11 @@ private:
       registration->align(*aligned, guess);
       LOG_INFO("{} / {}", candidate_idx, candidate_keyframes.size());
 
+      if(!registration->hasConverged()) {
+        continue;
+      }
       double score = registration->getFitnessScore(fitness_score_max_range);
-      if(!registration->hasConverged() || score > best_score) {
+      if(score > best_score) {
         continue;
       }
 
@@ -188,14 +192,19 @@ private:
     registration_accurate->setInputTarget(new_keyframe->cloud);
     registration_accurate->setInputSource(best_matched->cloud);
     registration_accurate->align(*aligned, relative_pose);
+
+    if(!registration_accurate->hasConverged()) {
+      LOG_INFO("not converged, loop not found...");
+      return nullptr;
+    }
     best_score = registration_accurate->getFitnessScore(fitness_score_max_range);
-    if(!registration_accurate->hasConverged() || best_score > fitness_score_thresh) {
+    if(best_score > fitness_score_thresh) {
       LOG_INFO("score: {}, loop not found...", best_score);
       return nullptr;
     }
-    relative_pose = registration_accurate->getFinalTransformation();
 
-    LOG_INFO("loop found!!");
+    relative_pose = registration_accurate->getFinalTransformation();
+    LOG_INFO("score: {}, loop found!!", best_score);
     // std::cout << "relpose: " << relative_pose.block<3, 1>(0, 3) << " - " << Eigen::Quaternionf(relative_pose.block<3, 3>(0, 0)).coeffs().transpose() << std::endl;
 
     last_edge_accum_distance = new_keyframe->accum_distance;

@@ -175,8 +175,8 @@ public:
 
     if (keyframe_updater->is_first_frame()) {
       keyframe_updater->update(odom);
-      auto filtered = downsample(frame.points->cloud);
-      pcl::transformPointCloud(*filtered, *odom_local_map, odom.matrix());
+      frame.points->cloud = downsample(frame.points->cloud);
+      pcl::transformPointCloud(*frame.points->cloud, *odom_local_map, odom.matrix());
       InformationMatrixCalculator::rebuild_kd_tree(odom_local_map);
       return false;
     }
@@ -193,11 +193,11 @@ public:
     undistortPoints(Eigen::Matrix4f::Identity(), delta_odom, frame.points, init_config.scan_period);
 
     // downsample pointcloud
-    auto filtered = downsample(frame.points->cloud);
+    frame.points->cloud = downsample(frame.points->cloud);
 
     // transform to odometry coordinate
     PointCloud::Ptr aligned(new PointCloud());
-    pcl::transformPointCloud(*filtered, *aligned, odom.matrix());
+    pcl::transformPointCloud(*frame.points->cloud , *aligned, odom.matrix());
 
     // calculate fitness score and find best frame
     int nr = 0;
