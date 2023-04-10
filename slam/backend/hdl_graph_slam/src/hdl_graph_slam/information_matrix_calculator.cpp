@@ -92,11 +92,15 @@ void InformationMatrixCalculator::rebuild_kd_tree(const pcl::PointCloud<PointT>:
   kd_tree_->setInputCloud(cloud);
 }
 
-double InformationMatrixCalculator::calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, int& nr, double max_range) {
+double InformationMatrixCalculator::fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, const double& floor_height, int& nr, pcl::PointIndices::Ptr &inliers, double max_range) {
   double fitness_score = 0.0;
 
   std::vector<int> nn_indices(1);
   std::vector<float> nn_dists(1);
+
+  Eigen::Affine3f relative = Eigen::Affine3f(relpose.matrix().cast<float>());
+  inliers->indices.reserve(cloud2->points.size());
+  double floor_height_max = floor_height + 2.0;
 
   // For each point in the source dataset
   nr = 0;
@@ -109,6 +113,13 @@ double InformationMatrixCalculator::calc_fitness_score(const pcl::PointCloud<Poi
       // Add to the fitness score
       fitness_score += nn_dists[0];
       nr++;
+    }
+
+    PointT p1 = pcl::transformPoint(cloud1->points[nn_indices[0]], relative);
+    PointT p2 = pcl::transformPoint(cloud2->points[i], relative);
+
+    if (p1.z < floor_height_max && p2.z < floor_height_max && fabs(p1.z - p2.z) > 0.25) {
+      inliers->indices.push_back(i);
     }
   }
 

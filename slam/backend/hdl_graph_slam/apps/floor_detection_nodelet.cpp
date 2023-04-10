@@ -40,7 +40,7 @@ public:
     sensor_height = 0.0;          // approximate sensor height [m]
     height_clip_range_low  = 2.0;
     height_clip_range_high = 1.0; // points with heights in [sensor_height - height_clip_range_low, sensor_height + height_clip_range_high] will be used for floor detection
-    floor_pts_thresh = 512;       // minimum number of support points of RANSAC to accept a detected floor plane
+    floor_pts_thresh = 1024;       // minimum number of support points of RANSAC to accept a detected floor plane
     floor_normal_thresh = 10.0;   // verticality check thresold for the detected floor plane [deg]
     use_normal_filtering = true;  // if true, points with "non-"vertical normals will be filtered before RANSAC
     normal_filter_thresh = 20.0;  // "non-"verticality check threshold [deg]

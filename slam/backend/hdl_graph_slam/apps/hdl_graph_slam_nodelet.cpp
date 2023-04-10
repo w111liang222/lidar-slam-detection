@@ -14,6 +14,7 @@
 #include <Eigen/Dense>
 #include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <hdl_graph_slam/graph_slam.hpp>
 #include <hdl_graph_slam/keyframe.hpp>
@@ -97,6 +98,7 @@ public:
     // gps_edge_stddev_z = 5.0;
     floor_edge_stddev = 10.0;
     floor_node_id = 100000; // floor node id start from 100000 -
+    floor_height = 0;
 
     imu_time_offset = 0.0;
     enable_imu_orientation = false;
@@ -188,6 +190,11 @@ public:
       return false;
     }
 
+    // get odometry to map
+    trans_odom2map_mutex.lock();
+    Eigen::Isometry3d odometry2map = Eigen::Isometry3d(trans_odom2map.cast<double>());
+    trans_odom2map_mutex.unlock();
+
     // undistortion pointcloud
     Eigen::Matrix4f delta_odom = (frame.points->T).cast<float>();
     undistortPoints(Eigen::Matrix4f::Identity(), delta_odom, frame.points, init_config.scan_period);
@@ -201,9 +208,15 @@ public:
 
     // calculate fitness score and find best frame
     int nr = 0;
-    double fitness_score = InformationMatrixCalculator::calc_fitness_score(odom_local_map, aligned, nr, 1.0);
+    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+    double fitness_score = InformationMatrixCalculator::fitness_score(odom_local_map, aligned, odometry2map, floor_height, nr, inliers, 1.0);
     float inlier_ratio = float(nr) / aligned->points.size();
     if ((fitness_score * 0.8 + (1.0 - inlier_ratio) * 0.2)  <= (best_score * 0.8 + (1.0 - best_inlier_ratio) * 0.2)) {
+      if (floor_enable && floor_plane_node != nullptr) {
+        frame.points->cloud = extract(frame.points->cloud, inliers);
+        aligned = extract(aligned, inliers);
+      }
+
       best_score = fitness_score;
       best_inlier_ratio = inlier_ratio;
       best_frame = frame;
@@ -263,9 +276,7 @@ public:
 
       // assign the best frame to keyframe
       keyframe = best_frame;
-      trans_odom2map_mutex.lock();
-      keyframe.T = Eigen::Isometry3d(trans_odom2map.cast<double>()) * keyframe.T;
-      trans_odom2map_mutex.unlock();
+      keyframe.T = odometry2map * keyframe.T;
     }
 
     return must_update;
@@ -592,7 +603,7 @@ public:
       }
 
       if(!floor_plane_node) {
-        double floor_height = fix_first_node ? 0 : found->second->node->estimate()(2, 3);
+        floor_height = fix_first_node ? 0 : found->second->node->estimate()(2, 3);
         floor_plane_node = graph_slam->add_plane_node(Eigen::Vector4d(0.0, 0.0, 1.0, -floor_height), floor_node_id);
         floor_plane_node->setFixed(true);
         LOG_INFO("Add Floor plane node, height: {}", floor_height);
@@ -703,6 +714,17 @@ public:
     return filtered;
   }
 
+  pcl::PointCloud<PointT>::Ptr extract(const pcl::PointCloud<PointT>::Ptr& cloud, const pcl::PointIndices::Ptr &indices) const {
+    PointCloud::Ptr extract_cloud(new PointCloud());
+    pcl::ExtractIndices<PointT> extract;
+    extract.setInputCloud(cloud);
+    extract.setIndices(indices);
+    extract.setNegative(true);
+    extract.filter(*extract_cloud);
+
+    return extract_cloud;
+  }
+
   std::string map_frame_id;
   std::string odom_frame_id;
   InitParameter init_config;
@@ -747,6 +769,7 @@ public:
   // floor_coeffs queue
   double floor_edge_stddev;
   bool floor_enable;
+  double floor_height;
   std::mutex floor_coeffs_queue_mutex;
   std::deque<FloorCoeffs> floor_coeffs_queue;
   int floor_node_id;

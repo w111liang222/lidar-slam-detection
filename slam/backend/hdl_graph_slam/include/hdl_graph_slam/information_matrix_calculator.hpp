@@ -5,6 +5,7 @@
 
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <pcl/PointIndices.h>
 
 namespace hdl_graph_slam {
 
@@ -29,9 +30,10 @@ public:
     fitness_score_thresh = params.template param<double>("fitness_score_thresh", 2.5);
   }
 
-  static void rebuild_kd_tree(const pcl::PointCloud<PointT>::ConstPtr& cloud);
   static double calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, double max_range = std::numeric_limits<double>::max());
-  static double calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, int& nr, double max_range = std::numeric_limits<double>::max());
+
+  static void rebuild_kd_tree(const pcl::PointCloud<PointT>::ConstPtr& cloud);
+  static double fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, const double& floor_height, int& nr, pcl::PointIndices::Ptr &inliers, double max_range = std::numeric_limits<double>::max());
 
   Eigen::MatrixXd calc_information_matrix(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose) const;
 
