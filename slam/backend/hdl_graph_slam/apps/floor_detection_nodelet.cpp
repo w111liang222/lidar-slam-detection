@@ -36,7 +36,6 @@ public:
    * @brief initialize parameters
    */
   void initialize_params() {
-    tilt_deg = 0.0;               // approximate sensor tilt angle [deg]
     sensor_height = 0.0;          // approximate sensor height [m]
     height_clip_range_low  = 2.0;
     height_clip_range_high = 1.0; // points with heights in [sensor_height - height_clip_range_low, sensor_height + height_clip_range_high] will be used for floor detection
@@ -78,25 +77,15 @@ public:
    * @return detected floor plane coefficients
    */
   boost::optional<Eigen::Vector4f> detect(const pcl::PointCloud<PointT>::Ptr& cloud) const {
-    // compensate the tilt rotation
-    Eigen::Matrix4f tilt_matrix = Eigen::Matrix4f::Identity();
-    tilt_matrix.topLeftCorner(3, 3) = Eigen::AngleAxisf(tilt_deg * M_PI / 180.0f, Eigen::Vector3f::UnitY()).toRotationMatrix();
-
     // filtering before RANSAC (height and normal filtering)
     pcl::PointCloud<PointT>::Ptr filtered(new pcl::PointCloud<PointT>);
-    pcl::transformPointCloud(*cloud, *filtered, tilt_matrix);
+    filtered = cloud;
     filtered = plane_clip(filtered, Eigen::Vector4f(0.0f, 0.0f, 1.0f, sensor_height + height_clip_range_low), false);
     filtered = plane_clip(filtered, Eigen::Vector4f(0.0f, 0.0f, 1.0f, sensor_height - height_clip_range_high), true);
 
     if(use_normal_filtering) {
       filtered = normal_filtering(filtered);
     }
-
-    pcl::transformPointCloud(*filtered, *filtered, static_cast<Eigen::Matrix4f>(tilt_matrix.inverse()));
-
-
-    // filtered->header = cloud->header;
-    // floor_filtered_pub.publish(*filtered);
 
     // too few points for RANSAC
     if(filtered->size() < floor_pts_thresh) {
@@ -118,7 +107,7 @@ public:
     }
 
     // verticality check of the detected floor's normal
-    Eigen::Vector4f reference = tilt_matrix.inverse() * Eigen::Vector4f::UnitZ();
+    Eigen::Vector4f reference = Eigen::Vector4f::UnitZ();
 
     Eigen::VectorXf coeffs;
     ransac.getModelCoefficients(coeffs);
@@ -208,7 +197,6 @@ private:
 
   // floor detection parameters
   // see initialize_params() for the details
-  double tilt_deg;
   double sensor_height;
   double height_clip_range_high;
   double height_clip_range_low;
