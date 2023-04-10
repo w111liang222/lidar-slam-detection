@@ -13,7 +13,7 @@ Currently, there are four processing modes are supported by LSD, all modes can b
 - SLAM                    --- pointcloud mapping or localization with LiDAR, camera and IMU.
 - Object Detection & SLAM --- running object detetcion and SLAM simultaneously.
 
-There modes can be configured by "Web UI => Config => Device => Mode" and click the "Upload" button to save. (this operation needs to restart LSD manually)
+These modes can be configured by "Web UI => Config => Device => Mode" and click the "Upload" button to save. (this operation needs to restart LSD manually)
 
 # Sensor Configure
 
