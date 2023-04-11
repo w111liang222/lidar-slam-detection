@@ -13,7 +13,7 @@ namespace hdl_graph_slam {
  * @return selected scan matching
  */
 pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_method();
-pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_method(std::string registration_method, int64_t max_process_time = 100000);
+pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_method(std::string registration_method, int64_t max_process_time = 0);
 
 }  // namespace hdl_graph_slam
 

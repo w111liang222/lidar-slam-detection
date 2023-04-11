@@ -33,7 +33,7 @@ pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_metho
   if(registration_method.compare("FAST_GICP") == 0) {
     LOG_INFO("registration: FAST_GICP");
     fast_gicp::FastGICP<PointT, PointT>::Ptr gicp(new fast_gicp::FastGICP<PointT, PointT>());
-    gicp->setNumThreads(0);
+    gicp->setNumThreads(4);
     gicp->setTransformationEpsilon(0.01);
     gicp->setMaximumIterations(64);
     gicp->setMaxCorrespondenceDistance(2.0);
@@ -56,11 +56,12 @@ pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_metho
   else if(registration_method.compare("FAST_VGICP") == 0) {
     LOG_INFO("registration: FAST_VGICP");
     fast_gicp::FastVGICP<PointT, PointT>::Ptr vgicp(new fast_gicp::FastVGICP<PointT, PointT>());
-    vgicp->setNumThreads(0);
+    vgicp->setNumThreads(4);
     vgicp->setResolution(1.0);
     vgicp->setTransformationEpsilon(0.01);
     vgicp->setMaximumIterations(64);
     vgicp->setCorrespondenceRandomness(20);
+    vgicp->setMaxProcessTime(max_process_time);
     return vgicp;
   } else if(registration_method.compare("ICP") == 0) {
     LOG_INFO("registration: ICP");

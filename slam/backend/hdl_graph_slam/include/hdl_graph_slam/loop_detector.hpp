@@ -49,7 +49,7 @@ public:
 
     LOG_INFO("initializing loop detection...");
 #ifdef HAS_CUDA_ENABLE
-    registration = select_registration_method("NDT_CUDA", 0);
+    registration = select_registration_method("NDT_CUDA");
 #else
     registration = select_registration_method("FAST_VGICP");
 #endif

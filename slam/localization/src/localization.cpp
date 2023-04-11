@@ -261,7 +261,8 @@ void Localization::runUpdateLocalMap() {
   const int    max_local_map_points_num = 200000;
 
   pcl::VoxelGrid<Point> voxelgrid;
-  voxelgrid.setLeafSize(mConfig.resolution, mConfig.resolution, mConfig.resolution);
+  double resolution = std::max(mConfig.resolution, 0.1); // < 0.1m will cause the filter index overflow
+  voxelgrid.setLeafSize(resolution, resolution, resolution);
 
   Eigen::Isometry3d lastPose = Eigen::Isometry3d::Identity();
   while (mThreadStart) {

@@ -20,7 +20,8 @@ GlobalLocalization::GlobalLocalization(InitParameter &param, std::string cameraN
         mRegistration = select_registration_method("FAST_VGICP");
 #endif
     }
-    mDownsampler.setLeafSize(param.resolution, param.resolution, param.resolution);
+    double resolution = std::max(param.resolution, 0.1);
+    mDownsampler.setLeafSize(resolution, resolution, resolution);
     mImageName = cameraName;
     mCameraParams = cameraParam;
     if (mImageName.length() > 0) {

@@ -45,10 +45,9 @@ public:
     for (int i = 0; i < 2; i++) {
       if (registration[i] == nullptr) {
 #ifdef HAS_CUDA_ENABLE
-        registration[i] = select_registration_method("NDT_CUDA");
+        registration[i] = select_registration_method("NDT_CUDA", 100000);
 #else
-        registration[i] = select_registration_method("FAST_VGICP");
-        registration[i]->setTransformationEpsilon(0.1);
+        registration[i] = select_registration_method("FAST_VGICP", 100000);
 #endif
       }
     }
@@ -58,6 +57,7 @@ public:
     pose_data.clear();
     imu_data.clear();
     ins_data.clear();
+    downsample_filter = nullptr;
 
     pose_estimator.reset(nullptr);
     delta_estimator.reset(nullptr);
@@ -69,9 +69,11 @@ public:
 
   void initialize_params(InitParameter &param) {
     mConfig = param;
-    auto voxelgrid = new pcl::VoxelGrid<PointT>();
-    voxelgrid->setLeafSize(param.resolution, param.resolution, param.resolution);
-    downsample_filter.reset(voxelgrid);
+    if (param.resolution >= 0.1) {
+      auto voxelgrid = new pcl::VoxelGrid<PointT>();
+      voxelgrid->setLeafSize(param.resolution, param.resolution, param.resolution);
+      downsample_filter.reset(voxelgrid);
+    }
   }
 
   void setImuExtrinic(Eigen::Matrix4d &extrinic) {
