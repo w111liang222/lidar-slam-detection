@@ -118,7 +118,10 @@ double InformationMatrixCalculator::fitness_score(const pcl::PointCloud<PointT>:
     PointT p1 = pcl::transformPoint(cloud1->points[nn_indices[0]], relative);
     PointT p2 = pcl::transformPoint(cloud2->points[i], relative);
 
-    if (p1.z < floor_height_max && p2.z < floor_height_max && fabs(p1.z - p2.z) > 0.25) {
+    float dx = p1.x - p2.x;
+    float dy = p1.y - p2.y;
+    float horizon_dist = dx * dx + dy * dy;
+    if (horizon_dist <= 10.0 && p1.z < floor_height_max && p2.z < floor_height_max && fabs(p1.z - p2.z) > 0.25) {
       inliers->indices.push_back(i);
     }
   }

@@ -109,8 +109,8 @@ void SLAM::setParams(const std::string& map_path, const double resolution,
   mInitParameter.scan_period = 0.1; // assume 10 Hz
 
   pcl::RadiusOutlierRemoval<Point>::Ptr rad(new pcl::RadiusOutlierRemoval<Point>());
-  rad->setRadiusSearch(1.5);
-  rad->setMinNeighborsInRadius(10);
+  rad->setRadiusSearch(1.0);
+  rad->setMinNeighborsInRadius(3);
   mOutlierRemoval = rad;
 }
 

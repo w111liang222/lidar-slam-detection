@@ -20,8 +20,11 @@ GlobalLocalization::GlobalLocalization(InitParameter &param, std::string cameraN
         mRegistration = select_registration_method("FAST_VGICP");
 #endif
     }
-    double resolution = std::max(param.resolution, 0.1);
-    mDownsampler.setLeafSize(resolution, resolution, resolution);
+
+    if (param.resolution >= 0.1) {
+        mDownsampler.reset(new pcl::VoxelGrid<Point>());
+        mDownsampler->setLeafSize(param.resolution, param.resolution, param.resolution);
+    }
     mImageName = cameraName;
     mCameraParams = cameraParam;
     if (mImageName.length() > 0) {
@@ -474,9 +477,13 @@ bool GlobalLocalization::registrationAlign(const std::string &sensor, std::pair<
 }
 
 PointCloud::Ptr GlobalLocalization::downsample(PointCloud::Ptr& cloud) {
+    if(!mDownsampler) {
+      return cloud;
+    }
+
     PointCloud::Ptr filtered(new PointCloud());
-    mDownsampler.setInputCloud(cloud);
-    mDownsampler.filter(*filtered);
+    mDownsampler->setInputCloud(cloud);
+    mDownsampler->filter(*filtered);
     filtered->header = cloud->header;
     return filtered;
 }

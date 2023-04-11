@@ -71,7 +71,7 @@ class GlobalLocalization {
   RWQueue<RTKType*> mInsQueue;
   RWQueue<Eigen::Isometry3d> mPoseQueue;
 
-  pcl::VoxelGrid<Point> mDownsampler;
+  pcl::VoxelGrid<Point>::Ptr mDownsampler;
   std::string mImageName;
   CamParamType mCameraParams;
 };
