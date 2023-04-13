@@ -63,9 +63,9 @@ class CMakeBuild(build_ext):
 setup(
     name='perception',
     version='1.0.0',
-    author='TSARI-Perception',
-    author_email='wliang@tsari.tsinghua.edu.cn',
-    description='TSARI Perception',
+    author='LiangWang',
+    author_email='15lwang@alumni.tongji.edu.cn',
+    description='LiDAR SLAM & Detection',
     long_description='',
     ext_modules=[CMakeExtension('perception')],
     data_files=[('lib/', ['sensor_driver/common_lib/cpp_utils/cuda-pcl/libcudafilter.so'])],
