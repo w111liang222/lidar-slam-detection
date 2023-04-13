@@ -104,6 +104,9 @@ void HDL_GICP::feedPointData(const uint64_t &timestamp, std::map<std::string, Po
   Eigen::Vector3d acc_mean(0, 0, 0);
   Eigen::Vector3d gyr_mean(0, 0, 0);
   for(it; it != mImuData.end(); it++) {
+    if(mFrame->header.stamp < uint64_t((it->stamp - mConfig.scan_period) * 1000000.0)) {
+      break;
+    }
     acc_mean = acc_mean + it->acc;
     gyr_mean = gyr_mean + it->gyr;
     imu_data_num++;
