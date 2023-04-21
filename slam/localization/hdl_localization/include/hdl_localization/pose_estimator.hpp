@@ -75,7 +75,7 @@ public:
   void predict(const uint64_t& stamp, const Eigen::Vector3f& acc, const Eigen::Vector3f& gyro);
 
   bool match(Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-             const uint64_t& stamp, const pcl::PointCloud<PointT>::ConstPtr& cloud,
+             const uint64_t& stamp, pcl::PointCloud<PointT>::Ptr& cloud,
              boost::optional<std::shared_ptr<RTKType>> &gps_observation,
              double &fitness_score);
   bool match(Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
@@ -86,7 +86,8 @@ public:
    */
   void correct(const uint64_t& stamp,
                Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-               boost::optional<Eigen::Matrix4d> &delta_observation);
+               boost::optional<Eigen::Matrix4d> &delta_observation,
+               boost::optional<Eigen::Matrix4d> &vo_observation);
 
   /* getters */
   uint64_t last_correction_time() const;
@@ -114,6 +115,7 @@ private:
 
   Eigen::MatrixXf process_noise;
   Eigen::MatrixXf measurement_noise;
+  Eigen::MatrixXf visual_noise;
   std::unique_ptr<kkl::alg::UnscentedKalmanFilterX<float, PoseSystem>> ukf;
 
   Eigen::MatrixXf gps_noise;

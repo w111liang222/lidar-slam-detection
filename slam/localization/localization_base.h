@@ -28,18 +28,22 @@ class LocalizationBase {
     virtual void setImuStaticTransform(Eigen::Matrix4d &t) {
       mImuStaticTrans = t;
     }
+    virtual void setCameraParams(std::map<std::string, CamParamType> &camParam) {
+      mCameraParam = camParam;
+    }
     virtual void setInitPose(uint64_t stamp, const Eigen::Matrix4d& pose) = 0;
     virtual void updateLocalMap(PointCloud::Ptr& cloud) = 0;
     virtual void feedInsData(std::shared_ptr<RTKType> ins) = 0;
     virtual void feedImuData(ImuType &imu) {
       return;
     }
-    virtual LocType localize(PointCloudAttrPtr& cloud, Eigen::Isometry3d& pose) = 0;
+    virtual LocType localize(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) = 0;
     virtual bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) = 0;
     virtual bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) = 0;
   protected:
     Eigen::Matrix4d mStaticTrans;
     Eigen::Matrix4d mImuStaticTrans;
+    std::map<std::string, CamParamType> mCameraParam;
 };
 
 }

@@ -39,6 +39,10 @@ PoseEstimator::PoseEstimator(const Eigen::Matrix4f imu_ext, const uint64_t& stam
   measurement_noise.middleRows(0, 3) *= 0.2;
   measurement_noise.middleRows(3, 4) *= 0.1;
 
+  visual_noise = Eigen::MatrixXf::Identity(7, 7);
+  visual_noise.middleRows(0, 3) *= 1.0;
+  visual_noise.middleRows(3, 4) *= 0.5;
+
   gps_noise = Eigen::MatrixXf::Identity(7, 7);
   gps_noise.middleRows(0, 3) *= 0.1;
   gps_noise.middleRows(3, 4) *= 0.05;
@@ -53,6 +57,7 @@ PoseEstimator::PoseEstimator(const Eigen::Matrix4f imu_ext, const uint64_t& stam
   mean.middleRows(19, 4) = Eigen::Vector4f(1, 0, 0, 0);
 
   Eigen::MatrixXf cov = Eigen::MatrixXf::Identity(23, 23) * 0.1;
+  cov.middleRows(19, 4) *= 1e-2; // extrinic rotation imu
 
   PoseSystem system;
   ukf.reset(new kkl::alg::UnscentedKalmanFilterX<float, PoseSystem>(system, 23, 6, 7, process_noise, measurement_noise, mean, cov));
@@ -185,7 +190,7 @@ void PoseEstimator::predict(const uint64_t& stamp, const Eigen::Vector3f& acc, c
 }
 
 bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-                          const uint64_t& stamp, const pcl::PointCloud<PointT>::ConstPtr& cloud,
+                          const uint64_t& stamp, pcl::PointCloud<PointT>::Ptr& cloud,
                           boost::optional<std::shared_ptr<RTKType>> &gps_observation,
                           double &fitness_score) {
   bool result = true;
@@ -299,6 +304,9 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
 bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
                           boost::optional<std::shared_ptr<RTKType>> &gps_observation) {
   if (!gps_observation || (*gps_observation)->dimension != 6) {
+    observation.block<3, 1>(0, 0) = ukf->mean.block<3, 1>(0, 0);
+    observation.block<4, 1>(3, 0) = ukf->mean.block<4, 1>(6, 0);
+    LOG_WARN("GPS observation is invalid");
     usleep(100000);
     return false;
   }
@@ -339,7 +347,8 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
  */
 void PoseEstimator::correct(const uint64_t& stamp,
                             Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-                            boost::optional<Eigen::Matrix4d> &delta_observation) {
+                            boost::optional<Eigen::Matrix4d> &delta_observation,
+                            boost::optional<Eigen::Matrix4d> &vo_observation) {
   std::lock_guard<std::mutex> lock(data_mutex);
   last_correction_stamp = stamp;
   prev_stamp = stamp;
@@ -359,6 +368,16 @@ void PoseEstimator::correct(const uint64_t& stamp,
 
     fusion_pose(observation_cov, odom_noise, observation, odom_obs, observation_cov, observation);
   }
+
+  // if (vo_observation) {
+  //   Eigen::Matrix4f vo_odom = (*vo_observation).cast<float>();
+  //   Eigen::VectorXf vo_obs(7);
+  //   Eigen::Quaternionf quat(vo_odom.block<3, 3>(0, 0));
+  //   vo_obs.middleRows(0, 3) = vo_odom.block<3, 1>(0, 3);
+  //   vo_obs.middleRows(3, 4) = Eigen::Vector4f(quat.w(), quat.x(), quat.y(), quat.z());
+
+  //   fusion_pose(observation_cov, visual_noise, observation, vo_obs, observation_cov, observation);
+  // }
 
   // ukf->setMeasurementNoiseCov(observation_cov);
   ukf->correct(observation);

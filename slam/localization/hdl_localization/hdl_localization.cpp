@@ -6,16 +6,17 @@ using namespace Locate;
 void init_hdl_localization_node(InitParameter &param);
 void deinit_hdl_localization_node();
 void set_imu_extrinic_hdl_localization(Eigen::Matrix4d extrinic);
+void set_camera_param_hdl_localization(const CamParamType &param);
 void set_initpose_hdl_localization(uint64_t stamp, const Eigen::Matrix4d& pose);
 void set_map_hdl_localization(PointCloud::Ptr& cloud);
 void enqueue_ins_hdl_localization(std::shared_ptr<RTKType> &ins);
 void enqueue_imu_hdl_localization(ImuType& imu);
 bool get_timed_pose_hdl_localization(uint64_t timestamp, Eigen::Matrix4d &pose);
 bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose);
-LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, Eigen::Isometry3d& pose);
+LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose);
 
-HdlLocalization::HdlLocalization() : LocalizationBase() {
-
+HdlLocalization::HdlLocalization(const std::string &imageName) : LocalizationBase() {
+    mImageName = imageName;
 }
 
 HdlLocalization::~HdlLocalization() {
@@ -23,9 +24,16 @@ HdlLocalization::~HdlLocalization() {
 }
 
 bool HdlLocalization::init(InitParameter &param) {
-    Eigen::Matrix4d extrinic = mImuStaticTrans * mStaticTrans.inverse();
+    Eigen::Matrix4d imu_extrinic = mImuStaticTrans * mStaticTrans.inverse();
+    CamParamType camera_param = CamParamType();
+    if (mCameraParam.find(mImageName) != mCameraParam.end()) {
+        camera_param = mCameraParam[mImageName];
+        camera_param.staticTrans = camera_param.staticTrans * mStaticTrans.inverse();
+    }
+
+    set_imu_extrinic_hdl_localization(imu_extrinic);
+    set_camera_param_hdl_localization(camera_param);
     init_hdl_localization_node(param);
-    set_imu_extrinic_hdl_localization(extrinic);
     return true;
 }
 
@@ -45,8 +53,8 @@ void HdlLocalization::feedImuData(ImuType &imu) {
     enqueue_imu_hdl_localization(imu);
 }
 
-LocType HdlLocalization::localize(PointCloudAttrPtr& cloud, Eigen::Isometry3d& pose) {
-    return enqueue_hdl_localization(cloud, pose);
+LocType HdlLocalization::localize(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
+    return enqueue_hdl_localization(cloud, image, pose);
 }
 
 bool HdlLocalization::getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) {

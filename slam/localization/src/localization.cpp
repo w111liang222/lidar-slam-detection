@@ -54,9 +54,10 @@ void Localization::initLocalizer(uint64_t stamp, const Eigen::Matrix4d& pose) {
   std::lock_guard<std::mutex> lock(mMutex);
   std::lock_guard<std::mutex> localizer_lock(mLocalizerMutex);
   mLocalMap = nullptr;
-  mLocalizer.reset(new HdlLocalization());
+  mLocalizer.reset(new HdlLocalization(mImageName));
   mLocalizer->setStaticTransform(mStaticTrans);
   mLocalizer->setImuStaticTransform(mImuStaticTrans);
+  mLocalizer->setCameraParams(mCameraParams);
   mLocalizer->init(mConfig);
   mLocalizer->setInitPose(stamp, pose);
   LOG_INFO("Localization: localizer is initialized success");
@@ -64,13 +65,13 @@ void Localization::initLocalizer(uint64_t stamp, const Eigen::Matrix4d& pose) {
 
 bool Localization::init(InitParameter &param) {
   mConfig = param;
-  CamParamType cameraParam;
+  CamParamType cameraParam = CamParamType();
   if (mCameraParams.find(mImageName) != mCameraParams.end()) {
     cameraParam = mCameraParams[mImageName];
     cameraParam.staticTrans = cameraParam.staticTrans * mStaticTrans.inverse(); // localization are processed in INS coordinate system
   } else {
-    LOG_WARN("Localization: no parameter found for camera: {}", mImageName);
     mImageName = "";
+    LOG_WARN("Localization: no parameter found for camera: {}", mImageName);
   }
   mGlobalLocator.reset(new GlobalLocalization(mConfig, mImageName, cameraParam));
 
@@ -196,7 +197,7 @@ void Localization::feedPointData(const uint64_t &timestamp, std::map<std::string
   }
 
   // local localization
-  auto result = mLocalizer->localize(mFrameAttr, mLastOdom);
+  auto result = mLocalizer->localize(mFrameAttr, mImage, mLastOdom);
   mPoseQueue.enqueue(mLastOdom); // push located pose and check if local map is needed to update
 
   if (result == LocType::OK) {

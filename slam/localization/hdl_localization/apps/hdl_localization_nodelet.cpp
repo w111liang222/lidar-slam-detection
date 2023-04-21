@@ -14,6 +14,7 @@
 #include "slam_base.h"
 #include "mapping_types.h"
 #include "localization_base.h"
+#include "visual_odometry.h"
 
 using namespace hdl_graph_slam;
 using namespace Locate;
@@ -51,16 +52,20 @@ public:
 #endif
       }
     }
+    visual_odometry.reset(new VisualOdometry());
+    visual_odometry->setParameter(camera_param);
   }
 
   void onDeinit() {
     pose_data.clear();
     imu_data.clear();
     ins_data.clear();
+    image_data = cv::Mat();
     downsample_filter = nullptr;
 
     pose_estimator.reset(nullptr);
     delta_estimator.reset(nullptr);
+    visual_odometry.reset(nullptr);
     RegistrationType *registration_ptr = nullptr;
     while (hdlRegistrationQueue.try_dequeue(registration_ptr)) {
         delete registration_ptr;
@@ -78,6 +83,10 @@ public:
 
   void setImuExtrinic(Eigen::Matrix4d &extrinic) {
     imu_extrinic = extrinic;
+  }
+
+  void setCameraParam(const CamParamType &param) {
+    camera_param = param;
   }
 
   void ins_callback(std::shared_ptr<RTKType> &ins) {
@@ -100,6 +109,9 @@ public:
     }
     if (delta_estimator) {
       delta_estimator->feedImuData(imu);
+    }
+    if (visual_odometry) {
+      visual_odometry->feedImuData(imu);
     }
     std::lock_guard<std::mutex> lock(imu_data_mutex);
     imu_data.push_back(imu);
@@ -177,7 +189,7 @@ public:
    * @brief callback for point cloud data
    * @param cloud
    */
-  LocType points_callback(PointCloudAttrPtr& cloud, Eigen::Isometry3d& pose) {
+  LocType frame_callback(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
     std::lock_guard<std::mutex> estimator_lock(pose_estimator_mutex);
     if(!pose_estimator) {
       LOG_WARN("waiting for initial pose input!!");
@@ -189,6 +201,11 @@ public:
       return LocType::OTHER;
     }
 
+    const uint64_t& stamp = cloud->cloud->header.stamp;
+
+    // enqueue image data to vo
+    bool use_vo = visual_odometry->feedImageData(stamp, image_data);
+
     // update sub-map registration
     RegistrationType* registration_ptr;
     bool has_data = hdlRegistrationQueue.try_dequeue(registration_ptr);
@@ -197,8 +214,6 @@ public:
       delete registration_ptr;
       last_pingpong_idx.store((last_pingpong_idx + 1) % 2);
     }
-
-    const uint64_t& stamp = cloud->cloud->header.stamp;
 
     // imu process
     bool use_imu = false;
@@ -280,9 +295,14 @@ public:
       result = pose_estimator->match(observation, observation_cov, stamp, filtered, gps_observation, fitness_score);
     } else {
       result = pose_estimator->match(observation, observation_cov, gps_observation);
-      if (!result) {
-        LOG_WARN("Both map and GPS is invalid for localization");
-        return LocType::ERROR;
+    }
+
+    // get output of visual odometry
+    boost::optional<Eigen::Matrix4d> vo_observation;
+    if (visual_odometry && use_vo) {
+      Eigen::Matrix4d vo_pose;
+      if (visual_odometry->getPose(vo_pose)) {
+        vo_observation = vo_pose;
       }
     }
 
@@ -295,9 +315,16 @@ public:
       }
     }
 
-    pose_estimator->correct(stamp, observation, observation_cov, delta_observation);
+    pose_estimator->correct(stamp, observation, observation_cov, delta_observation, vo_observation);
     pose = Eigen::Isometry3d(pose_estimator->matrix().cast<double>());
     update_pose(stamp, pose.matrix());
+
+    // update pose or initialize visual odometry
+    visual_odometry->updatePose(pose.matrix(), cloud->cloud);
+    if (result && !visual_odometry->isInitialized()) {
+      visual_odometry->initialize(stamp, pose.matrix(), image_data, cloud->cloud);
+    }
+    image_data = image; // store the t-1 image frame
 
     // check registration fitness score
     if (fitness_score > 0.5) {
@@ -354,7 +381,7 @@ public:
    * @param cloud   input cloud
    * @return downsampled cloud
    */
-  pcl::PointCloud<PointT>::ConstPtr downsample(const pcl::PointCloud<PointT>::ConstPtr& cloud) const {
+  pcl::PointCloud<PointT>::Ptr downsample(pcl::PointCloud<PointT>::Ptr& cloud) {
     if(!downsample_filter) {
       return cloud;
     }
@@ -377,15 +404,19 @@ private:
   // imu input buffer
   std::mutex imu_data_mutex;
   std::vector<ImuType> imu_data;
+  // camera data
+  cv::Mat image_data;
 
   pcl::Filter<PointT>::Ptr downsample_filter;
 
   // pose estimator
   bool use_delta_estimator = false;
   Eigen::Matrix4d imu_extrinic;
+  CamParamType camera_param;
   std::mutex pose_estimator_mutex;
   std::unique_ptr<hdl_localization::PoseEstimator> pose_estimator;
   std::unique_ptr<hdl_localization::DeltaEstimater> delta_estimator;
+  std::unique_ptr<VisualOdometry> visual_odometry;
 
   std::atomic<int> pingpong_idx;
   std::atomic<int> last_pingpong_idx;
@@ -404,6 +435,10 @@ void deinit_hdl_localization_node() {
 
 void set_imu_extrinic_hdl_localization(Eigen::Matrix4d extrinic) {
   hdlLocalizationNode.setImuExtrinic(extrinic);
+}
+
+void set_camera_param_hdl_localization(const CamParamType &param) {
+  hdlLocalizationNode.setCameraParam(param);
 }
 
 void set_initpose_hdl_localization(uint64_t stamp, const Eigen::Matrix4d& pose) {
@@ -430,6 +465,6 @@ bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose) {
   return hdlLocalizationNode.get_timed_pose(ins, pose);
 }
 
-LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, Eigen::Isometry3d& pose) {
-  return hdlLocalizationNode.points_callback(cloud, pose);
+LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
+  return hdlLocalizationNode.frame_callback(cloud, image, pose);
 }

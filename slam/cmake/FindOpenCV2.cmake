@@ -8,7 +8,7 @@ find_path(OPENCV_INCLUDE_DIRS NAMES
   /usr/include/opencv4
   /usr/local/include/opencv4)
 
-foreach(LIB opencv_core opencv_highgui opencv_imgproc opencv_features2d opencv_calib3d opencv_imgcodecs)
+foreach(LIB opencv_core opencv_highgui opencv_imgproc opencv_features2d opencv_calib3d opencv_flann opencv_imgcodecs opencv_video opencv_dnn opencv_tracking)
         set(FOUND_LIB "FOUND_LIB-NOTFOUND")
         find_library(FOUND_LIB NAMES
           ${LIB}

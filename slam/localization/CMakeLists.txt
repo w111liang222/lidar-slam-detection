@@ -47,4 +47,5 @@ target_link_libraries(localization
     ${PCL_LIBRARIES}
     g2o_backend
     map_common
+    visual_odometry
 )

@@ -34,6 +34,7 @@ include_directories(
 
 add_subdirectory(common)
 add_subdirectory(backend/hdl_graph_slam)
+add_subdirectory(vio)
 add_subdirectory(mapping/rtkm)
 add_subdirectory(mapping/floam)
 add_subdirectory(mapping/gicpm)
