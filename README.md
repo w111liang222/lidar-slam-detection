@@ -16,7 +16,8 @@ LSD currently supports many features:
 
 # Overview
 
-[Quick Demo](docs/demo/README.md)
+- [Quick Demo](docs/demo/README.md)
+- [Architecture](docs/architecture.md)
 
 # Prerequisites
 
