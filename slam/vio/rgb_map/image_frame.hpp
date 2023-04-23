@@ -57,6 +57,7 @@ Dr. Fu Zhang < fuzhang@hku.hk >.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include "common_lib.h"
 #include "tools_eigen.hpp"
 #include "sophus/so3.hpp"
 #include "sophus/se3.hpp"
@@ -107,6 +108,7 @@ struct Image_frame
     ~Image_frame();
     void refresh_pose_for_projection();
     void set_pose(const eigen_q & pose_w2c_q, const vec_3 & pose_w2c_t );
+    void get_pose(StatesGroup &state);
     int set_frame_idx(int frame_idx);
     void set_intrinsic(Eigen::Matrix3d & camera_K);
     Image_frame(Eigen::Matrix3d &camera_K);

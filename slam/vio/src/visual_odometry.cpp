@@ -10,13 +10,13 @@ const int  EsikfIterTimes = 2;
 void setInitialStateCov(StatesGroup &state) {
     // Set cov
     state.cov = state.cov.setIdentity() * INIT_COV;
-    state.cov.block( 0, 0, 3, 3 ) = mat_3_3::Identity() * 1e-5;   // R
-    state.cov.block( 3, 3, 3, 3 ) = mat_3_3::Identity() * 1e-5;   // T
-    state.cov.block( 6, 6, 3, 3 ) = mat_3_3::Identity() * 1e-5;   // vel
+    state.cov.block( 0, 0, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // R
+    state.cov.block( 3, 3, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // T
+    state.cov.block( 6, 6, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // vel
     state.cov.block( 9, 9, 3, 3 ) = mat_3_3::Identity() * 1e-3;   // bias_g
     state.cov.block( 12, 12, 3, 3 ) = mat_3_3::Identity() * 1e-1; // bias_a
     state.cov.block( 15, 15, 3, 3 ) = mat_3_3::Identity() * 1e-5; // Gravity
-    state.cov( 24, 24 ) = 0.00001;
+    state.cov( 24, 24 ) = 1e-3;
     state.cov.block( 18, 18, 6, 6 ) = state.cov.block( 18, 18, 6, 6 ).setIdentity() *  1e-3; // Extrinsic between camera and IMU.
     state.cov.block( 25, 25, 4, 4 ) = state.cov.block( 25, 25, 4, 4 ).setIdentity() *  1e-3; // Camera intrinsic.
 }
@@ -421,7 +421,7 @@ VisualOdometry::VisualOdometry() {
   mState = StatesGroup();
   mFrameIdx = 0;
 
-  mGlobalRGBMap.set_minmum_dis(0.01);
+  mGlobalRGBMap.set_minmum_dis(0.025);
   mGlobalRGBMap.m_minimum_depth_for_projection = 0.1;
   mGlobalRGBMap.m_maximum_depth_for_projection = 200.0;
   mTracker.m_maximum_vio_tracked_pts = 600;
@@ -462,21 +462,20 @@ void VisualOdometry::initialize(const uint64_t& stamp, const Eigen::Matrix4d &t,
   // append pointcloud to global map
   appendPoints(t, cloud);
 
-  // initialize tracker
-  std::shared_ptr<Image_frame> img_pose = preprocessImage(stamp, image);
-  mTracker.set_intrinsic(mCamK, mCamDist, cv::Size(mCol, mRow));
-
   // initialize pose
   setInitialCameraParameter(mState);
   mState.rot_end = t.topLeftCorner<3, 3>();
   mState.pos_end = t.topRightCorner<3, 1>();
-  setImagePose(img_pose, mState);
+
+  // initialize tracker
+  mImagePose = preprocessImage(stamp, image);
+  mTracker.set_intrinsic(mCamK, mCamDist, cv::Size(mCol, mRow));
 
   // initialize tracking points
   std::vector<cv::Point2f>                pts_2d_vec;
   std::vector<std::shared_ptr<RGB_pts>>   rgb_pts_vec;
-  mGlobalRGBMap.selection_points_for_projection(img_pose, &rgb_pts_vec, &pts_2d_vec, 40);
-  mTracker.init(img_pose, rgb_pts_vec, pts_2d_vec);
+  mGlobalRGBMap.selection_points_for_projection(mImagePose, &rgb_pts_vec, &pts_2d_vec, 40);
+  mTracker.init(mImagePose, rgb_pts_vec, pts_2d_vec);
 
   // start process loop
   mInitialized = true;
@@ -520,24 +519,23 @@ void VisualOdometry::processLoop() {
       continue;
     }
 
-    std::shared_ptr<Image_frame> img_pose = preprocessImage(image.first, image.second);
+    mImagePose = preprocessImage(image.first, image.second);
 
-    StatesGroup state_out = mState;
-    setImagePose(img_pose, state_out);
-    mTracker.track_img(img_pose, -20);
-    mTracker.remove_outlier_using_ransac_pnp(img_pose);
+    // LK optical flow, PnP
+    mTracker.track_img(mImagePose, -20);
+    mTracker.remove_outlier_using_ransac_pnp(mImagePose);
 
+    // esikf
     bool res_esikf = true, res_photometric = true;
-    res_esikf = vio_esikf(state_out, mTracker);
-    res_photometric = vio_photometric(state_out, mTracker, img_pose);
-    setImagePose(img_pose, state_out);
+    res_esikf = vio_esikf(mState, mTracker);
+    res_photometric = vio_photometric(mState, mTracker, mImagePose);
+    setImagePose(mImagePose, mState);
 
-    render_pts_in_voxels(img_pose, &mGlobalRGBMap.m_voxels_recent_visited, img_pose->m_timestamp);
+    render_pts_in_voxels(mImagePose, &mGlobalRGBMap.m_voxels_recent_visited, mImagePose->m_timestamp);
 
-    mGlobalRGBMap.update_pose_for_projection(img_pose, -0.4);
-    mTracker.update_and_append_track_pts(img_pose, mGlobalRGBMap, 40, 0);
+    mGlobalRGBMap.update_pose_for_projection(mImagePose, -0.4);
+    mTracker.update_and_append_track_pts(mImagePose, mGlobalRGBMap, 40, 0);
 
-    mState = state_out;
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     pose.topLeftCorner<3, 3>()  = mState.rot_end;
     pose.topRightCorner<3, 1>() = mState.pos_end;
@@ -570,5 +568,6 @@ std::shared_ptr<Image_frame> VisualOdometry::preprocessImage(uint64_t stamp, cv:
   img_pose->set_frame_idx(mFrameIdx);
   mFrameIdx++;
 
+  setImagePose(img_pose, mState);
   return img_pose;
 }

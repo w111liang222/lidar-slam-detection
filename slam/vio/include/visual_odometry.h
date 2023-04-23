@@ -43,15 +43,16 @@ class VisualOdometry {
   RWQueue<Eigen::Matrix4d> mPoseQueue;
 
   // R3Live
-  StatesGroup                 mState;
-  mat_3_3                     mInitialRotExtrinicL2c;
-  vec_3                       mInitialPosExtrinicL2c;
-  Eigen::Matrix3d             mCamK;
-  Eigen::Matrix<double, 5, 1> mCamDist;
-  int                         mFrameIdx;
-  double                      mCamMeasurementWeight;
-  Rgbmap_tracker              mTracker;
-  Global_map                  mGlobalRGBMap;
+  StatesGroup                  mState;
+  std::shared_ptr<Image_frame> mImagePose;
+  mat_3_3                      mInitialRotExtrinicL2c;
+  vec_3                        mInitialPosExtrinicL2c;
+  Eigen::Matrix3d              mCamK;
+  Eigen::Matrix<double, 5, 1>  mCamDist;
+  int                          mFrameIdx;
+  double                       mCamMeasurementWeight;
+  Rgbmap_tracker               mTracker;
+  Global_map                   mGlobalRGBMap;
 };
 
 #endif // __VISUAL_ODOMETRY_H

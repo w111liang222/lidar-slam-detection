@@ -83,21 +83,6 @@ pcl::PointXYZI RGB_pts::get_pt()
     return pt;
 }
 
-void RGB_pts::update_gray(const double gray, const double obs_dis)
-{
-    if (m_obs_dis != 0 && (obs_dis > m_obs_dis * 1.2))
-    {
-        return;
-    }
-    m_gray = (m_gray * m_N_gray + gray) / (m_N_gray + 1);
-    if (m_obs_dis == 0 || (obs_dis < m_obs_dis))
-    {
-        m_obs_dis = obs_dis;
-    }
-    m_N_gray++;
-    // TODO: cov update
-};
-
 const double image_obs_cov = 15;
 const double process_noise_sigma = 0.1;
 

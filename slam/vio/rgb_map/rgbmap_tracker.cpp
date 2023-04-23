@@ -209,9 +209,8 @@ void Rgbmap_tracker::track_img( std::shared_ptr< Image_frame > &img_pose, double
             RGB_pts *rgb_pts_ptr = ( ( RGB_pts * ) m_rgb_pts_ptr_vec_in_last_frame[ m_old_ids[ i ] ] );
             m_map_rgb_pts_in_current_frame_pos[ rgb_pts_ptr ] = m_current_tracked_pts[ i ];
             cv::Point2f pt_img_vel = ( m_current_tracked_pts[ i ] - m_last_tracked_pts[ i ] ) / frame_time_diff;
-            rgb_pts_ptr->m_img_pt_in_last_frame = vec_2( m_last_tracked_pts[ i ].x, m_last_tracked_pts[ i ].y );
-            rgb_pts_ptr->m_img_pt_in_current_frame =
-                vec_2( m_current_tracked_pts[ i ].x, m_current_tracked_pts[ i ].y );
+            // rgb_pts_ptr->m_img_pt_in_last_frame = vec_2( m_last_tracked_pts[ i ].x, m_last_tracked_pts[ i ].y );
+            // rgb_pts_ptr->m_img_pt_in_current_frame = vec_2( m_current_tracked_pts[ i ].x, m_current_tracked_pts[ i ].y );
             rgb_pts_ptr->m_img_vel = vec_2( pt_img_vel.x, pt_img_vel.y );
         }
     }
@@ -302,7 +301,7 @@ int Rgbmap_tracker::remove_outlier_using_ransac_pnp( std::shared_ptr< Image_fram
     double r_diff = ( solver_q ).angularDistance( img_pose->m_pose_w2c_q ) * 57.3;
 
     t_last_estimated = solver_t;
-    if ( if_update )
+    if ( if_update && t_diff < 5.0 && r_diff < 10.0)
     {
         img_pose->m_pnp_pose_w2c_q = solver_q;
         img_pose->m_pnp_pose_w2c_t = solver_t;

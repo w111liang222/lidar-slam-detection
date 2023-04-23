@@ -81,6 +81,17 @@ void Image_frame::set_pose(const eigen_q &pose_w2c_q, const vec_3 &pose_w2c_t)
     refresh_pose_for_projection();
 }
 
+void Image_frame::get_pose(StatesGroup &state)
+{
+    mat_3_3 rot_extrinic_l2c = state.rot_ext_i2c;
+    vec_3   pos_extrinic_l2c = state.pos_ext_i2c;
+    mat_3_3 rot_extrinic_c2l = rot_extrinic_l2c.inverse();
+    vec_3   pos_extrinic_c2l = -(rot_extrinic_l2c.inverse() * pos_extrinic_l2c);
+
+    state.pos_end = m_pose_w2c_q * pos_extrinic_c2l + m_pose_w2c_t;
+    state.rot_end = m_pose_w2c_q * rot_extrinic_c2l;
+}
+
 int Image_frame::set_frame_idx(int frame_idx)
 {
     m_frame_idx = frame_idx;

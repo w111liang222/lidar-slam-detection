@@ -61,34 +61,15 @@ class RGB_pts
     double m_pos[ 3 ] = { 0 };
     double m_rgb[ 3 ] = { 0 };
     double m_cov_rgb[ 3 ] = { 0 };
-    double m_gray = 0;
-    double m_cov_gray = 0;
-    int    m_N_gray = 0;
     int    m_N_rgb = 0;
     int    m_pt_index = 0;
     vec_2      m_img_vel;
-    vec_2      m_img_pt_in_last_frame;
-    vec_2      m_img_pt_in_current_frame;
+    // vec_2      m_img_pt_in_last_frame;
+    // vec_2      m_img_pt_in_current_frame;
     int        m_is_out_lier_count = 0;
     double     m_obs_dis = 0;
     double     m_last_obs_time = 0;
-    void       clear()
-    {
-        m_rgb[ 0 ] = 0;
-        m_rgb[ 1 ] = 0;
-        m_rgb[ 2 ] = 0;
-        m_gray = 0;
-        m_cov_gray = 0;
-        m_N_gray = 0;
-        m_N_rgb = 0;
-        m_obs_dis = 0;
-        m_last_obs_time = 0;
-    };
-
-    RGB_pts()
-    {
-        clear();
-    };
+    RGB_pts(){};
     ~RGB_pts(){};
 
     void set_pos( const vec_3 &pos );
@@ -96,7 +77,6 @@ class RGB_pts
     vec_3          get_rgb();
     mat_3_3        get_rgb_cov();
     pcl::PointXYZI get_pt();
-    void update_gray( const double gray, double obs_dis = 1.0 );
     int update_rgb( const vec_3 &rgb, const double obs_dis, const vec_3 obs_sigma, const double obs_time );
 };
 using RGB_pt_ptr = std::shared_ptr< RGB_pts >;
