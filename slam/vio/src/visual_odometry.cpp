@@ -5,7 +5,7 @@
 
 const bool EstimateIntrinsic = false;
 const bool EstimateL2CExtrinsic = true;
-const int  EsikfIterTimes = 2;
+const int  EsikfIterTimes = 5;
 
 void setInitialStateCov(StatesGroup &state) {
     // Set cov
@@ -199,7 +199,7 @@ bool      VisualOdometry::vio_esikf( StatesGroup &state_in, Rgbmap_tracker &op_t
 
         state_iter = state_iter + solution;
 
-        if ( fabs( acc_reprojection_error - last_repro_err ) < 0.01 )
+        if ( fabs( acc_reprojection_error - last_repro_err ) < 0.001 )
         {
             break;
         }
@@ -259,7 +259,7 @@ bool VisualOdometry::vio_photometric( StatesGroup &state_in, Rgbmap_tracker &op_
     int    if_esikf = 1;
 
     double acc_photometric_error = 0;
-    for ( int iter_count = 0; iter_count < 2; iter_count++ )
+    for ( int iter_count = 0; iter_count < EsikfIterTimes; iter_count++ )
     {
         mat_3_3 R_imu = state_iter.rot_end;
         vec_3   t_imu = state_iter.pos_end;
@@ -371,7 +371,7 @@ bool VisualOdometry::vio_photometric( StatesGroup &state_in, Rgbmap_tracker &op_
         // {
         //     break;
         // }
-        if ( fabs( acc_photometric_error - last_repro_err ) < 0.01 )
+        if ( fabs( acc_photometric_error - last_repro_err ) < 0.001 )
         {
             break;
         }
@@ -535,6 +535,7 @@ void VisualOdometry::processLoop() {
 
     mGlobalRGBMap.update_pose_for_projection(mImagePose, -0.4);
     mTracker.update_and_append_track_pts(mImagePose, mGlobalRGBMap, 40, 0);
+    mGlobalRGBMap.remove_points_from_global_map(mImagePose->m_timestamp - 30.0);
 
     Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
     pose.topLeftCorner<3, 3>()  = mState.rot_end;
@@ -549,7 +550,7 @@ void VisualOdometry::appendPoints(const Eigen::Matrix4d &t, PointCloud::Ptr &clo
   pcl::transformPointCloud(*cloud, *world_cloud, t);
 
   std::vector<std::shared_ptr<RGB_pts>> pts_last_hitted;
-  int number_of_new_visited_voxel = mGlobalRGBMap.append_points_to_global_map(*world_cloud, 0, &pts_last_hitted, 4);
+  int number_of_new_visited_voxel = mGlobalRGBMap.append_points_to_global_map(*world_cloud, cloud->header.stamp / 1000000.0, &pts_last_hitted, 4);
   mGlobalRGBMap.m_pts_last_hitted = pts_last_hitted;
   mCamMeasurementWeight = std::max( 0.001, std::min( 5.0 / number_of_new_visited_voxel, 0.01 ) );
 }

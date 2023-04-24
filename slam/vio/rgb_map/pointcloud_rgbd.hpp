@@ -69,6 +69,7 @@ class RGB_pts
     int        m_is_out_lier_count = 0;
     double     m_obs_dis = 0;
     double     m_last_obs_time = 0;
+    double     m_add_time = 0;
     RGB_pts(){};
     ~RGB_pts(){};
 
@@ -99,8 +100,7 @@ struct Global_map
     int                                                          m_map_major_version = R3LIVE_MAP_MAJOR_VERSION;
     int                                                          m_map_minor_version = R3LIVE_MAP_MINOR_VERSION;
     int                                                          m_if_get_all_pts_in_boxes_using_mp = 1;
-    std::vector< RGB_pt_ptr >                    m_rgb_pts_vec;
-    // std::vector< RGB_pt_ptr >                    m_rgb_pts_in_recent_visited_voxels;
+    std::vector< RGB_pt_ptr >                                    m_rgb_pts_vec;
     std::shared_ptr< std::vector< RGB_pt_ptr> >                  m_pts_rgb_vec_for_projection = nullptr;
     std::shared_ptr< std::mutex >                                m_mutex_pts_vec;
     std::shared_ptr< std::mutex >                                m_mutex_recent_added_list;
@@ -108,18 +108,19 @@ struct Global_map
     std::shared_ptr< std::mutex >                                m_mutex_rgb_pts_in_recent_hitted_boxes;
     std::shared_ptr< std::mutex >                                m_mutex_m_box_recent_hitted;
     std::shared_ptr< std::mutex >                                m_mutex_pts_last_visited;
-    Image_frame                                              m_img_for_projection;
+    Image_frame                                                  m_img_for_projection;
     double                                                       m_recent_visited_voxel_activated_time = 0.0;
     bool                                                         m_in_appending_pts = 0;
     int                                                          m_updated_frame_index = 0;
     int                                                          m_if_reload_init_voxel_and_hashed_pts = true;
+    int                                                          m_last_remove_pts_idx = 0;
 
     Hash_map_3d< long, RGB_pt_ptr >   m_hashmap_3d_pts;
     Hash_map_3d< long, std::shared_ptr< RGB_Voxel > > m_hashmap_voxels;
     std::unordered_set< std::shared_ptr< RGB_Voxel > > m_voxels_recent_visited;
     std::vector< std::shared_ptr< RGB_pts > >          m_pts_last_hitted;
     double                                   m_minimum_pts_size = 0.05; // 5cm minimum distance.
-    double                                   m_voxel_resolution = 0.1;
+    double                                   m_voxel_resolution = 0.2;
     double                                   m_maximum_depth_for_projection = 200;
     double                                   m_minimum_depth_for_projection = 3;
     int                                      m_last_updated_frame_idx = -1;
@@ -133,6 +134,7 @@ struct Global_map
     bool is_busy();
     template < typename T >
     int append_points_to_global_map( pcl::PointCloud< T > &pc_in, double  added_time,  std::vector< RGB_pt_ptr > *pts_added_vec = nullptr, int step = 1 );
+    void remove_points_from_global_map(double remove_time);
     void selection_points_for_projection( std::shared_ptr< Image_frame > &image_pose, std::vector< std::shared_ptr< RGB_pts > > *pc_out_vec = nullptr,
                                           std::vector< cv::Point2f > *pc_2d_out_vec = nullptr, double minimum_dis = 5, int skip_step = 1,int use_all_pts = 0 );
 };

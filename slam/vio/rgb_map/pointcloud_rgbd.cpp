@@ -222,7 +222,7 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
             add = 0;
             if (pts_added_vec != nullptr)
             {
-                pts_added_vec->push_back(m_hashmap_3d_pts.m_map_3d_hash_map[grid_x][grid_y][grid_z]);
+                pts_added_vec->push_back(m_hashmap_3d_pts.m_map_3d_hash_map[hash_point(grid_x, grid_y, grid_z)]);
             }
         }
         RGB_voxel_ptr box_ptr;
@@ -234,7 +234,7 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
         }
         else
         {
-            box_ptr = m_hashmap_voxels.m_map_3d_hash_map[box_x][box_y][box_z];
+            box_ptr = m_hashmap_voxels.m_map_3d_hash_map[hash_point(box_x, box_y, box_z)];
         }
         voxels_recent_visited.insert( box_ptr );
         box_ptr->m_last_visited_time = added_time;
@@ -247,6 +247,7 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
         std::shared_ptr<RGB_pts> pt_rgb = std::make_shared<RGB_pts>();
         pt_rgb->set_pos(vec_3(pc_in.points[pt_idx].x, pc_in.points[pt_idx].y, pc_in.points[pt_idx].z));
         pt_rgb->m_pt_index = m_rgb_pts_vec.size();
+        pt_rgb->m_add_time = added_time;
         m_rgb_pts_vec.push_back(pt_rgb);
         m_hashmap_3d_pts.insert(grid_x, grid_y, grid_z, pt_rgb);
         box_ptr->add_pt(pt_rgb);
@@ -260,6 +261,44 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
     m_voxels_recent_visited = voxels_recent_visited ;
     m_mutex_m_box_recent_hitted->unlock();
     return (m_voxels_recent_visited.size() -  number_of_voxels_before_add);
+}
+
+void Global_map::remove_points_from_global_map(double remove_time)
+{
+    int j = m_last_remove_pts_idx;
+    for (int i = m_last_remove_pts_idx; i < m_rgb_pts_vec.size(); i++)
+    {
+        if (m_rgb_pts_vec[i]->m_add_time > remove_time)
+        {
+            m_rgb_pts_vec.erase(m_rgb_pts_vec.begin() + j, m_rgb_pts_vec.begin() + i);
+            m_last_remove_pts_idx = j;
+            break;
+        }
+        if (m_rgb_pts_vec[i]->m_N_rgb >= 3)
+        {
+            m_rgb_pts_vec[j++] = m_rgb_pts_vec[i];
+        }
+        else
+        {
+            int grid_x = std::round(m_rgb_pts_vec[i]->m_pos[0] / m_minimum_pts_size);
+            int grid_y = std::round(m_rgb_pts_vec[i]->m_pos[1] / m_minimum_pts_size);
+            int grid_z = std::round(m_rgb_pts_vec[i]->m_pos[2] / m_minimum_pts_size);
+            int box_x =  std::round(m_rgb_pts_vec[i]->m_pos[0] / m_voxel_resolution);
+            int box_y =  std::round(m_rgb_pts_vec[i]->m_pos[1] / m_voxel_resolution);
+            int box_z =  std::round(m_rgb_pts_vec[i]->m_pos[2] / m_voxel_resolution);
+            m_hashmap_3d_pts.m_map_3d_hash_map.erase(hash_point(grid_x, grid_y, grid_z));
+            RGB_voxel_ptr box_ptr = m_hashmap_voxels.m_map_3d_hash_map[hash_point(box_x, box_y, box_z)];
+            int m = 0;
+            for (int n = 0; n < box_ptr->m_pts_in_grid.size(); n++)
+            {
+                if (box_ptr->m_pts_in_grid[n]->m_add_time > remove_time || box_ptr->m_pts_in_grid[n]->m_N_rgb >= 3)
+                {
+                    box_ptr->m_pts_in_grid[m++] = box_ptr->m_pts_in_grid[n];
+                }
+            }
+            box_ptr->m_pts_in_grid.resize(m);
+        }
+    }
 }
 
 static inline double thread_render_pts_in_voxel(const int & pt_start, const int & pt_end, const std::shared_ptr<Image_frame> & img_ptr,

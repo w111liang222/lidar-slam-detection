@@ -46,29 +46,51 @@ Dr. Fu Zhang < fuzhang@hku.hk >.
  POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
+#include <boost/functional/hash.hpp>
 #include <unordered_map>
+
+class hash_point
+{
+    long x;
+    long y;
+    long z;
+public:
+    hash_point() : x(0), y(0), z(0) {}
+    hash_point(long x, long y, long z) : x(x), y(y), z(z) {}
+
+    bool operator==(hash_point const& other) const
+    {
+        return x == other.x && y == other.y && z == other.z;
+    }
+
+    friend std::size_t hash_value(hash_point const& p)
+    {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, p.x);
+        boost::hash_combine(seed, p.y);
+        boost::hash_combine(seed, p.z);
+
+        return seed;
+    }
+};
+
+namespace std {
+    template<> struct hash<::hash_point> : boost::hash<::hash_point> {};
+}
 
 template <typename data_type = float, typename T = void *>
 struct Hash_map_3d
 {
-    using hash_3d_T = std::unordered_map<data_type, std::unordered_map<data_type, std::unordered_map<data_type, T>>>;
+    using hash_3d_T = std::unordered_map<hash_point, T>;
     hash_3d_T m_map_3d_hash_map;
     void insert(const data_type &x, const data_type &y, const data_type &z, const T &target)
     {
-        m_map_3d_hash_map[x][y][z] = target;
+        m_map_3d_hash_map[hash_point(x, y, z)] = target;
     }
 
     int if_exist(const data_type &x, const data_type &y, const data_type &z)
     {
-        if(m_map_3d_hash_map.find(x) == m_map_3d_hash_map.end()  )
-        {
-            return 0;
-        }
-        else if(m_map_3d_hash_map[x].find(y) ==  m_map_3d_hash_map[x].end() )
-        {
-            return 0;
-        }
-        else if( m_map_3d_hash_map[x][y].find(z) == m_map_3d_hash_map[x][y].end() )
+        if(m_map_3d_hash_map.find(hash_point(x, y, z)) == m_map_3d_hash_map.end())
         {
             return 0;
         }
@@ -78,22 +100,6 @@ struct Hash_map_3d
     void clear()
     {
         m_map_3d_hash_map.clear();
-    }
-
-    int total_size()
-    {
-        int count =0 ;
-        for(auto it : m_map_3d_hash_map)
-        {
-            for(auto it_it: it.second)
-            {
-                for( auto it_it_it: it_it.second )
-                {
-                    count++;
-                }
-            }
-        }
-        return count;
     }
 };
 
