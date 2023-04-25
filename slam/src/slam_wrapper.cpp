@@ -1,7 +1,7 @@
 #include "py_utils.h"
 #include "graph_utils.h"
 
-static std::unique_ptr<SLAM> slam_ptr(nullptr);
+std::unique_ptr<SLAM> slam_ptr(nullptr);
 
 py::list init_slam(const std::string map_path, const std::string method, py::list& sensor_input,
                    double resolution, float dist_threshold, float degree_threshold, float frame_range) {

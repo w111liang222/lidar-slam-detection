@@ -4,6 +4,8 @@
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
 
+extern std::unique_ptr<SLAM> slam_ptr;
+
 py::array_t<float> pointcloud_align(py::array_t<float> &source_point, py::array_t<float> &target_point, py::array_t<float> &guess) {
   pcl::PointCloud<pcl::PointXYZI>::Ptr source = numpy_to_pointcloud(source_point);
   pcl::PointCloud<pcl::PointXYZI>::Ptr target = numpy_to_pointcloud(target_point);
@@ -150,6 +152,19 @@ void dump_merged_pcd(std::string file) {
     voxelgrid.setLeafSize(0.1, 0.1, 0.1);
     voxelgrid.setInputCloud(gMapPointsRGB);
     voxelgrid.filter(*gMapPointsRGB);
+
+    // check if use the SLAM color map
+    PointCloudRGB::Ptr color_map(new PointCloudRGB());
+    slam_ptr->getColorMap(color_map);
+    if (color_map->points.size()) {
+      gMapPointsRGB = PointCloudRGB::Ptr(new PointCloudRGB());
+      for (auto &p : color_map->points) {
+        if (p.z >= gMapZMin && p.z <= gMapZMax) {
+          gMapPointsRGB->push_back(p);
+        }
+      }
+    }
+
     pcl::io::savePCDFileBinary(file, *gMapPointsRGB);
   }
 
