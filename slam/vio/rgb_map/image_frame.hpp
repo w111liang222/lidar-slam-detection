@@ -116,6 +116,7 @@ struct Image_frame
     void inverse_pose();
     void release_image();
     bool project_3d_to_2d( const pcl::PointXYZI & in_pt, Eigen::Matrix3d & cam_K, double &u, double &v, const double  & scale = 1.0);
+    bool project_3d_to_2d( const vec_3 & pt_w, Eigen::Matrix3d & cam_K, double &u, double &v, const double  & scale = 1.0);
     bool if_2d_points_available(const double &u, const double &v, const double &scale = 1.0, double fov_mar = -1.0);
     vec_3 get_rgb(double &u, double v, int layer = 0, vec_3 *rgb_dx = nullptr, vec_3 *rgb_dy = nullptr);
     double get_grey_color(double & u ,double & v, int layer= 0 );

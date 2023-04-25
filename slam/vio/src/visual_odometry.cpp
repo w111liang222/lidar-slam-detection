@@ -433,6 +433,11 @@ VisualOdometry::~VisualOdometry() {
     mProcessThread->join();
     mProcessThread.reset(nullptr);
   }
+
+  if (mPointThread != nullptr) {
+    mPointThread->join();
+    mPointThread.reset(nullptr);
+  }
 }
 
 void VisualOdometry::setParameter(const CamParamType &camParam) {
@@ -506,10 +511,10 @@ void VisualOdometry::updatePose(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud
   if (!mInitialized) {
     return;
   }
-
-  appendPoints(t, cloud);
   mState.rot_end = t.topLeftCorner<3, 3>();
   mState.pos_end = t.topRightCorner<3, 1>();
+
+  mPointThread.reset(new std::thread(&VisualOdometry::appendPoints, this, t, cloud));
 }
 
 void VisualOdometry::processLoop() {
@@ -531,6 +536,11 @@ void VisualOdometry::processLoop() {
     res_photometric = vio_photometric(mState, mTracker, mImagePose);
     setImagePose(mImagePose, mState);
 
+    // wait for adding points to map
+    if (mPointThread != nullptr) {
+      mPointThread->join();
+      mPointThread.reset(nullptr);
+    }
     render_pts_in_voxels(mImagePose, &mGlobalRGBMap.m_voxels_recent_visited, mImagePose->m_timestamp);
 
     mGlobalRGBMap.update_pose_for_projection(mImagePose, -0.4);
@@ -545,7 +555,7 @@ void VisualOdometry::processLoop() {
   }
 }
 
-void VisualOdometry::appendPoints(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud) {
+void VisualOdometry::appendPoints(const Eigen::Matrix4d &t, PointCloud::Ptr cloud) {
   PointCloud::Ptr world_cloud(new PointCloud());
   pcl::transformPointCloud(*cloud, *world_cloud, t);
 

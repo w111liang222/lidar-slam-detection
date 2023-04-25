@@ -46,6 +46,7 @@ Dr. Fu Zhang < fuzhang@hku.hk >.
  POSSIBILITY OF SUCH DAMAGE.
 */
 #include "pointcloud_rgbd.hpp"
+#include <omp.h>
 
 void RGB_pts::set_pos(const vec_3 &pos)
 {
@@ -149,22 +150,38 @@ Global_map::~Global_map(){};
 
 void Global_map::update_pose_for_projection(std::shared_ptr<Image_frame> &img, double fov_margin)
 {
-    m_mutex_img_pose_for_projection->lock();
-    m_img_for_projection.set_intrinsic(img->m_cam_K);
-    m_img_for_projection.m_img_cols = img->m_img_cols;
-    m_img_for_projection.m_img_rows = img->m_img_rows;
-    m_img_for_projection.m_fov_margin = fov_margin;
-    m_img_for_projection.m_frame_idx = img->m_frame_idx;
-    m_img_for_projection.m_pose_w2c_q = img->m_pose_w2c_q;
-    m_img_for_projection.m_pose_w2c_t = img->m_pose_w2c_t;
-    m_img_for_projection.m_img_gray = img->m_img_gray; // clone?
-    m_img_for_projection.m_img = img->m_img;           // clone?
-    m_img_for_projection.refresh_pose_for_projection();
-    m_mutex_img_pose_for_projection->unlock();
+    // m_mutex_img_pose_for_projection->lock();
+    // m_img_for_projection.set_intrinsic(img->m_cam_K);
+    // m_img_for_projection.m_img_cols = img->m_img_cols;
+    // m_img_for_projection.m_img_rows = img->m_img_rows;
+    // m_img_for_projection.m_fov_margin = fov_margin;
+    // m_img_for_projection.m_frame_idx = img->m_frame_idx;
+    // m_img_for_projection.m_pose_w2c_q = img->m_pose_w2c_q;
+    // m_img_for_projection.m_pose_w2c_t = img->m_pose_w2c_t;
+    // m_img_for_projection.m_img_gray = img->m_img_gray; // clone?
+    // m_img_for_projection.m_img = img->m_img;           // clone?
+    // m_img_for_projection.refresh_pose_for_projection();
+    // m_mutex_img_pose_for_projection->unlock();
 
-    std::shared_ptr< Image_frame > img_for_projection = std::make_shared< Image_frame >(m_img_for_projection);
-    selection_points_for_projection(img_for_projection, m_pts_rgb_vec_for_projection.get(), nullptr, 10.0, 1);
-    m_updated_frame_index = img_for_projection->m_frame_idx;
+    // std::shared_ptr< Image_frame > img_for_projection = std::make_shared< Image_frame >(m_img_for_projection);
+    // selection_points_for_projection(img_for_projection, m_pts_rgb_vec_for_projection.get(), nullptr, 10.0, 1);
+    m_updated_frame_index = img->m_frame_idx;
+
+    m_pts_rgb_vec_for_projection->clear();
+    m_mutex_m_box_recent_hitted->lock();
+    std::unordered_set< std::shared_ptr< RGB_Voxel > > boxes_recent_hitted = m_voxels_recent_visited;
+    m_mutex_m_box_recent_hitted->unlock();
+    m_mutex_rgb_pts_in_recent_hitted_boxes->lock();
+
+    for(Voxel_set_iterator it = boxes_recent_hitted.begin(); it != boxes_recent_hitted.end(); it++)
+    {
+        if ( ( *it )->m_pts_in_grid.size() )
+        {
+            m_pts_rgb_vec_for_projection->push_back( (*it)->m_pts_in_grid.back() );
+        }
+    }
+
+    m_mutex_rgb_pts_in_recent_hitted_boxes->unlock();
 }
 
 bool Global_map::is_busy()
@@ -304,12 +321,14 @@ void Global_map::remove_points_from_global_map(double remove_time)
 static inline double thread_render_pts_in_voxel(const int & pt_start, const int & pt_end, const std::shared_ptr<Image_frame> & img_ptr,
                                                 const std::vector<RGB_voxel_ptr> * voxels_for_render, const double obs_time)
 {
-    vec_3 pt_w;
-    vec_3 rgb_color;
-    double u, v;
-    double pt_cam_norm;
+    omp_set_num_threads(4);
+    #pragma omp parallel for
     for (int voxel_idx = pt_start; voxel_idx < pt_end; voxel_idx++)
     {
+        vec_3 pt_w;
+        vec_3 rgb_color;
+        double u, v;
+        double pt_cam_norm;
         // continue;
         RGB_voxel_ptr voxel_ptr = (*voxels_for_render)[ voxel_idx ];
         for ( int pt_idx = 0; pt_idx < voxel_ptr->m_pts_in_grid.size(); pt_idx++ )

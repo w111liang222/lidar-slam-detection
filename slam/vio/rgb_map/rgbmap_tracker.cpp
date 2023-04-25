@@ -46,6 +46,7 @@ Dr. Fu Zhang < fuzhang@hku.hk >.
  POSSIBILITY OF SUCH DAMAGE.
 */
 #include "rgbmap_tracker.hpp"
+#include "Logger.h"
 
 Rgbmap_tracker::Rgbmap_tracker() {}
 
@@ -180,6 +181,7 @@ void Rgbmap_tracker::track_img( std::shared_ptr< Image_frame > &img_pose, double
     int before_track = m_last_tracked_pts.size();
     if ( m_last_tracked_pts.size() < 30 )
     {
+        LOG_WARN("no enough tracking points: {}", m_last_tracked_pts.size());
         m_last_frame_time = m_current_frame_time;
         return;
     }
@@ -263,6 +265,7 @@ int Rgbmap_tracker::remove_outlier_using_ransac_pnp( std::shared_ptr< Image_fram
     }
     if ( pt_3d_vec.size() < 10 )
     {
+        LOG_WARN("no enough points for solving pnp: {}", pt_3d_vec.size());
         return 0;
     }
 

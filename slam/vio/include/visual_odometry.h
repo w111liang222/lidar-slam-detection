@@ -30,7 +30,7 @@ class VisualOdometry {
  protected:
   void processLoop();
   std::shared_ptr<Image_frame> preprocessImage(uint64_t stamp, cv::Mat &image);
-  void appendPoints(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud);
+  void appendPoints(const Eigen::Matrix4d &t, PointCloud::Ptr cloud);
 
  protected:
   CamParamType mCameraParam;
@@ -39,6 +39,7 @@ class VisualOdometry {
   bool mInitialized;
   bool mThreadStart;
   std::unique_ptr<std::thread> mProcessThread;
+  std::unique_ptr<std::thread> mPointThread;
   RWQueue<std::pair<uint64_t, cv::Mat>> mImageQueue;
   RWQueue<Eigen::Matrix4d> mPoseQueue;
 
