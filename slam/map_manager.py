@@ -33,6 +33,7 @@ class MapManager():
             vertex = dict(), edge = dict(),
         )
         self.vertex_id = 0
+        self.color_map_bytes = b""
         self.save_keyframe_idx = 0
         self.thread = None
 
@@ -70,6 +71,22 @@ class MapManager():
 
     def get_meta_data(self):
         return self.meta
+
+    def get_color_map(self, points):
+        MAX_SEGMENT_LEN = int(1e8)
+        if points is not None:
+            proto_points = internal_pb2.LidarPointcloudMap()
+            lidar = proto_points.lp.add()
+            lidar.lidar_name = "color_map"
+            lidar.points = points[:, :3].tobytes()
+            lidar.attr = points[:, 3].tobytes()
+            lidar.type = "rgb"
+            self.color_map_bytes = proto_points.SerializeToString()
+
+        slice_len = min(MAX_SEGMENT_LEN, len(self.color_map_bytes))
+        segment = self.color_map_bytes[:slice_len]
+        self.color_map_bytes = self.color_map_bytes[slice_len:]
+        return segment
 
     def get_pose(self):
         vertexs = self.data['poses'].copy()

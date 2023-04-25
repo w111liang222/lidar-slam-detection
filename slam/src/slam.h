@@ -57,6 +57,7 @@ class SLAM {
            RTKType &rtk, std::vector<ImuType> &imu, PoseType &pose);
   bool getKeyframe(PointCloudAttrImagePose &keyframe);
   void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames);
+  void getColorMap(PointCloudRGB::Ptr &points);
   RTKType &getOrigin();
   void setOrigin(RTKType &rtk);
   void mergeMap(const std::string& directory, std::vector<std::shared_ptr<KeyFrame>> &frames);

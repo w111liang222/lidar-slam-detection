@@ -20,6 +20,7 @@ class SlamServer:
         self.app.add_url_rule("/v1/get-save-progress", view_func=self.get_save_progress)
         self.app.add_url_rule("/v1/map-vertex", view_func=self.get_map_vertex, methods=["GET"])
         self.app.add_url_rule("/v1/map-status", view_func=self.get_map_status, methods=["GET"])
+        self.app.add_url_rule("/v1/get-color-map", view_func=self.get_color_map, methods=["POST"])
         add_method(self.get_map_edge, name='get_map_edge')
         add_method(self.get_map_meta, name='get_map_meta')
         self.app.add_url_rule("/v1/vertex-data", view_func=self.get_vertext_data, methods=["POST"])
@@ -64,6 +65,17 @@ class SlamServer:
         result = self.perception.call('slam.get_status')
         result = result if result is not None else dict()
         return result
+
+    def get_color_map(self):
+        MAX_SEGMENT_LEN = 1e8
+        data, segment = b"", b""
+        while len(segment := self.perception.call('slam.get_color_map')) == MAX_SEGMENT_LEN:
+            data = data + segment
+        data = data + segment
+
+        response = make_response(data)
+        response.headers["Content-Type"] = "application/octet-stream"
+        return response
 
     def get_map_edge(self):
         result = self.perception.call('slam.get_edge')

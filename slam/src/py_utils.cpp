@@ -93,6 +93,19 @@ PointCloud::Ptr numpy_to_pointcloud(py::array_t<float> &array, float multiply) {
   return cloud;
 }
 
+py::array_t<float> pointcloud_to_numpy(const PointCloudRGB::Ptr &p) {
+  int num = p->points.size();
+  std::vector<float> f(num * 4);
+  for (int i = 0; i < num; i++) {
+    f[4 * i + 0] = p->points[i].x;
+    f[4 * i + 1] = p->points[i].y;
+    f[4 * i + 2] = p->points[i].z;
+    std::uint32_t rgb = ((std::uint32_t)(p->points[i].r) << 16 | (std::uint32_t)(p->points[i].g) << 8 | (std::uint32_t)(p->points[i].b));
+    f[4 * i + 3] = *reinterpret_cast<float*>(&rgb);
+  }
+  return py::array_t<float>(py::array::ShapeContainer({(long) f.size() / 4, 4}), f.data());
+}
+
 PointCloudRGB::Ptr numpy_to_pointcloud_rgb(py::array_t<float> &array) {
   PointCloudRGB::Ptr cloud(new PointCloudRGB());
   auto ref = array.unchecked<2>();

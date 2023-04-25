@@ -517,6 +517,28 @@ void VisualOdometry::updatePose(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud
   mPointThread.reset(new std::thread(&VisualOdometry::appendPoints, this, t, cloud));
 }
 
+void VisualOdometry::getColorMap(PointCloudRGB::Ptr &points) {
+  mGlobalRGBMap.m_mutex_pts_vec->lock();
+  int pts_size = mGlobalRGBMap.m_rgb_pts_vec.size();
+  for (size_t i = 0; i < pts_size; i++) {
+    if (mGlobalRGBMap.m_rgb_pts_vec[i]->m_N_rgb < 3) {
+      continue;
+    }
+    pcl::PointXYZRGB p;
+    p.x = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_pos[ 0 ];
+    p.y = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_pos[ 1 ];
+    p.z = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_pos[ 2 ];
+    p.r = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_rgb[ 2 ];
+    p.g = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_rgb[ 1 ];
+    p.b = mGlobalRGBMap.m_rgb_pts_vec[ i ]->m_rgb[ 0 ];
+    points->points.push_back(p);
+  }
+  mGlobalRGBMap.m_mutex_pts_vec->unlock();
+
+  points->width = points->points.size();
+  points->height = 1;
+}
+
 void VisualOdometry::processLoop() {
   while (mThreadStart) {
     std::pair<uint64_t, cv::Mat> image;

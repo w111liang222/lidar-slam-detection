@@ -21,6 +21,7 @@ class VisualOdometry {
   bool feedImageData(const uint64_t& stamp, cv::Mat &image);
   bool getPose(Eigen::Matrix4d &pose);
   void updatePose(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud);
+  void getColorMap(PointCloudRGB::Ptr &points);
 
   void setInitialCameraParameter(StatesGroup &state);
   void setImagePose(std::shared_ptr<Image_frame> &image_pose, const StatesGroup &state);

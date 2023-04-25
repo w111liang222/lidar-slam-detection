@@ -189,6 +189,10 @@ void SLAM::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
   return mSlam->getGraphMap(frames);
 }
 
+void SLAM::getColorMap(PointCloudRGB::Ptr &points) {
+  mSlam->getColorMap(points);
+}
+
 bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
   // check the valid of INS data
   if (rtk->status == 0 && fabs(rtk->longitude) < 1e-4 && fabs(rtk->latitude) < 1e-4) {

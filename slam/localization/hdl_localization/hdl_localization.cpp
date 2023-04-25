@@ -13,6 +13,7 @@ void enqueue_ins_hdl_localization(std::shared_ptr<RTKType> &ins);
 void enqueue_imu_hdl_localization(ImuType& imu);
 bool get_timed_pose_hdl_localization(uint64_t timestamp, Eigen::Matrix4d &pose);
 bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose);
+void get_color_map_hdl_localization(PointCloudRGB::Ptr &points);
 LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose);
 
 HdlLocalization::HdlLocalization(const std::string &imageName) : LocalizationBase() {
@@ -64,3 +65,7 @@ bool HdlLocalization::getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) {
 bool HdlLocalization::getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) {
     return get_timed_pose_hdl_localization(ins, pose);
 }
+
+void HdlLocalization::getColorMap(PointCloudRGB::Ptr &points) {
+    get_color_map_hdl_localization(points);
+};

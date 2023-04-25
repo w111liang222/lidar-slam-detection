@@ -95,6 +95,8 @@ class SlamBase {
     }
     virtual void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
     }
+    virtual void getColorMap(PointCloudRGB::Ptr &points) {
+    }
   protected:
     std::map<std::string, CamParamType> mCameraParams;
     Eigen::Matrix4d mStaticTrans;

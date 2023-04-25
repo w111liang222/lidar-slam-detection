@@ -287,7 +287,9 @@ void Global_map::remove_points_from_global_map(double remove_time)
     {
         if (m_rgb_pts_vec[i]->m_add_time > remove_time)
         {
+            m_mutex_pts_vec->lock();
             m_rgb_pts_vec.erase(m_rgb_pts_vec.begin() + j, m_rgb_pts_vec.begin() + i);
+            m_mutex_pts_vec->unlock();
             m_last_remove_pts_idx = j;
             break;
         }

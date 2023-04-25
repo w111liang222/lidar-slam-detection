@@ -12,6 +12,7 @@ namespace py=pybind11;
 
 py::array_t<float> eigen_to_numpy(const Eigen::Matrix4d &e);
 py::array_t<float> eigen_to_numpy(const PointCloud::Ptr &p);
+py::array_t<float> pointcloud_to_numpy(const PointCloudRGB::Ptr &p);
 py::array_t<char>  vector_to_numpy(const std::vector<char> &b);
 
 std::vector<std::string> list_to_vector(py::list &l);

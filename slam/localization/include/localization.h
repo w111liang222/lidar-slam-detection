@@ -45,6 +45,7 @@ class Localization : public SlamBase {
   bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) override;
   bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) override;
   void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) override;
+  void getColorMap(PointCloudRGB::Ptr &points) override;
 
  protected:
   void initLocalizer(uint64_t stamp, const Eigen::Matrix4d& pose);

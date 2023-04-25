@@ -29,6 +29,7 @@ class SLAM(SLAMTemplate):
         register_interface('slam.get_edge', self.get_edge)
         register_interface('slam.get_key_frame', self.get_key_frame)
         register_interface('slam.get_graph_meta', self.get_graph_meta)
+        register_interface('slam.get_color_map', self.get_color_map)
         register_interface('slam.del_vertex', self.del_vertex)
         register_interface('slam.del_points', self.del_points)
         register_interface('slam.add_edge', self.add_edge)
@@ -157,6 +158,10 @@ class SLAM(SLAMTemplate):
         self.get_pose() # flush all keyframe
         self.map_manager.update_meta(slam.get_graph_meta())
         return self.map_manager.get_meta_data()
+
+    def get_color_map(self):
+        points = slam.get_color_map() if len(self.map_manager.color_map_bytes) == 0 else None
+        return self.map_manager.get_color_map(points)
 
     def del_vertex(self, id):
         self.map_manager.del_vertex(id)

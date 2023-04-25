@@ -249,6 +249,13 @@ void Localization::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
   frames = mMap->mKeyFramesWhole;
 }
 
+void Localization::getColorMap(PointCloudRGB::Ptr &points) {
+  std::lock_guard<std::mutex> lock(mLocalizerMutex);
+  if (mInitialized && mLocalizer != nullptr) {
+    mLocalizer->getColorMap(points);
+  }
+}
+
 void Localization::startMapUpdateThread() {
   mThreadStart = true;
   mLocalMapUpdateThread.reset(new std::thread(&Localization::runUpdateLocalMap, this));

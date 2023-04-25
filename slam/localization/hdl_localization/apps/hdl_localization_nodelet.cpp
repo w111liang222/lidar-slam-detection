@@ -185,6 +185,12 @@ public:
     return result;
   }
 
+  void get_color_map(PointCloudRGB::Ptr &points) {
+    if (visual_odometry) {
+      visual_odometry->getColorMap(points);
+    }
+  }
+
   /**
    * @brief callback for point cloud data
    * @param cloud
@@ -463,6 +469,10 @@ bool get_timed_pose_hdl_localization(uint64_t timestamp, Eigen::Matrix4d &pose) 
 
 bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose) {
   return hdlLocalizationNode.get_timed_pose(ins, pose);
+}
+
+void get_color_map_hdl_localization(PointCloudRGB::Ptr &points) {
+  hdlLocalizationNode.get_color_map(points);
 }
 
 LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {

@@ -174,6 +174,12 @@ py::dict get_graph_map() {
   return keyframe_to_pydict(frames);
 }
 
+py::array_t<float> get_color_map() {
+  PointCloudRGB::Ptr points(new PointCloudRGB());
+  slam_ptr->getColorMap(points);
+  return pointcloud_to_numpy(points);
+}
+
 PYBIND11_MODULE(slam_wrapper, m) {
   m.doc() = "mapping python interface";
   m.def("init_slam", &init_slam, "init slam",
@@ -213,6 +219,7 @@ PYBIND11_MODULE(slam_wrapper, m) {
   m.def("set_map_origin", &set_map_origin, "set map origin",
         py::arg("lat"), py::arg("lon"), py::arg("alt"), py::arg("heading"), py::arg("pitch"), py::arg("roll")
   );
+  m.def("get_color_map", &get_color_map, "get color map");
 
   // graph interface
   m.def("merge_map", &merge_map, "merge map",
