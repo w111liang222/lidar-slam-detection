@@ -41,7 +41,7 @@ class CameraDataManager(DataManagerTemplate):
 
         self.image_param = self.get_image_param(cfgs.camera)
 
-        super().__init__('Camera', cfgs, data_cfg)
+        super().__init__('Camera', cfgs, data_cfg, logger)
         self.camera_jpeg = CameraJpegDataManager(cfgs, data_cfg, logger)
         self.camera_jpeg.set_parent(self)
         register_interface('camera.get_camera_status', self.get_camera_status)
