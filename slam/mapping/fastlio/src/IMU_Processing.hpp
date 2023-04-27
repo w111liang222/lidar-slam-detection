@@ -259,6 +259,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
     {
       dt = tail.stamp - head.stamp;
     }
+    dt = std::min(1.0, dt);
     
     in.acc = acc_avr;
     in.gyro = angvel_avr;
@@ -283,6 +284,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
   /*** calculated the pos and attitude prediction at the frame-end ***/
   double note = pcl_end_time > imu_end_time ? 1.0 : -1.0;
   dt = note * (pcl_end_time - imu_end_time);
+  dt = std::min(1.0, dt);
   kf_state.predict(dt, Q, in);
   
   imu_state = kf_state.get_x();
