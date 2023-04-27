@@ -814,7 +814,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     // solve_time += omp_get_wtime() - solve_start_;
 }
 
-int fast_lio_init(vector<double> &extT, vector<double>& extR, int filter_num, int max_point_num, bool undistort) {
+int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int max_point_num, bool undistort) {
     NUM_MAX_ITERATIONS = 4;
     filter_size_surf_min = 0.5;
     filter_size_map_min = 0.5;

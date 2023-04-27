@@ -3,7 +3,7 @@
 using namespace hdl_localization;
 
 // fastlio nodelet
-int  fast_lio_init(std::vector<double> &extT, std::vector<double>& extR, int filter_num, int max_point_num, bool undistort);
+int  fastlio_init(std::vector<double> &extT, std::vector<double>& extR, int filter_num, int max_point_num, bool undistort);
 void fastlio_imu_enqueue(ImuType &imu);
 void fastlio_pcl_enqueue(PointCloudAttrPtr &points, bool sync);
 bool fastlio_main();
@@ -25,7 +25,7 @@ void DeltaEstimater::init(Eigen::Matrix4d &extrinic) {
     std::vector<double> extrinsicR = {mImuInsStaticTrans(0, 0), mImuInsStaticTrans(0, 1), mImuInsStaticTrans(0, 2),
                                       mImuInsStaticTrans(1, 0), mImuInsStaticTrans(1, 1), mImuInsStaticTrans(1, 2),
                                       mImuInsStaticTrans(2, 0), mImuInsStaticTrans(2, 1), mImuInsStaticTrans(2, 2)};
-    fast_lio_init(extrinsicT, extrinsicR, 1, 10000, false);
+    fastlio_init(extrinsicT, extrinsicR, 1, 10000, false);
 
     mThreadStart = true;
     mLioThread.reset(new std::thread(&DeltaEstimater::runLio, this));
