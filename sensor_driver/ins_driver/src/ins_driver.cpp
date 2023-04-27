@@ -172,8 +172,13 @@ void InsDriver::setData(InsDataType &data, uint64_t timestamp) {
     if (mQueuedData.size() > 100) {
         mQueuedData.erase(mQueuedData.begin());
     }
-    mTimedData.emplace_back(data);
     mQueuedData.emplace_back(data);
+
+    // the same data
+    if (mTimedData.size() > 0 && mTimedData.back().gps_timestamp == timestamp) {
+        return;
+    }
+    mTimedData.emplace_back(data);
 }
 
 Transform InsDriver::getInterplatedPosition(uint64_t t) {
@@ -201,8 +206,8 @@ Transform InsDriver::getInterplatedPosition(uint64_t t) {
     }
 
     double t_diff_ratio =
-      static_cast<double>(t - mTimedData[idx0].gps_timestamp) /
-      static_cast<double>(mTimedData[idx1].gps_timestamp - mTimedData[idx0].gps_timestamp);
+      (static_cast<double>(t) - mTimedData[idx0].gps_timestamp) /
+       static_cast<double>(mTimedData[idx1].gps_timestamp - mTimedData[idx0].gps_timestamp);
     Transform T0 = computeRTKTransform(mTimedData[idx0]);
     Transform T1 = computeRTKTransform(mTimedData[idx1]);
     Vector6 diff_vector = (T0.inverse() * T1).log();
@@ -221,16 +226,6 @@ void InsDriver::getMotion(std::vector<double> &motionT, double &motionR, uint64_
     motionT[8]  = m(2, 0); motionT[9]  = m(2, 1); motionT[10] = m(2, 2); motionT[11] = m(2, 3);
     motionT[12] = m(3, 0); motionT[13] = m(3, 1); motionT[14] = m(3, 2); motionT[15] = m(3, 3);
     motionR = getYawAngle(motion_TR);
-
-    double dt = (t1 - t0) / 1000000.0;
-    double velocity = sqrt(motionT[3] * motionT[3] + motionT[7] * motionT[7] + motionT[11] * motionT[11]) / dt;
-    if (velocity > 100.0) {
-        spdlog::warn("Large velocity of INS, {}, {}", velocity, motionR / PI * 180.0);
-        motionT[0]  = 1; motionT[1]  = 0; motionT[2]  = 0;  motionT[3] = 0;
-        motionT[4]  = 0; motionT[5]  = 1; motionT[6]  = 0;  motionT[7] = 0;
-        motionT[8]  = 0; motionT[9]  = 0; motionT[10] = 1; motionT[11] = 0;
-        motionR = 0;
-    }
 }
 
 bool InsDriver::trigger(uint64_t timestamp, std::vector<double> &motionT,
