@@ -266,6 +266,7 @@ void get_cv_remap(std::vector<std::string> config, cv::Mat &xmap, cv::Mat &ymap,
   float k2 = std::stof(config[8]);
   float p1 = std::stof(config[9]);
   float p2 = std::stof(config[10]);
+  int fisheye = std::stoi(config[11]);
 
   output_size = cv::Size(w, h);
 
@@ -293,7 +294,12 @@ void get_cv_remap(std::vector<std::string> config, cv::Mat &xmap, cv::Mat &ymap,
   dist.at<float>(2, 0) = p1;
   dist.at<float>(3, 0) = p2;
 
-  cv::initUndistortRectifyMap(cam, dist, cv::Mat(), cam, cv::Size(w, h), CV_32FC1, xmap, ymap);
+  if (fisheye == 1) {
+    cv::fisheye::initUndistortRectifyMap(cam, dist, cv::Mat(), cam, cv::Size(w, h), CV_32FC1, xmap, ymap);
+  }
+  else {
+    cv::initUndistortRectifyMap(cam, dist, cv::Mat(), cam, cv::Size(w, h), CV_32FC1, xmap, ymap);
+  }
 
   printf("init camera distortion: %s, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f\n",
                                   config[0].c_str(), w, h, fx, fy, cx, cy, k1, k2, p1, p2);
@@ -303,34 +309,34 @@ int get_wrap_config(std::vector<std::string> config, cv::Mat &perspective, cv::M
   perspective = cv::Mat(3, 3, cv::DataType<float>::type);
   affine = cv::Mat(2, 3, cv::DataType<float>::type);
 
-  int do_wrap = std::stoi(config[11]);
+  int do_wrap = std::stoi(config[12]);
   if (do_wrap != 0) {
-    int perspective_width = std::stoi(config[12]);
-    int perspective_height = std::stoi(config[13]);
-    int affine_width = std::stoi(config[14]);
-    int affine_height = std::stoi(config[15]);
+    int perspective_width = std::stoi(config[13]);
+    int perspective_height = std::stoi(config[14]);
+    int affine_width = std::stoi(config[15]);
+    int affine_height = std::stoi(config[16]);
 
     perspect_size = cv::Size(perspective_width, perspective_height);
 
-    perspective.at<float>(0, 0) = std::stof(config[16]);
-    perspective.at<float>(0, 1) = std::stof(config[17]);
-    perspective.at<float>(0, 2) = std::stof(config[18]);
+    perspective.at<float>(0, 0) = std::stof(config[17]);
+    perspective.at<float>(0, 1) = std::stof(config[18]);
+    perspective.at<float>(0, 2) = std::stof(config[19]);
 
-    perspective.at<float>(1, 0) = std::stof(config[19]);
-    perspective.at<float>(1, 1) = std::stof(config[20]);
-    perspective.at<float>(1, 2) = std::stof(config[21]);
+    perspective.at<float>(1, 0) = std::stof(config[20]);
+    perspective.at<float>(1, 1) = std::stof(config[21]);
+    perspective.at<float>(1, 2) = std::stof(config[22]);
 
-    perspective.at<float>(2, 0) = std::stof(config[22]);
-    perspective.at<float>(2, 1) = std::stof(config[23]);
-    perspective.at<float>(2, 2) = std::stof(config[24]);
+    perspective.at<float>(2, 0) = std::stof(config[23]);
+    perspective.at<float>(2, 1) = std::stof(config[24]);
+    perspective.at<float>(2, 2) = std::stof(config[25]);
 
-    affine.at<float>(0, 0) = std::stof(config[25]);
-    affine.at<float>(0, 1) = std::stof(config[26]);
-    affine.at<float>(0, 2) = std::stof(config[27]);
+    affine.at<float>(0, 0) = std::stof(config[26]);
+    affine.at<float>(0, 1) = std::stof(config[27]);
+    affine.at<float>(0, 2) = std::stof(config[28]);
 
-    affine.at<float>(1, 0) = std::stof(config[28]);
-    affine.at<float>(1, 1) = std::stof(config[29]);
-    affine.at<float>(1, 2) = std::stof(config[30]);
+    affine.at<float>(1, 0) = std::stof(config[29]);
+    affine.at<float>(1, 1) = std::stof(config[30]);
+    affine.at<float>(1, 2) = std::stof(config[31]);
 
     printf("init camera wrap: %s, %d, %d, %d, %d, %d\n",
                               config[0].c_str(), do_wrap, perspective_width, perspective_height, affine_width, affine_height);
