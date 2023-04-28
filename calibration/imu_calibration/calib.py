@@ -140,6 +140,7 @@ class ImuCalib():
     @staticmethod
     def calibration():
         ImuCalib.imu_transform[:3, :3] = calib_imu_calibrate()
+        ImuCalib.evaluation()
 
     @staticmethod
     def getLidarPoses():
@@ -160,3 +161,23 @@ class ImuCalib():
     @staticmethod
     def getTransform():
         return ImuCalib.imu_transform
+
+    @staticmethod
+    def evaluation():
+        lidar_poses = calib_imu_get_lidar_poses()
+        imu_poses = calib_imu_get_imu_poses() 
+
+        dist_error = 0
+        rota_error = 0
+        for i in range(len(lidar_poses)):
+            lidar_pose = get_cfg_from_transform(lidar_poses[i])
+            imu_pose = get_cfg_from_transform(imu_poses[i])
+            each_dist_error = np.linalg.norm(np.array(lidar_pose[:2]) - np.array(imu_pose[:2]), ord = 2)
+            each_rota_error = np.linalg.norm(np.array(lidar_pose[3:]) - np.array(imu_pose[3:]), ord = 2)
+            dist_error += each_dist_error
+            rota_error += each_rota_error
+        mean_dist_error = (dist_error/len(lidar_poses))**0.5
+        mean_rota_error = (rota_error/len(lidar_poses))**0.5
+
+        print('the mean distance error of lidar and imu calib is:', mean_dist_error)
+        print('the mean rotation error of lidar and imu calib is:', mean_rota_error)
