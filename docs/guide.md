@@ -48,7 +48,7 @@ LSD can support software time syncing for sensors and real-time data recording.
 
 The data is recorded as a python dictionary and serialized to serveral pickle files.
 
-Here is the example data is listed as below:
+Here is the example data listed as the below table:
 
 |  Data Name            | Type                 | Description                                                               |
 |-----------------------|:---------------------|:--------------------------------------------------------------------------|
@@ -58,11 +58,15 @@ Here is the example data is listed as below:
 | image_valid           | boolean              | indicate the camera data is valid                                         |
 | image                 | Dict: name - > bytes | JPEG image data, key is the sensor name, value is compressed jpeg data    |
 | ins_valid             | boolean              | indicate the INS/IMU data is valid                                        |
-| ins_data              | Dict                 | store the data of latitude,longitude,altitude and gyro, accelerator, etc  |
+| ins_data              | Dict                 | store the data of latitude, longitude, altitude, gyro and accelerator etc |
 
 Here are the operation steps.
 
 ### Mount a directory into /media
+
+Currently, LSD will automatically detect the external disk which is mounted at **/media** and use it as the storage path to read/write data.
+
+We can simulate an external disk for testing the data recording by following command:
 
 ```bash
 mount --bind /root/exchange/ /media/external/
