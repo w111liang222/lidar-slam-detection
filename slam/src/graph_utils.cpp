@@ -145,7 +145,7 @@ void dump_merged_pcd(std::string file) {
     gMapPoints->width = static_cast<int>(gMapPoints->points.size());
     gMapPoints->height = 1;
     pcl::io::savePCDFileBinary(file, *gMapPoints);
-  } else if (gMapPointsRGB->points.size() != 0) {
+  } else {
     gMapPointsRGB->width = static_cast<int>(gMapPointsRGB->points.size());
     gMapPointsRGB->height = 1;
     pcl::VoxelGrid<pcl::PointXYZRGB> voxelgrid;
@@ -165,7 +165,9 @@ void dump_merged_pcd(std::string file) {
       }
     }
 
-    pcl::io::savePCDFileBinary(file, *gMapPointsRGB);
+    if (gMapPointsRGB->points.size() != 0) {
+      pcl::io::savePCDFileBinary(file, *gMapPointsRGB);
+    }
   }
 
   gMapPoints = PointCloud::Ptr(new PointCloud());
