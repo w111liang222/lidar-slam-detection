@@ -225,6 +225,7 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
     int number_of_voxels_before_add = voxels_recent_visited.size();
     int pt_size = pc_in.points.size();
 
+    m_mutex_pts_vec->lock();
     for (int pt_idx = 0; pt_idx < pt_size; pt_idx += step)
     {
         int add = 1;
@@ -273,6 +274,7 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
             pts_added_vec->push_back(pt_rgb);
         }
     }
+    m_mutex_pts_vec->unlock();
     m_in_appending_pts = 0;
     m_mutex_m_box_recent_hitted->lock();
     m_voxels_recent_visited = voxels_recent_visited ;
@@ -282,14 +284,13 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
 
 void Global_map::remove_points_from_global_map(double remove_time)
 {
+    m_mutex_pts_vec->lock();
     int j = m_last_remove_pts_idx;
     for (int i = m_last_remove_pts_idx; i < m_rgb_pts_vec.size(); i++)
     {
         if (m_rgb_pts_vec[i]->m_add_time > remove_time)
         {
-            m_mutex_pts_vec->lock();
             m_rgb_pts_vec.erase(m_rgb_pts_vec.begin() + j, m_rgb_pts_vec.begin() + i);
-            m_mutex_pts_vec->unlock();
             m_last_remove_pts_idx = j;
             break;
         }
@@ -318,6 +319,7 @@ void Global_map::remove_points_from_global_map(double remove_time)
             box_ptr->m_pts_in_grid.resize(m);
         }
     }
+    m_mutex_pts_vec->unlock();
 }
 
 static inline double thread_render_pts_in_voxel(const int & pt_start, const int & pt_end, const std::shared_ptr<Image_frame> & img_ptr,
