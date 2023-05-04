@@ -30,6 +30,7 @@ slam:
 
     localization:
         sensor_input: []
+        colouration: false
         key_frames_interval: [4.0, 20.0] # distance and degree threshold
         map_resolution: 0.3
         map_path: lp_log/map
