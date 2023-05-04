@@ -89,6 +89,10 @@ public:
     camera_param = param;
   }
 
+  void setMapColouration(bool enable) {
+    map_colouration = enable;
+  }
+
   void ins_callback(std::shared_ptr<RTKType> &ins) {
     std::lock_guard<std::mutex> lock(ins_data_mutex);
     if (ins_data.size() >= 10) {
@@ -337,7 +341,7 @@ public:
 
     // update map or initialize visual odometry
     visual_odometry->updateMap(pose.matrix(), cloud->cloud);
-    if (result && !visual_odometry->isInitialized() && get_timed_pose(image_data.stamp, camera_pose)) {
+    if (map_colouration && result && !visual_odometry->isInitialized() && get_timed_pose(image_data.stamp, camera_pose)) {
       visual_odometry->initialize(image_data.stamp, camera_pose, image_data.image, cloud->cloud);
     }
     image_data = image;
@@ -406,6 +410,7 @@ public:
 
 private:
   InitParameter mConfig;
+  bool map_colouration;
   std::mutex pose_data_mutex;
   std::vector<std::shared_ptr<PoseType>> pose_data;
   // ins input buffer
@@ -449,6 +454,10 @@ void set_imu_extrinic_hdl_localization(Eigen::Matrix4d extrinic) {
 
 void set_camera_param_hdl_localization(const CamParamType &param) {
   hdlLocalizationNode.setCameraParam(param);
+}
+
+void set_map_colouration_hdl_localization(bool enable) {
+  hdlLocalizationNode.setMapColouration(enable);
 }
 
 void set_initpose_hdl_localization(uint64_t stamp, const Eigen::Matrix4d& pose) {

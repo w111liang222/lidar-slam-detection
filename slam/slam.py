@@ -75,6 +75,7 @@ class SLAM(SLAMTemplate):
         # set function switch
         slam.set_mapping_ground_constraint(self.config.slam.mapping.ground_constraint)
         slam.set_mapping_loop_closure(self.config.slam.mapping.loop_closure)
+        slam.set_map_colouration(self.config.slam.localization.colouration)
 
         # load map at initilzation
         self.map_manager.update(slam.get_graph_map(), True)

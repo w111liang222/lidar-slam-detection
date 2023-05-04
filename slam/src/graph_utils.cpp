@@ -46,6 +46,11 @@ void set_mapping_loop_closure(bool enable) {
   set_loop_closure(enable);
 }
 
+extern void set_map_colouration_hdl_localization(bool enable); // hdl_localization_nodelet.cpp
+void set_map_colouration(bool enable) {
+  set_map_colouration_hdl_localization(enable);
+}
+
 py::dict get_graph_edges() {
   std::vector<EdgeType> edges;
   graph_get_edges(edges);

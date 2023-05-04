@@ -238,6 +238,9 @@ PYBIND11_MODULE(slam_wrapper, m) {
   m.def("set_mapping_loop_closure", &set_mapping_loop_closure, "set mapping loop closure",
         py::arg("enable")
   );
+  m.def("set_map_colouration", &set_map_colouration, "set map colouration",
+        py::arg("enable")
+  );
   m.def("get_graph_meta", &get_graph_meta, "get graph meta");
   m.def("del_graph_vertex", &del_graph_vertex, "del graph vertex",
         py::arg("id")
