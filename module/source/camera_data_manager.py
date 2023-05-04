@@ -229,7 +229,10 @@ class CameraDataManager(DataManagerTemplate):
             time.sleep(1.0)
 
         ret = dict()
-        ret[sensor_name] = frame
+        ret[sensor_name] = dict(
+            timestamp=int(time.time() * 1000000),
+            image=frame,
+        )
         return ret, valid
 
     def start_capture(self):
@@ -267,6 +270,9 @@ class CameraDataManager(DataManagerTemplate):
         do_distort = kwargs['do_distort'] if 'do_distort' in kwargs else None
         if self.mode == "offline" and data_dict['image_valid']:
             data_dict['image'] = self.get_loop_data()
+            for name, frame in data_dict['image'].items():
+                data_dict['image_param'][name].update(self.image_param[name])
+                data_dict['image'][name] = frame['image']
             data_dict['image_jpeg'] = self.camera_jpeg.get_loop_data()
 
             if not bool(data_dict['image']) or not bool(data_dict['image_jpeg']):
@@ -276,7 +282,6 @@ class CameraDataManager(DataManagerTemplate):
 
         data_dict['image'] = self.process_image(data_dict['image'], do_distort)
         self.update_cam_info(data_dict['image'])
-        data_dict['image_param'] = self.image_param.copy()
         return data_dict
 
     def get_data_online(self, data_dict):
@@ -291,7 +296,13 @@ class CameraDataManager(DataManagerTemplate):
         if 'frame_start_timestamp' not in data_dict:
             data_dict['frame_start_timestamp'] = int(time.time() * 1000000)
 
-        data = {'image_valid' : True, 'image' : frame_dict, 'image_jpeg' : self.camera_jpeg.get_loop_data()}
+        image_param = dict()
+        for name, frame in frame_dict.items():
+            image_param[name] = self.image_param[name]
+            image_param[name]['timestamp'] = frame['timestamp']
+            frame_dict[name] = frame['image']
+
+        data = {'image_valid' : True, 'image' : frame_dict, 'image_jpeg' : self.camera_jpeg.get_loop_data(), 'image_param' : image_param}
         return data
 
     def get_data_offline(self, data_dict):

@@ -156,6 +156,9 @@ class PlayerDataManager(DataManagerTemplate):
                     timestamp=data_dict['frame_start_timestamp'],
                     points_attr=np.zeros((data.shape[0], 2), dtype=np.float32)
                 )
+        for name, param in data_dict['image_param'].items():
+            if 'timestamp' not in param:
+                param['timestamp'] = data_dict['frame_start_timestamp']
 
         return data_dict
 
@@ -178,8 +181,6 @@ class PlayerDataManager(DataManagerTemplate):
             data_dict = self.parse_pickle(fpath)
             data_dict['image_valid'] = False
             data_dict['lidar_valid'] = bool(data_dict['points'])
-            # pop out camera infos
-            data_dict.pop('image_param', None)
             images = data_dict.pop('image', dict())
             for name, image in images.items():
                 if name not in self.camera_name_map:
