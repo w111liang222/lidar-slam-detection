@@ -33,7 +33,7 @@ class GlobalLocalization {
   virtual ~GlobalLocalization();
   void clear();
   void feedInsData(std::shared_ptr<RTKType> &ins);
-  bool initializePose(PointCloud::Ptr points, const std::pair<std::string, cv::Mat> &image, Eigen::Isometry3d &pose);
+  bool initializePose(PointCloud::Ptr points, const std::pair<std::string, ImageType> &image, Eigen::Isometry3d &pose);
 
   void setInitPoseRange(PoseRange &r);
   void setInitPose(const Eigen::Matrix4d &t);
@@ -45,7 +45,7 @@ class GlobalLocalization {
   void stopSearchPose();
   std::pair<int, float> localSearch(PointCloud::Ptr &cloud, std::shared_ptr<RTKType> &ins);
   std::pair<int, float> globalSearch(PointCloud::Ptr &cloud);
-  void imageSearch(PointCloud::Ptr &cloud, std::pair<std::string, cv::Mat> &im, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess);
+  void imageSearch(PointCloud::Ptr &cloud, std::pair<std::string, ImageType> &im, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess);
   bool registrationAlign(const std::string &sensor, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess, PointCloud::Ptr &cloud, Eigen::Isometry3d &pose);
   PointCloud::Ptr downsample(PointCloud::Ptr& cloud);
 

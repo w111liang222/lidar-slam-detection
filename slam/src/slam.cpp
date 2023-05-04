@@ -264,7 +264,7 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
 
 bool SLAM::run(const uint64_t &timestamp,
                std::map<std::string, PointCloudAttrPtr>& points,
-               std::map<std::string, cv::Mat> &images,
+               std::map<std::string, ImageType> &images,
                std::map<std::string, cv::Mat> &images_stream,
                RTKType &rtk, std::vector<ImuType> &imu, PoseType &pose) {
   std::shared_ptr<RTKType> rtk_ptr = std::make_shared<RTKType>(rtk);

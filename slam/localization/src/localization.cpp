@@ -31,7 +31,7 @@ Localization::Localization() : SlamBase(), mFrameAttr(nullptr), mGraphKDTree(nul
   mInitialized = false;
   mImageName = "";
   mLidarName = "";
-  mImage = cv::Mat();
+  mImage = ImageType();
   mLastOdom.setIdentity();
 
   mLocalMapUpdateThread = nullptr;
@@ -213,12 +213,12 @@ void Localization::feedPointData(const uint64_t &timestamp, std::map<std::string
 }
 
 void Localization::feedImageData(const uint64_t &timestamp,
-                                 std::map<std::string, cv::Mat> &images,
+                                 std::map<std::string, ImageType> &images,
                                  std::map<std::string, cv::Mat> &images_stream) {
   if (images.find(mImageName) != images.end()) {
     mImage = images[mImageName];
   } else {
-    mImage = cv::Mat();
+    mImage = ImageType();
   }
 }
 

@@ -74,7 +74,7 @@ void GlobalLocalization::stopSearchPose() {
     }
 }
 
-bool GlobalLocalization::initializePose(PointCloud::Ptr points, const std::pair<std::string, cv::Mat> &image, Eigen::Isometry3d &pose) {
+bool GlobalLocalization::initializePose(PointCloud::Ptr points, const std::pair<std::string, ImageType> &image, Eigen::Isometry3d &pose) {
     auto filtered = downsample(points);
 
     std::lock_guard<std::mutex> lock(mMutex);
@@ -411,9 +411,9 @@ std::pair<int, float> GlobalLocalization::globalSearch(PointCloud::Ptr &cloud) {
     return best_match;
 }
 
-void GlobalLocalization::imageSearch(PointCloud::Ptr &cloud, std::pair<std::string, cv::Mat> &im, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess) {
+void GlobalLocalization::imageSearch(PointCloud::Ptr &cloud, std::pair<std::string, ImageType> &im, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess) {
     std::string image_name = im.first;
-    cv::Mat image = im.second;
+    cv::Mat image = im.second.image;
     if (image.empty()) {
         LOG_DEBUG("global localization, empty image input");
         return;

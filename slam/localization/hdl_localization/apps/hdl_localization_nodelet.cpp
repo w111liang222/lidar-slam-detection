@@ -60,7 +60,7 @@ public:
     pose_data.clear();
     imu_data.clear();
     ins_data.clear();
-    image_data = cv::Mat();
+    image_data = ImageType();
     downsample_filter = nullptr;
 
     pose_estimator.reset(nullptr);
@@ -195,7 +195,7 @@ public:
    * @brief callback for point cloud data
    * @param cloud
    */
-  LocType frame_callback(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
+  LocType frame_callback(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) {
     std::lock_guard<std::mutex> estimator_lock(pose_estimator_mutex);
     if(!pose_estimator) {
       LOG_WARN("waiting for initial pose input!!");
@@ -209,9 +209,6 @@ public:
 
     const uint64_t& stamp = cloud->cloud->header.stamp;
 
-    // enqueue image data to vo
-    bool use_vo = visual_odometry->feedImageData(stamp, image_data);
-
     // update sub-map registration
     RegistrationType* registration_ptr;
     bool has_data = hdlRegistrationQueue.try_dequeue(registration_ptr);
@@ -219,6 +216,13 @@ public:
       pose_estimator->set_registration(registration_ptr->registration);
       delete registration_ptr;
       last_pingpong_idx.store((last_pingpong_idx + 1) % 2);
+    }
+
+    // enqueue image data to vo
+    bool use_vo = false;
+    Eigen::Matrix4d camera_pose;
+    if (get_timed_pose(image_data.stamp, camera_pose)) {
+      use_vo = visual_odometry->feedImageData(image_data.stamp, camera_pose, image_data.image);
     }
 
     // imu process
@@ -325,18 +329,18 @@ public:
     pose = Eigen::Isometry3d(pose_estimator->matrix().cast<double>());
     update_pose(stamp, pose.matrix());
 
-    // update pose or initialize visual odometry
-    visual_odometry->updatePose(pose.matrix(), cloud->cloud);
-    if (result && !visual_odometry->isInitialized()) {
-      visual_odometry->initialize(stamp, pose.matrix(), image_data, cloud->cloud);
-    }
-    image_data = image; // store the t-1 image frame
-
     // check registration fitness score
     if (fitness_score > 0.5) {
       LOG_WARN("localization fitness score is too large, score {}", fitness_score);
       result = false;
     }
+
+    // update map or initialize visual odometry
+    visual_odometry->updateMap(pose.matrix(), cloud->cloud);
+    if (result && !visual_odometry->isInitialized() && get_timed_pose(image_data.stamp, camera_pose)) {
+      visual_odometry->initialize(image_data.stamp, camera_pose, image_data.image, cloud->cloud);
+    }
+    image_data = image;
 
     return (result ? LocType::OK : LocType::ERROR);
   }
@@ -411,7 +415,7 @@ private:
   std::mutex imu_data_mutex;
   std::vector<ImuType> imu_data;
   // camera data
-  cv::Mat image_data;
+  ImageType image_data;
 
   pcl::Filter<PointT>::Ptr downsample_filter;
 
@@ -475,6 +479,6 @@ void get_color_map_hdl_localization(PointCloudRGB::Ptr &points) {
   hdlLocalizationNode.get_color_map(points);
 }
 
-LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
+LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) {
   return hdlLocalizationNode.frame_callback(cloud, image, pose);
 }

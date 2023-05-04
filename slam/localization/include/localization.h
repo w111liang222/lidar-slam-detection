@@ -39,7 +39,7 @@ class Localization : public SlamBase {
   void feedImuData(ImuType &imu) override;
   void feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) override;
   void feedImageData(const uint64_t &timestamp,
-                     std::map<std::string, cv::Mat> &images,
+                     std::map<std::string, ImageType> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
   bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) override;
@@ -63,7 +63,7 @@ class Localization : public SlamBase {
   std::string mLidarName;
   std::string mImageName;
   PointCloudAttrPtr mFrameAttr;
-  cv::Mat mImage;
+  ImageType mImage;
 
   std::atomic<bool> mInitialized;
   int mFailureLocalizeCount;

@@ -10,14 +10,14 @@ const int  EsikfIterTimes = 5;
 void setInitialStateCov(StatesGroup &state) {
     // Set cov
     state.cov = state.cov.setIdentity() * INIT_COV;
-    state.cov.block( 0, 0, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // R
-    state.cov.block( 3, 3, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // T
-    state.cov.block( 6, 6, 3, 3 ) = mat_3_3::Identity() * 1e-1;   // vel
+    state.cov.block( 0, 0, 3, 3 ) = mat_3_3::Identity() * 1e-4;   // R
+    state.cov.block( 3, 3, 3, 3 ) = mat_3_3::Identity() * 1e-4;   // T
+    state.cov.block( 6, 6, 3, 3 ) = mat_3_3::Identity() * 1e-4;   // vel
     state.cov.block( 9, 9, 3, 3 ) = mat_3_3::Identity() * 1e-3;   // bias_g
     state.cov.block( 12, 12, 3, 3 ) = mat_3_3::Identity() * 1e-1; // bias_a
     state.cov.block( 15, 15, 3, 3 ) = mat_3_3::Identity() * 1e-5; // Gravity
-    state.cov( 24, 24 ) = 1e-3;
-    state.cov.block( 18, 18, 6, 6 ) = state.cov.block( 18, 18, 6, 6 ).setIdentity() *  1e-3; // Extrinsic between camera and IMU.
+    state.cov( 24, 24 ) = 1e-4;
+    state.cov.block( 18, 18, 6, 6 ) = state.cov.block( 18, 18, 6, 6 ).setIdentity() *  1e-4; // Extrinsic between camera and IMU.
     state.cov.block( 25, 25, 4, 4 ) = state.cov.block( 25, 25, 4, 4 ).setIdentity() *  1e-3; // Camera intrinsic.
 }
 
@@ -492,10 +492,13 @@ void VisualOdometry::initialize(const uint64_t& stamp, const Eigen::Matrix4d &t,
 void VisualOdometry::feedImuData(ImuType &imu) {
 }
 
-bool VisualOdometry::feedImageData(const uint64_t& stamp, cv::Mat &image) {
+bool VisualOdometry::feedImageData(const uint64_t& stamp, const Eigen::Matrix4d &t, cv::Mat &image) {
   if (!mInitialized || image.empty()) {
     return false;
   }
+
+  mState.rot_end = t.topLeftCorner<3, 3>();
+  mState.pos_end = t.topRightCorner<3, 1>();
 
   std::pair<uint64_t, cv::Mat> data(stamp, image);
   mImageQueue.enqueue(data);
@@ -507,12 +510,10 @@ bool VisualOdometry::getPose(Eigen::Matrix4d &pose) {
   return true;
 }
 
-void VisualOdometry::updatePose(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud) {
+void VisualOdometry::updateMap(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud) {
   if (!mInitialized) {
     return;
   }
-  mState.rot_end = t.topLeftCorner<3, 3>();
-  mState.pos_end = t.topRightCorner<3, 1>();
 
   mPointThread.reset(new std::thread(&VisualOdometry::appendPoints, this, t, cloud));
 }

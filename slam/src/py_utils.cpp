@@ -67,6 +67,18 @@ py::dict map_to_pydict(const std::map<std::string, cv::Mat> &m) {
   return dict;
 }
 
+py::dict map_to_pydict(const std::map<std::string, ImageType> &m) {
+  py::dict dict;
+  for (auto &e : m) {
+    if (e.second.image.type() == CV_8UC3) {
+      dict[e.first.c_str()] = py::array_t<uint8_t>(py::array::ShapeContainer({e.second.image.rows, e.second.image.cols, 3}), e.second.image.data);
+    } else {
+      dict[e.first.c_str()] = py::array_t<uint8_t>(py::array::ShapeContainer({e.second.image.rows, e.second.image.cols}), e.second.image.data);
+    }
+  }
+  return dict;
+}
+
 Eigen::Matrix4d numpy_to_eigen(py::array_t<float> &array) {
   auto ref = array.unchecked<2>();
   Eigen::Matrix4d matrix;
@@ -170,6 +182,22 @@ void pydict_to_mat(py::dict& image_dict, std::map<std::string, cv::Mat> &images)
       images[name] = cv::Mat(shape[0], shape[1], CV_8UC3);
     }
     memcpy(images[name].data, ar.data(), ar.nbytes());
+  }
+}
+
+void pydict_to_image(py::dict& image_dict, py::dict& image_param, std::map<std::string, ImageType> &images) {
+  for (auto item : image_dict) {
+    std::string name = py::cast<std::string>(item.first);
+    py::dict param = py::cast<py::dict>(image_param[name.c_str()]);
+    py::array ar = py::cast<py::array>(item.second);
+    auto ndim = ar.ndim();
+    auto shape = ar.shape();
+    if (ndim == 2) {
+      images[name] = ImageType(cv::Mat(shape[0], shape[1], CV_8UC1), py::cast<uint64_t>(param["timestamp"]));
+    } else {
+      images[name] = ImageType(cv::Mat(shape[0], shape[1], CV_8UC3), py::cast<uint64_t>(param["timestamp"]));
+    }
+    memcpy(images[name].image.data, ar.data(), ar.nbytes());
   }
 }
 

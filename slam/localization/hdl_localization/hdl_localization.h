@@ -14,7 +14,7 @@ class HdlLocalization : public LocalizationBase {
     void updateLocalMap(PointCloud::Ptr& cloud) override;
     void feedInsData(std::shared_ptr<RTKType> ins) override;
     void feedImuData(ImuType &imu) override;
-    LocType localize(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) override;
+    LocType localize(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) override;
     bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) override;
     bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) override;
     void getColorMap(PointCloudRGB::Ptr &points) override;

@@ -92,7 +92,7 @@ void RTKM::feedInsData(std::shared_ptr<RTKType> data) {
 }
 
 void RTKM::feedImageData(const uint64_t &timestamp,
-                         std::map<std::string, cv::Mat> &images,
+                         std::map<std::string, ImageType> &images,
                          std::map<std::string, cv::Mat> &images_stream) {
   mImages = images;
   mImagesStream = images_stream;

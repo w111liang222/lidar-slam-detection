@@ -25,7 +25,7 @@ class HDL_GICP : public SlamBase {
   void feedInsData(std::shared_ptr<RTKType> ins) override;
   void feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) override;
   void feedImageData(const uint64_t &timestamp,
-                     std::map<std::string, cv::Mat> &images,
+                     std::map<std::string, ImageType> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
 
@@ -40,7 +40,7 @@ class HDL_GICP : public SlamBase {
   bool mOriginIsSet;
   PointCloud::Ptr mFrame;
   PointCloudAttrPtr mFrameAttr;
-  std::map<std::string, cv::Mat> mImages;
+  std::map<std::string, ImageType> mImages;
   std::map<std::string, cv::Mat> mImagesStream;
   std::string mLidarName;
 

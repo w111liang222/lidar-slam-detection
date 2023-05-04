@@ -18,9 +18,9 @@ class VisualOdometry {
   bool isInitialized();
   void initialize(const uint64_t& stamp, const Eigen::Matrix4d &t, cv::Mat &image, PointCloud::Ptr& cloud);
   void feedImuData(ImuType &imu);
-  bool feedImageData(const uint64_t& stamp, cv::Mat &image);
+  bool feedImageData(const uint64_t& stamp, const Eigen::Matrix4d &t, cv::Mat &image);
   bool getPose(Eigen::Matrix4d &pose);
-  void updatePose(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud);
+  void updateMap(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud);
   void getColorMap(PointCloudRGB::Ptr &points);
 
   void setInitialCameraParameter(StatesGroup &state);

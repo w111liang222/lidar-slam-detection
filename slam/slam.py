@@ -130,6 +130,7 @@ class SLAM(SLAMTemplate):
             points_attr=points_attr_list,
             image=images_list,
             image_jpeg=images_jpeg_list,
+            image_param=input_dict['image_param'],
             ins_data=input_dict['ins_data'],
             imu_data=imu_data,
         )
@@ -216,6 +217,7 @@ class SLAM(SLAMTemplate):
                               input_dict['points_attr'],
                               input_dict['image'],
                               input_dict['image_jpeg'],
+                              input_dict['image_param'],
                               input_dict['ins_data'],
                               input_dict['imu_data'],
                               input_dict['frame_start_timestamp'])

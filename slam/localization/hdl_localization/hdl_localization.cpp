@@ -14,7 +14,7 @@ void enqueue_imu_hdl_localization(ImuType& imu);
 bool get_timed_pose_hdl_localization(uint64_t timestamp, Eigen::Matrix4d &pose);
 bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose);
 void get_color_map_hdl_localization(PointCloudRGB::Ptr &points);
-LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose);
+LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose);
 
 HdlLocalization::HdlLocalization(const std::string &imageName) : LocalizationBase() {
     mImageName = imageName;
@@ -54,7 +54,7 @@ void HdlLocalization::feedImuData(ImuType &imu) {
     enqueue_imu_hdl_localization(imu);
 }
 
-LocType HdlLocalization::localize(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) {
+LocType HdlLocalization::localize(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) {
     return enqueue_hdl_localization(cloud, image, pose);
 }
 

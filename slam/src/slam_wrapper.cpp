@@ -58,15 +58,15 @@ void set_destination(bool enable, std::string dest, int port) {
   slam_ptr->setDestination(enable, dest, port);
 }
 
-py::dict process(py::dict &points, py::dict &points_attr, py::dict& image_dict, py::dict& image_stream_dict,
-                 py::dict& rtk_dict, py::array_t<double> &imu_list, uint64_t timestamp) {
+py::dict process(py::dict& points, py::dict &points_attr, py::dict& image_dict, py::dict& image_stream_dict, py::dict& image_param,
+                 py::dict& rtk_dict, py::array_t<double>& imu_list, uint64_t timestamp) {
   // convert pydict to pointcloud
   std::map<std::string, PointCloudAttrPtr> clouds;
   pydict_to_cloud(points, points_attr, clouds);
 
   // convert pydict to cv::Mat (I420 or RGB)
-  std::map<std::string, cv::Mat> images;
-  pydict_to_mat(image_dict, images);
+  std::map<std::string, ImageType> images;
+  pydict_to_image(image_dict, image_param, images);
 
   // convert pydict to cv::Mat (JPEG)
   std::map<std::string, cv::Mat> images_stream;
@@ -210,7 +210,7 @@ PYBIND11_MODULE(slam_wrapper, m) {
         py::arg("enable"), py::arg("dest"), py::arg("port")
   );
   m.def("process", &process, "process",
-        py::arg("points"), py::arg("points_attr"), py::arg("image_dict"), py::arg("image_stream_dict"),
+        py::arg("points"), py::arg("points_attr"), py::arg("image_dict"), py::arg("image_stream_dict"), py::arg("image_param"),
         py::arg("rtk_dict"), py::arg("imu_list"), py::arg("timestamp")
   );
   m.def("update_odom", &update_odom, "update odom");

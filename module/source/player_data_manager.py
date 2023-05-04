@@ -158,7 +158,7 @@ class PlayerDataManager(DataManagerTemplate):
                 )
         for name, param in data_dict['image_param'].items():
             if 'timestamp' not in param:
-                param['timestamp'] = data_dict['frame_start_timestamp']
+                param['timestamp'] = data_dict['frame_start_timestamp'] + 100000
 
         return data_dict
 

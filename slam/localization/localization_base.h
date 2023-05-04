@@ -37,7 +37,7 @@ class LocalizationBase {
     virtual void feedImuData(ImuType &imu) {
       return;
     }
-    virtual LocType localize(PointCloudAttrPtr& cloud, cv::Mat& image, Eigen::Isometry3d& pose) = 0;
+    virtual LocType localize(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) = 0;
     virtual bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) = 0;
     virtual bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) = 0;
     virtual void getColorMap(PointCloudRGB::Ptr &points) {
