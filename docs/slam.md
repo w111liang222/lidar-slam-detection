@@ -114,6 +114,14 @@ GPS是一种全局定位传感器，由GPS卫星来进行定位，因此没有�
 
 以上介绍的只是几个基本功能，还有更多功能将不在本文中一一说明了。
 
+## 点云着色
+
+<img src="assets/rgb_map_demo1.png" />
+
+<img src="assets/rgb_map_demo2.png" />
+
+<img src="assets/rgb_map_demo3.png" />
+
 ## 使用案例
 
 在这里我们针对某地下停车场（测试数据集可以在这里下载 [Google Drive](https://drive.google.com/file/d/149LtZyBVk2m5RRM6xxSEmmYiiGTlaOCu/view?usp=sharing) | [百度网盘(密码1prw)](https://pan.baidu.com/s/1zQY7b_Doe_EAqWX9cXq7ww) ），来演示一下LSD的地图构建功能。操作步骤如下：

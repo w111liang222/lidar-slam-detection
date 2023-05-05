@@ -90,6 +90,7 @@ In the development of LSD, we stand on the shoulders of the following repositori
 - [OpenPCDet](https://github.com/open-mmlab/OpenPCDet): OpenPCDet Toolbox for LiDAR-based 3D Object Detection.
 - [AB3DMOT](https://github.com/xinshuoweng/AB3DMOT): 3D Multi-Object Tracking: A Baseline and New Evaluation Metrics.
 - [FAST-LIO](https://github.com/hku-mars/FAST_LIO): A computationally efficient and robust LiDAR-inertial odometry package.
+- [R3LIVE](https://github.com/hku-mars/r3live): A Robust, Real-time, RGB-colored, LiDAR-Inertial-Visual tightly-coupled state Estimation and mapping package.
 - [FLOAM](https://github.com/wh200720041/floam): Fast and Optimized Lidar Odometry And Mapping for indoor/outdoor localization.
 - [hdl_graph_slam](https://github.com/koide3/hdl_graph_slam): an open source ROS package for real-time 6DOF SLAM using a 3D LIDAR.
 - [hdl_localization](https://github.com/koide3/hdl_localization): Real-time 3D localization using a (velodyne) 3D LIDAR.
