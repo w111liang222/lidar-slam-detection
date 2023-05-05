@@ -89,7 +89,7 @@ const double process_noise_sigma = 0.1;
 
 int RGB_pts::update_rgb(const vec_3 &rgb, const double obs_dis, const vec_3 obs_sigma, const double obs_time)
 {
-    if (m_obs_dis != 0 && (obs_dis > m_obs_dis * 1.2))
+    if (m_obs_dis != 0 && (obs_dis > m_obs_dis * 1.5))
     {
         return 0;
     }
