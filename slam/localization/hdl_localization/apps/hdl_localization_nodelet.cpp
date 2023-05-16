@@ -143,7 +143,7 @@ public:
     }
 
     if (timestamp < pose_data_snapshot.front()->timestamp) {
-      LOG_WARN("query timestamp is out of date");
+      LOG_WARN("query timestamp is out of date, {}, {}", timestamp, pose_data_snapshot.front()->timestamp);
       return false;
     }
 
@@ -225,7 +225,7 @@ public:
     // enqueue image data to vo
     bool use_vo = false;
     Eigen::Matrix4d camera_pose;
-    if (get_timed_pose(image_data.stamp, camera_pose)) {
+    if (map_colouration && get_timed_pose(image_data.stamp, camera_pose)) {
       use_vo = visual_odometry->feedImageData(image_data.stamp, camera_pose, image_data.image);
     }
 
