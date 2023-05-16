@@ -408,6 +408,7 @@ void fastlio_imu_enqueue(ImuType &imu)
     // }
 
     last_timestamp_imu = timestamp;
+    imu.acc = imu.acc / 9.81;
 
     imu_buffer.push_back(imu);
     mtx_buffer.unlock();

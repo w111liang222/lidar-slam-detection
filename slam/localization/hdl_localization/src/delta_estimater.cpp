@@ -4,7 +4,7 @@ using namespace hdl_localization;
 
 // fastlio nodelet
 int  fastlio_init(std::vector<double> &extT, std::vector<double>& extR, int filter_num, int max_point_num, bool undistort);
-void fastlio_imu_enqueue(ImuType &imu);
+void fastlio_imu_enqueue(ImuType imu);
 void fastlio_pcl_enqueue(PointCloudAttrPtr &points, bool sync);
 bool fastlio_main();
 std::vector<double> get_fastlio_odom();
