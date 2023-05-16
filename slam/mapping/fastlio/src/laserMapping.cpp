@@ -395,7 +395,7 @@ void fastlio_pcl_enqueue(PointCloudAttrPtr &points, bool sync)
 //     sig_buffer.notify_all();
 // }
 
-void fastlio_imu_enqueue(ImuType &imu)
+void fastlio_imu_enqueue(ImuType imu)
 {
     double timestamp = imu.stamp;
 
