@@ -22,7 +22,7 @@
 
 /// *************Preconfiguration
 
-#define MAX_INI_COUNT (10)
+#define MAX_INI_COUNT (100)
 
 const bool time_list(PointType &x, PointType &y) {return (x.curvature < y.curvature);};
 
@@ -182,6 +182,13 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
     // cout<<"acc norm: "<<cur_acc.norm()<<" "<<mean_acc.norm()<<endl;
 
     N ++;
+  }
+
+  LOG_INFO("FastLIO IMU init mean acc {}, gyr {}", mean_acc.norm(), mean_gyr.norm());
+  if (fabs(mean_acc.norm() - 1.0) > 0.1 || mean_gyr.norm() > (10.0 / 180.0 * M_PI)) {
+    b_first_frame_ = true;
+    LOG_WARN("FastLIO IMU init is not stable, reset");
+    return;
   }
   state_ikfom init_state = kf_state.get_x();
   init_state.grav = S2(- mean_acc / mean_acc.norm() * G_m_s2);
