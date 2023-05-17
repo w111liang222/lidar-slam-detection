@@ -19,6 +19,7 @@ LSD currently supports many features:
 - [Quick Demo](docs/demo/README.md)
 - [Architecture](docs/architecture.md)
 - [Mapping & Localization](docs/slam.md)
+- [Object Detection & Tracking](docs/detect.md)
 
 # Prerequisites
 
