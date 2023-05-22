@@ -132,11 +132,11 @@ std::vector<std::string> Localization::setSensors(std::vector<std::string> &sens
         LOG_INFO("Localization: use Camera: {} to localize", sensor);
       }
     } else {
+      sensor_list.push_back(sensor);
       if (!is_lidar_set) {
         is_lidar_set = true;
         mLidarName = sensor;
       }
-      sensor_list.push_back(sensor);
     }
   }
 
@@ -182,7 +182,7 @@ void Localization::feedImuData(ImuType &imu) {
 
 void Localization::feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) {
   // transform to INS coordinate
-  mFrameAttr = points[mLidarName];
+  mFrameAttr = mergePoints(mLidarName, points, uint64_t(mConfig.scan_period * 1000000.0));
   preprocessPoints(mFrameAttr->cloud, mFrameAttr->cloud);
 
   if (!mInitialized) {

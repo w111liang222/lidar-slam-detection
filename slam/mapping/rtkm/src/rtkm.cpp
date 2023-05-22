@@ -74,11 +74,11 @@ std::vector<std::string> RTKM::setSensors(std::vector<std::string> &sensors) {
     } else if (sensor.length() < 2 || sensor[1] != '-') { // not a "n-" pattern -> CameraName
       sensor_list.push_back(sensor);
     } else {
+      sensor_list.push_back(sensor);
       if (!is_lidar_set) {
         is_lidar_set = true;
         mLidarName = sensor;
       }
-      sensor_list.push_back(sensor);
     }
   }
   return sensor_list;
@@ -100,7 +100,7 @@ void RTKM::feedImageData(const uint64_t &timestamp,
 
 void RTKM::feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) {
   // transform to INS coordinate
-  mFrameAttr = points[mLidarName];
+  mFrameAttr = mergePoints(mLidarName, points, uint64_t(mConfig.scan_period * 1000000.0));
   preprocessPoints(mFrameAttr->cloud, mFrameAttr->cloud);
 }
 

@@ -221,6 +221,27 @@ void pointsDistanceFilter(PointCloud::Ptr& cloud, PointCloud::Ptr& filtered, dou
     filtered->header = cloud->header;
 }
 
+PointCloudAttrPtr mergePoints(const std::string &base, std::map<std::string, PointCloudAttrPtr> &points, const uint64_t &scan_period) {
+    PointCloudAttrPtr pointcloud = points[base];
+    for (auto &cloud : points) {
+        if (cloud.first.compare(base) == 0) {
+            continue;
+        }
+
+        double time_shift = double(cloud.second->cloud->header.stamp) - double(pointcloud->cloud->header.stamp);
+        for (size_t i = 0; i < cloud.second->attr.size(); i++) {
+            double stamp = double(cloud.second->attr[i].stamp) + time_shift;
+            if (stamp >= 0 && stamp <= scan_period) {
+                cloud.second->attr[i].stamp = uint32_t(stamp);
+                pointcloud->cloud->push_back(cloud.second->cloud->points[i]);
+                pointcloud->attr.push_back(cloud.second->attr[i]);
+            }
+        }
+    }
+
+    return pointcloud;
+}
+
 bool parseGPCHC(std::string message, RTKType &ins) {
     std::size_t head = message.find("$GPCHC");
     std::size_t tail = message.find("*");

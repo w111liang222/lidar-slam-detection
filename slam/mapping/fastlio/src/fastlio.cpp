@@ -53,10 +53,10 @@ std::vector<std::string> HDL_FastLIO::setSensors(std::vector<std::string> &senso
     } else if (sensor.length() < 2 || sensor[1] != '-') { // not a "n-" pattern -> CameraName
       sensor_list.push_back(sensor);
     } else {
+      sensor_list.push_back(sensor);
       if (!is_lidar_set) {
         is_lidar_set = true;
         mLidarName = sensor;
-        sensor_list.push_back(sensor);
       }
     }
   }
@@ -115,7 +115,7 @@ void HDL_FastLIO::feedImageData(const uint64_t &timestamp,
 
 void HDL_FastLIO::feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) {
   // transform to INS coordinate
-  mFrameAttr = points[mLidarName];
+  mFrameAttr = mergePoints(mLidarName, points, uint64_t(mConfig.scan_period * 1000000.0));
   preprocessPoints(mFrameAttr->cloud, mFrameAttr->cloud);
 
   // store raw pointcloud
