@@ -1,5 +1,0 @@
-*.so
-build/
-freespace_wrapper.egg-info/
-dist/
-__pycache__/

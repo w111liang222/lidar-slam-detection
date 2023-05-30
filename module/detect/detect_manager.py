@@ -5,7 +5,6 @@ from ..manager_template import ManagerTemplate
 from sensor_inference.infer import DetInfer
 from sensor_fusion.tracker import Tracker
 from sensor_fusion.fusion import Fusion
-from freespace_detection.freespace_detection import freespaceDetection
 from .object_filter import ObjectFilter
 
 class DetectManager(ManagerTemplate):
@@ -29,13 +28,6 @@ class DetectManager(ManagerTemplate):
         self.tracking.setup_tunnel(self.fusing)
         self.tracking.init()
 
-        self.freespace_detection = freespaceDetection(
-            detection_range=
-            [*cfg.output.freespace.range, cfg.output.freespace.min_height, cfg.output.freespace.max_height],
-            resolution = cfg.output.freespace.resolution, logger=self.logger
-        )
-        self.freespace_detection.init()
-
         self.object_filter = ObjectFilter(self.logger)
         self.object_filter.set_output(cfg.output)
         if len(cfg.roi[0]['contour']) == 0:
@@ -48,7 +40,6 @@ class DetectManager(ManagerTemplate):
     def release(self):
         self.tracking.deinit()
         self.fusing.deinit()
-        self.freespace_detection.deinit()
         self.engine.stop()
 
     def start(self):
@@ -71,18 +62,17 @@ class DetectManager(ManagerTemplate):
         retry = 0
         while True:
             if self.frame_queue.full() or self.engine.is_overload() or self.fusing.is_overload() or \
-               self.tracking.is_overload() or self.freespace_detection.is_overload():
+               self.tracking.is_overload():
                 retry = retry + 1
                 if self.cfg.input.mode == 'offline' and retry < 100:
                     time.sleep(1e-2)
                     continue
                 else:
-                    self.logger.warn('overload: frame queue {}, engine {}, fusing {}, tracking {}, freespace {}'.format(
+                    self.logger.warn('overload: frame queue {}, engine {}, fusing {}, tracking {}'.format(
                                       self.frame_queue.full(),
                                       self.engine.is_overload(),
                                       self.fusing.is_overload(),
-                                      self.tracking.is_overload(),
-                                      self.freespace_detection.is_overload()))
+                                      self.tracking.is_overload()))
                     return False
             else:
                 break
@@ -99,7 +89,6 @@ class DetectManager(ManagerTemplate):
     def enqueue(self, input_dict, module_name):
         input_dict['do_detection'] = self.engine.enqueue(input_dict)
         self.frame_queue.put_nowait(input_dict)
-        self.freespace_detection.enqueue(input_dict)
 
     def get_data(self, **kwargs):
         # wait until get points or thread quit
@@ -124,17 +113,6 @@ class DetectManager(ManagerTemplate):
                     break
             else:
                 self.logger.warn('tracking queue is Empty')
-        # wait until get freespace result or thread quit
-        while self.system.is_initialized:
-            freespace_dict = self.freespace_detection.get_output(block=True, timeout=1.0)
-            if freespace_dict:
-                if frame_dict['frame_start_timestamp'] != freespace_dict['frame_start_timestamp']:
-                    self.logger.warn('freespace output order is wrong!')
-                else:
-                    frame_dict.update(freespace_dict)
-                    break
-            else:
-                self.logger.warn('freespace queue is Empty')
 
         if not self.system.is_initialized:
             return dict()

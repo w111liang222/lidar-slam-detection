@@ -28,5 +28,4 @@ endif()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/slam/cmake)
 
 add_subdirectory(sensor_driver)
-add_subdirectory(freespace_detection)
 add_subdirectory(slam)
