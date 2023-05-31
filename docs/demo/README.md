@@ -29,6 +29,26 @@ LiDAR calibration aims to calculate the extrinsic transform between LiDAR coordi
 
 LSD use a semi-automatic method for LiDAR calibration. The method includes three steps: ground plane calibration, orientation calibration and refinement.
 
+### Ground Plane Calibration
+
+At this step, we can calculate the pitch, roll and z parameters to transform the pointcloud to z=0 ground coordinate system.
+
+1. draw the polygon that the points are fallback to the area of the ground.
+2. extract the points within the polygon (check the intersect number).
+3. detect the plane coefficients [a, b, c, d] by RANSAC fitting.
+4. calculate the rotation matrix and translation between [a, b, c, d] and [0, 0, 1, 0].
+
+### Orientation Calibration
+
+At this step, we calculate the yaw, x and y parameters to align the reference coordinate.
+
+1. select the specified points which the locations of points are already known.
+2. format the Ax=b and use the least square method to solve it.
+
+### Refinement
+
+We can select a LiDAR as the baseline and refine the extrinsic parameters to make better alignment.
+
 <img src="assets/lidar-calibration.png" width="720pix" />
 
 ## Camera Calibration
@@ -57,9 +77,22 @@ LSD use a semi-automatic method which needs to manually pick the cooresponding p
 
 LiDAR-INS/IMU Calibration aims to calulate the extrinsic transform between LiDAR coordinate system and INS/IMU coordinate system.
 
-The Calibration fomulate the cost function by sum the distance between points of serveral frames, then the libnlopt is used for solve the optimization problem.
+### LiDAR-INS Calibration
+
+We assume the INS can output accurate location and rotation information, then the calibration problem can be fomulated to minimize a cost function.
+
+The cost function is that sums the distance between points of serveral frames and the extrinsic parameter [x, y, z, r, p, y] is the variable and the libnlopt is used for solving the optimization problem.
 
 <img src="assets/lidar-ins-calibration.png" width="720pix" />
+
+### LiDAR-IMU Calibration
+
+We only calibrate the rotation part qli between LiDAR and IMU.
+
+- The transformation Ql of frame-by-frame of LiDAR is computed by GICP registration.
+- The rotation pose Qi in IMU coordinate system can be calculated by integrating the imu measurements.
+
+We can formulate the Ql * qli = Qi * qli, it is a homogeneous linear equation, so we can solve it by SVD.
 
 # Data Recoder
 
