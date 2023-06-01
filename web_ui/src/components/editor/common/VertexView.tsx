@@ -8,8 +8,8 @@ import ImageVertexView from "./ImageVertexView";
 
 export interface Props {
   config: Config;
-  boardConfig?: TSARI.Config;
-  vertexes?: TSARI.MapVertex;
+  boardConfig?: LSD.Config;
+  vertexes?: LSD.MapVertex;
   mapFrame: MapFrame;
   selectedVertex: string[];
   selectedVertexColor: number[];
@@ -73,7 +73,7 @@ export const VertexView = React.memo(
 
 interface IProps {
   config: Config;
-  vertexes?: TSARI.MapVertex;
+  vertexes?: LSD.MapVertex;
   selectedVertex: string[];
   selectedVertexColor: number[];
 }

@@ -13,9 +13,9 @@ import MapSave from "./MapSave";
 export interface Props {
   onEvent: any;
   config: Config;
-  vertex?: TSARI.MapVertex;
-  edge?: TSARI.MapEdge;
-  meta?: TSARI.MapMeta;
+  vertex?: LSD.MapVertex;
+  edge?: LSD.MapEdge;
+  meta?: LSD.MapMeta;
   selectVertex: string[];
   selectColor: number[];
   selectPoints?: Float32Array;

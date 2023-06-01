@@ -7,16 +7,16 @@ import Pointcloud from "@components/3d/PointcloudImage";
 export interface Props {
   maxNum?: number;
   points?: Float32Array;
-  imageData: TSARI.MapKeyframe["images"];
+  imageData: LSD.MapKeyframe["images"];
   config?: any;
-  boardConfig: TSARI.Config;
+  boardConfig: LSD.Config;
   insExtrinic: THREE.Matrix4;
   visible: boolean;
 }
 
 export default function PointCloudRGB({ maxNum, points, imageData, config, boardConfig, insExtrinic, visible }: Props) {
   const [cameraConfig, setCameraConfig] = useState<{
-    [index: string]: TSARI.Config["camera"][0];
+    [index: string]: LSD.Config["camera"][0];
   }>();
 
   useEffect(() => {
@@ -60,7 +60,7 @@ type IProps = {
   cameraName?: string;
   points?: Float32Array;
   imageData: Uint8Array;
-  cameraConfig?: { [index: string]: TSARI.Config["camera"][0] };
+  cameraConfig?: { [index: string]: LSD.Config["camera"][0] };
   insExtrinic: THREE.Matrix4;
   visible: boolean;
   config?: any;

@@ -10,7 +10,7 @@ import { Checkbox, Input, ListItemText, MenuItem, Select, Typography, SelectChan
 import { useInterval, useKeyPress, useLockFn, useSetState, useToggle } from "ahooks";
 
 type Frame = {
-  images: TSARI.Detection["images"];
+  images: LSD.Detection["images"];
 };
 
 export default function PanoramaCameraCalibrator({}) {

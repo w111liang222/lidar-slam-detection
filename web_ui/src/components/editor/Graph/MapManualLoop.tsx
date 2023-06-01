@@ -34,7 +34,7 @@ export default function MapManualLoop({ onEvent, onFinish, selectVertex, selectC
 
   const [point0, setPoint0] = useState<Float32Array>();
   const [point1, setPoint1] = useState<Float32Array>();
-  const [vertex, setVertex] = useState<TSARI.MapVertex>();
+  const [vertex, setVertex] = useState<LSD.MapVertex>();
   const [rotation, setRotation] = useState<[number, number, number, string]>([0, 0, 0, "XYZ"]);
   const [translation, setTranslation] = useState<[number, number, number]>([0, 0, 0]);
   const [estimate, setEstimate] = useState<THREE.Matrix4>(new THREE.Matrix4().identity());

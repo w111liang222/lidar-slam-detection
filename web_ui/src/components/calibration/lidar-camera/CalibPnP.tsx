@@ -15,7 +15,7 @@ import { useSessionStorageState } from "ahooks";
 export interface Props {
   points?: Float32Array;
   imageUrl?: string;
-  images?: TSARI.Detection["images"];
+  images?: LSD.Detection["images"];
   cameraName?: string;
   timestamp?: number;
   paused: boolean;

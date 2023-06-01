@@ -32,7 +32,7 @@ function eulerDeg2Rad(euler: any) {
 function CalibFinetune({ points, imageUrl, cameraName, timestamp, setCalibEnable }: Props, ref: any) {
   // useWhyDidYouUpdate("why", [points, imageUrl, timestamp]);
   const [cameraConfig, setCameraConfig] = useState<{
-    [index: string]: TSARI.Config["camera"][0];
+    [index: string]: LSD.Config["camera"][0];
   }>();
   useEffect(() => {
     getConfig().then((config) => {

@@ -19,7 +19,7 @@ import { MenuItem, Select, Typography } from "@mui/material";
 export default function Calibration() {
   const { t } = useTranslation();
 
-  const [lidarArray, setLidarArray] = useState<TSARI.Config["lidar"]>([]);
+  const [lidarArray, setLidarArray] = useState<LSD.Config["lidar"]>([]);
   useEffect(() => {
     getConfig().then((config) => setLidarArray(config.lidar));
   }, []);

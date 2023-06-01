@@ -3,7 +3,7 @@ import { Select, MenuItem } from "@mui/material";
 import { STEP } from "./Stepper";
 
 export interface Props {
-  lidarArray: TSARI.Config["lidar"];
+  lidarArray: LSD.Config["lidar"];
   lidarIndex: number | undefined;
   setLidarIndex: any;
   activeStep: number | undefined;

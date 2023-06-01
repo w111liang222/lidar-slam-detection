@@ -25,13 +25,13 @@ const validationSchema = yup.array().of(
   ).uniqueProperty("port", "duplicatedPorts")
 );
 
-type ILidar = TSARI.Config["lidar"][0];
+type ILidar = LSD.Config["lidar"][0];
 
 export interface Props {
   lidarDefaultArray: ILidar[];
   initialValues: ILidar[];
   t?: (x: string) => string;
-  status?: TSARI.Status;
+  status?: LSD.Status;
 }
 
 export interface Ref {

@@ -11,11 +11,11 @@ export type IProps = {
 
 export default function ColorMapViewer({ config, mannual }: IProps) {
   const [maxNum, setMaxNum] = useState(100e4);
-  const [points, setPoints] = useState<TSARI.PointCloud2>();
+  const [points, setPoints] = useState<LSD.PointCloud2>();
 
   const { run, cancel } = useRequest(() => getColorMap(), {
     pollingInterval: 3000,
-    onSuccess: (data: TSARI.PointCloud2 | undefined) => {
+    onSuccess: (data: LSD.PointCloud2 | undefined) => {
       if (data != undefined && data.points != undefined) {
         if (data.points.length > maxNum) {
           setMaxNum(Math.max(maxNum * 2, data.points.length + 100e4));

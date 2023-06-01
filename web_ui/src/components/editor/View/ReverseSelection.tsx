@@ -7,7 +7,7 @@ import { MapFrameIndex } from "..";
 export interface Props {
   onEvent: any;
   onFinish: any;
-  vertex?: TSARI.MapVertex;
+  vertex?: LSD.MapVertex;
   selectVertex: string[];
   selectPointIndex: MapFrameIndex;
 }

@@ -25,7 +25,7 @@ include_directories(
 # values used when registering plugins
 add_definitions(-DGST_PACKAGE_VERSION="3.5")
 add_definitions(-DGST_PACKAGE_LICENSE="LGPL")
-add_definitions(-DGST_PACKAGE_ORIGIN="https://tsari.tsinghua.edu.cn")
+add_definitions(-DGST_PACKAGE_ORIGIN="https://github.com/w111liang222/lidar-slam-detection")
 add_definitions(-DGST_PACKAGE_NAME="${CMAKE_PROJECT_NAME}")
 add_definitions(-DPACKAGE="${CMAKE_PROJECT_NAME} package")
 

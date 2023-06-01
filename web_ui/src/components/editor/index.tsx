@@ -64,15 +64,15 @@ function MapEditor({}, ref: any) {
     DEFAULT_PANEL_CONFIG
   );
   const [mapStep, setMapStep] = useState(config.map.step);
-  const [boardConfig, setBoardConfig] = useState<TSARI.Config>();
+  const [boardConfig, setBoardConfig] = useState<LSD.Config>();
   const menuRef = useRef<any>();
   const vertexInfoRef = useRef<any>();
   const edgeInfoRef = useRef<any>();
   const roiRef = useRef<any>();
 
-  const [vertex, setVertex] = useState<TSARI.MapVertex>({});
-  const [edge, setEdge] = useState<TSARI.MapEdge>({});
-  const [meta, setMeta] = useState<TSARI.MapMeta>({ vertex: {}, edge: {} });
+  const [vertex, setVertex] = useState<LSD.MapVertex>({});
+  const [edge, setEdge] = useState<LSD.MapEdge>({});
+  const [meta, setMeta] = useState<LSD.MapMeta>({ vertex: {}, edge: {} });
   const [mapFrame, setMapFrame] = useState<MapFrame>({});
   const [selectVertex, setSelectVertex] = useState<string[]>([]);
   const [selectColor, setSelectColor] = useState<number[]>([]);

@@ -21,7 +21,7 @@ export default function LidarRadarCalibration(dt = 100) {
     manual: true,
   });
 
-  const [radarArray, setRadarArray] = useState<TSARI.Config["radar"]>([]);
+  const [radarArray, setRadarArray] = useState<LSD.Config["radar"]>([]);
   useEffect(() => {
     getConfig().then((config) => setRadarArray(config.radar));
   }, []);

@@ -100,7 +100,7 @@ export default function Player({ className, currentFile, pause, setPause, onPlay
   const [isControl, setIsControl] = useState<boolean>(false);
   const [percent, setPercent] = useState<number>(0);
   const [open, setOpen] = useState(false);
-  const [recordFile, setRecordFile] = useState<TSARI.RecordFiles>({});
+  const [recordFile, setRecordFile] = useState<LSD.RecordFiles>({});
   const [selectIdx, setSelectIdx] = useState<string | undefined>(undefined);
   const [playRate, setPlayRate] = useState(1.0);
   const leftKeyPressed = useLeftKey();

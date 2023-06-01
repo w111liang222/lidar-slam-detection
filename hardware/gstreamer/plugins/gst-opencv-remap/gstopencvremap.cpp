@@ -85,7 +85,7 @@ gst_opencv_remap_class_init (GstOpencvRemapClass * klass)
                                           "OpencvRemap",
                                           "Generic/Filter",
                                           "OpenCV Remap",
-                                          "TSARI <liangwang@tsari.tsinghua.edu.cn>");
+                                          "LiangWang <15lwang@alumni.tongji.edu.cn>");
 
     gst_element_class_add_pad_template (gstelement_class,
                                         gst_static_pad_template_get (&src_template));

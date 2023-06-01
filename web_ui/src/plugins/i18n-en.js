@@ -386,7 +386,7 @@ const translation = {
 
   Help: "Help",
   MapAbout: "About",
-  aboutTitle: "TSARI Map Editor",
+  aboutTitle: "LSD Map Editor",
   // TViz
   AddMessage: "Add Message",
   AddChart: "Chart",

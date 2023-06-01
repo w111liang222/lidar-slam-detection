@@ -120,11 +120,11 @@ export default function Config() {
       if (!config) throw new Error("Empty config!");
       // if (boardRef.current && config?.board) {
       //   if (!boardRef.current.isValid) throw new Error();
-      //   config.board = boardRef.current.validationSchema.cast(boardRef.current.values) as TSARI.Config["board"];
+      //   config.board = boardRef.current.validationSchema.cast(boardRef.current.values) as LSD.Config["board"];
       // }
       if (modeRef.current && config?.pipeline) {
         if (!modeRef.current.isValid) throw new Error();
-        config.pipeline = modeRef.current.validationSchema.cast(modeRef.current.values) as TSARI.Config["pipeline"];
+        config.pipeline = modeRef.current.validationSchema.cast(modeRef.current.values) as LSD.Config["pipeline"];
       }
       if (lidarRef.current && config?.lidar) {
         if (!lidarRef.current.isValid) throw new Error();
@@ -146,7 +146,7 @@ export default function Config() {
 
       if (cameraRef.current && config?.camera) {
         if (!cameraRef.current.isValid) throw new Error();
-        config.camera = cameraRef.current.validationSchema.cast(cameraRef.current.values) as TSARI.Config["camera"];
+        config.camera = cameraRef.current.validationSchema.cast(cameraRef.current.values) as LSD.Config["camera"];
         config.camera = [...config.camera];
         let configCamera: CameraType[] = config.camera;
         configCamera.map(({ output_width, output_height }, index) => {
@@ -165,19 +165,19 @@ export default function Config() {
       }
       if (detectRef.current && config?.output) {
         if (!detectRef.current.isValid) throw new Error();
-        config.output = detectRef.current.validationSchema.cast(detectRef.current.values) as TSARI.Config["output"];
+        config.output = detectRef.current.validationSchema.cast(detectRef.current.values) as LSD.Config["output"];
         config.output = { ...config.output };
       }
       if (slamRef.current && config?.slam) {
         if (!slamRef.current.isValid) throw new Error();
-        config.slam = slamRef.current.validationSchema.cast(slamRef.current.values) as TSARI.Config["slam"];
+        config.slam = slamRef.current.validationSchema.cast(slamRef.current.values) as LSD.Config["slam"];
         config.slam = { ...config.slam };
       }
       if (outputRef.current && config?.output) {
         if (!outputRef.current.isValid) throw new Error();
         const configOutput = outputRef.current.validationSchema.cast(
           outputRef.current.values
-        ) as TSARI.Config["output"];
+        ) as LSD.Config["output"];
         config.output.protocol = { ...configOutput.protocol };
         config.output.localization = { ...configOutput.localization };
       }

@@ -2,7 +2,7 @@ import React from "react";
 import { Select, MenuItem, Input, Checkbox, ListItemText, SelectChangeEvent } from "@mui/material";
 
 export interface Props {
-  lidarArray: TSARI.Config["lidar"];
+  lidarArray: LSD.Config["lidar"];
   lidarIndex: number[];
   setLidarIndex: any;
   activeStep: number | undefined;

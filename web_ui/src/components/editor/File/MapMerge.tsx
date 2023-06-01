@@ -43,8 +43,8 @@ export default function MapMerge({ onFinish, onEvent }: Props) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectIdx, setSelectIdx] = useState<string | undefined>(undefined);
-  const [config, setConfig] = useState<TSARI.Config | undefined>(undefined);
-  const [recordFile, setRecordFile] = useState<TSARI.RecordFiles>({});
+  const [config, setConfig] = useState<LSD.Config | undefined>(undefined);
+  const [recordFile, setRecordFile] = useState<LSD.RecordFiles>({});
 
   useEffect(() => {
     getConfig().then((c) => {

@@ -138,4 +138,4 @@ type PointCloud2 = {
   type: string;
 };
 
-export as namespace TSARI;
+export as namespace LSD;

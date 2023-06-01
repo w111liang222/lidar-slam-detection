@@ -2,9 +2,9 @@
 <package format="2">
   <name>rosbag_proxy</name>
   <version>0.0.0</version>
-  <description>LidarPlus Rosbag Proxy</description>
+  <description>LSD Rosbag Proxy</description>
 
-  <maintainer email="wliang@tsari.tsinghua.edu.cn">koide</maintainer>
+  <maintainer email="15lwang@alumni.tongji.edu.cn">LiangWang</maintainer>
 
   <license>GPL</license>
 

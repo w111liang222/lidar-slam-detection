@@ -47,7 +47,7 @@ const validationSchema = yup.object({
   }),
 });
 
-type Value = TSARI.Config["output"];
+type Value = LSD.Config["output"];
 export interface Props {
   initialValues: Value;
   t?: (x: string | undefined) => string;

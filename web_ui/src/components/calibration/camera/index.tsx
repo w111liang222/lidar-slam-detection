@@ -11,7 +11,7 @@ import { useInterval, useKeyPress, useLockFn, useSetState, useToggle } from "aho
 
 type Frame = {
   imageUrl?: string;
-  images?: TSARI.Detection["images"];
+  images?: LSD.Detection["images"];
 };
 
 export default function CameraCalibrator({}) {

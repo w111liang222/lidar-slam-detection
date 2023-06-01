@@ -68,11 +68,11 @@ export type Props = {};
 export default function TViz({}: Props) {
   const { t } = useTranslation();
   const classes = useStyles();
-  const [boardConfig, setBoardConfig] = useState<TSARI.Config>();
+  const [boardConfig, setBoardConfig] = useState<LSD.Config>();
   const [pause, setPause] = useState(false);
   const [open, setOpen] = useState(false);
   const [chartOpen, setChartOpen] = useState(false);
-  const [messageMeta, setMessageMeta] = useState<TSARI.MessageMeta>();
+  const [messageMeta, setMessageMeta] = useState<LSD.MessageMeta>();
   const [selectMessage, setSelectMessage] = useState<number | undefined>(undefined);
   const [messageList, setMessageList] = useState<Map<string, string>>(new Map());
   const [messageConfig, setMessageConfig] = useState<Map<string, any>>(new Map());

@@ -62,7 +62,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
 
   const [pause, setPause] = useState(false);
   const [connect, setConnect] = useState(false);
-  const [frameData, setFrameData] = useState<TSARI.Detection>();
+  const [frameData, setFrameData] = useState<LSD.Detection>();
   const [insExtrinic, setInsExtrinic] = useState<THREE.Matrix4>();
   const [pointProp, setPointProp] = useState<IPointProp>();
   const [invPointProp, setInvPointProp] = useState<IPointProp>();
@@ -70,7 +70,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
   const [showMapSaving, setShowMapSaving] = useState(false);
   const [info, showMessage] = useInfoShow();
 
-  let onDataSuccess = async (data: TSARI.Detection) => {
+  let onDataSuccess = async (data: LSD.Detection) => {
     if (!connect) {
       setConnect(true);
       onFirstSuccess();
@@ -202,7 +202,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
     (import.meta.env.VITE_COMMIT_HASH as string) + "-config",
     DEFAULT_CONFIG
   );
-  const [boardConfig, setBoardConfig] = useState<TSARI.Config>();
+  const [boardConfig, setBoardConfig] = useState<LSD.Config>();
   const [mode, setMode] = useState("Detect");
 
   const padRef = useRef<SketchpadRef>();

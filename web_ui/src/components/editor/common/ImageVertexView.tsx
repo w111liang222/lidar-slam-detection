@@ -10,7 +10,7 @@ type Props = {
 
 export default function ImageVertexView({ id, config, isSelect }: Props) {
   const [vetexId, setVetexId] = useState<string>();
-  const [images, setImages] = useState<TSARI.MapKeyframe["images"]>({});
+  const [images, setImages] = useState<LSD.MapKeyframe["images"]>({});
 
   useEffect(() => {
     if (id != vetexId && isSelect) {

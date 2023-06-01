@@ -14,7 +14,7 @@ export interface Props {
 }
 
 function CalibBegin({ setCalibEnable, setStatusString, t = (x) => x || "" }: Props, ref: any) {
-  const [status, setStatus] = useState<TSARI.Status>();
+  const [status, setStatus] = useState<LSD.Status>();
 
   const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   config.polarGrid.visible = false;

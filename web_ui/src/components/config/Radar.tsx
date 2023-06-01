@@ -17,13 +17,13 @@ const validationSchema = yup.array().of(
   }) as any
 );
 
-type IRadar = TSARI.Config["radar"][0];
+type IRadar = LSD.Config["radar"][0];
 
 export interface Props {
   radarDefaultArray: IRadar[];
   initialValues: IRadar[];
   t?: (x: string) => string;
-  status?: TSARI.Status;
+  status?: LSD.Status;
 }
 
 export interface Ref {

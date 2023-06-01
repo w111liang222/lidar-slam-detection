@@ -44,7 +44,7 @@ const validationSchema = yup.object({
   }),
 }) as any;
 
-type IIns = TSARI.Config["ins"];
+type IIns = LSD.Config["ins"];
 
 export interface Props {
   initialValues: IIns;

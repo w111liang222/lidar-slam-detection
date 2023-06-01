@@ -22,7 +22,7 @@ export default function MyAppBar({
     <AppBar position="sticky">
       <Toolbar>
         <Logo {...{ toggle: toggleDeveloperMode }}>
-          <Typography variant="h4">{"TSARI"}</Typography>
+          <Typography variant="h4">{"LSD"}</Typography>
         </Logo>
         <LinkList links={userLinks} />
         {menuBars}

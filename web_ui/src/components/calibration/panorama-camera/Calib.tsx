@@ -9,7 +9,7 @@ import ImagePicker from "@components/3d/ImagePicker";
 import { useCtrlKey, useShiftKey } from "@hooks/keyboard";
 
 export interface Props {
-  images: TSARI.Detection["images"];
+  images: LSD.Detection["images"];
   cameraName: string[];
   paused: boolean;
   setCalibEnable: any;
@@ -18,7 +18,7 @@ export interface Props {
 }
 
 function Calib({ images, cameraName, paused, setCalibEnable, slideCameraIndex, setSlideCameraIndex }: Props, ref: any) {
-  const [frame, setFrame] = useState<TSARI.Detection["images"]>({});
+  const [frame, setFrame] = useState<LSD.Detection["images"]>({});
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [stitchImg, setStitchImg] = useState<string | undefined>(undefined);
   const [imageLeft, setImageLeft] = useState<string | undefined>(undefined);

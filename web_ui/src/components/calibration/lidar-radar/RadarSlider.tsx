@@ -4,7 +4,7 @@ import { STEP } from "./Stepper";
 import { Select, MenuItem } from "@mui/material";
 
 export interface Props {
-  radarArray: TSARI.Config["radar"];
+  radarArray: LSD.Config["radar"];
   radarIndex: number | undefined;
   setRadarIndex: any;
   setRadarPointcloud: any;

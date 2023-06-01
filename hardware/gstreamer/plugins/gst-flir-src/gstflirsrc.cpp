@@ -117,8 +117,8 @@ static void gst_flirsrc_class_init (GstFlirSrcClass * klass)
     gst_element_class_set_static_metadata (gstelement_class,
                                            "FLIR Camera Source",
                                            "Source/Video",
-                                           "TSARI FLIR Camera source",
-                                           "TSARI <liangwang@tsari.tsinghua.edu.cn>");
+                                           "FLIR Camera source",
+                                           "LiangWang <15lwang@alumni.tongji.edu.cn>");
 
     gstbasesrc_class->start = GST_DEBUG_FUNCPTR (gst_flirsrc_start);
     gstbasesrc_class->stop = GST_DEBUG_FUNCPTR (gst_flirsrc_stop);

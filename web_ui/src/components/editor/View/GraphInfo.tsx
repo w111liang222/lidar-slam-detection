@@ -18,7 +18,7 @@ import Draggable from "react-draggable";
 import { setMapVertexFix } from "@rpc/http";
 
 export interface Props {
-  meta?: TSARI.MapMeta;
+  meta?: LSD.MapMeta;
   onEvent: any;
   onClose: any;
 }

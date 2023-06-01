@@ -55,7 +55,7 @@ function Finetune({ pointsArray, targetLidarIndex, referenceLidarIndex, setCalib
   const [rotation, setRotation] = useState<[number, number, number, string]>([0, 0, 0, "XYZ"]);
   const [translation, setTranslation] = useState<[number, number, number]>([0, 0, 0]);
 
-  const [configdata, setConfigdata] = useState<TSARI.Config>();
+  const [configdata, setConfigdata] = useState<LSD.Config>();
   useEffect(() => {
     getConfig().then((config) => {
       if (config.lidar[0].exclude == undefined) {

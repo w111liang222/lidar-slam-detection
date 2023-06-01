@@ -46,7 +46,7 @@ for (let color of SensorCOLORS) {
 }
 
 export type Props = {
-  object: TSARI.IObject;
+  object: LSD.IObject;
   children?: React.ReactNode[] | React.ReactNode;
   visible?: boolean;
   planeVisible?: boolean;

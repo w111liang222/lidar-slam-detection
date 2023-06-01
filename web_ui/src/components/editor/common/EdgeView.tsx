@@ -5,8 +5,8 @@ import * as THREE from "three";
 import PoseView from "./PoseView";
 
 export interface Props {
-  vertexes: TSARI.MapVertex;
-  edges: TSARI.MapEdge;
+  vertexes: LSD.MapVertex;
+  edges: LSD.MapEdge;
   enable: boolean;
   selectEdge?: string;
   onVertexClick: any;

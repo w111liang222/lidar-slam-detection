@@ -17,7 +17,7 @@ import { useEffect, useImperativeHandle } from "react";
 
 const validationSchema = yup.array().of(yup.array().of(yup.string()));
 
-type IPIPE = TSARI.Config["pipeline"];
+type IPIPE = LSD.Config["pipeline"];
 
 export interface Props {
   initialValues: IPIPE;

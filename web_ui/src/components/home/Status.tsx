@@ -27,7 +27,7 @@ export default function Status({ t, normal, ...props }: Props) {
   const { data, run, cancel } = useRequest(getConfig, {
     pollingInterval: 1000,
     manual: true,
-    onSuccess: (data: TSARI.Config) => {
+    onSuccess: (data: LSD.Config) => {
       cancel();
       if (data.input.mode == "online") {
         setIsOnline(true);

@@ -51,7 +51,7 @@ export type CameraType = {
 export interface Props {
   initialValues: CameraType[];
   t?: (x: string) => string;
-  status?: TSARI.Status;
+  status?: LSD.Status;
 }
 
 export interface Ref {

@@ -53,7 +53,7 @@ export const DEFAULT_CONFIG = {
 export type Config = typeof DEFAULT_CONFIG;
 
 export type Props = {
-  frameData?: TSARI.Detection;
+  frameData?: LSD.Detection;
   rangeDrawer: any;
   config?: Config;
   props?: any;

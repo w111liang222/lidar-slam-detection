@@ -13,7 +13,7 @@ export interface Props {
 
 export default function PointCloudImages({ points, imageData, pointSize }: Props) {
   const [cameraConfig, setCameraConfig] = useState<{
-    [index: string]: TSARI.Config["camera"][0];
+    [index: string]: LSD.Config["camera"][0];
   }>();
   useEffect(() => {
     getConfig().then((config) => {
@@ -49,7 +49,7 @@ type IProps = {
   cameraName?: string;
   points?: Float32Array;
   imageData: Uint8Array;
-  cameraConfig?: { [index: string]: TSARI.Config["camera"][0] };
+  cameraConfig?: { [index: string]: LSD.Config["camera"][0] };
   pointSize: number;
 };
 

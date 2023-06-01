@@ -14,7 +14,7 @@ export interface Props {
   config: Config;
   onEvent: any;
   onFinish: any;
-  vertex?: TSARI.MapVertex;
+  vertex?: LSD.MapVertex;
 }
 
 export default function useSelector({ config, onEvent, onFinish, vertex }: Props): [React.ReactNode, any] {

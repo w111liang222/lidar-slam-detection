@@ -13,11 +13,11 @@ type IPointProp = {
 type Props = {
   id: string;
   points?: Float32Array;
-  images?: TSARI.MapKeyframe["images"];
+  images?: LSD.MapKeyframe["images"];
   color?: number;
   size: number;
   config?: any;
-  boardConfig?: TSARI.Config;
+  boardConfig?: LSD.Config;
   insExtrinic?: THREE.Matrix4;
   isSelect?: boolean;
   visible?: boolean;

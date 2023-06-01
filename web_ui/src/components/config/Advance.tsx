@@ -17,8 +17,8 @@ const validationSchema = yup.object({
 }) as any;
 
 type IAdvance = {
-  lidar: TSARI.Config["output"]["point_cloud"];
-  ins: TSARI.Config["ins"]["relay"];
+  lidar: LSD.Config["output"]["point_cloud"];
+  ins: LSD.Config["ins"]["relay"];
 };
 
 export interface Props {

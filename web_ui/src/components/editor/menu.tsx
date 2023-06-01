@@ -26,9 +26,9 @@ function MapMenu({ onEvent }: Props, ref: any) {
   const refs = [fileRef, graphRef, viewRef, helpRef];
 
   const [config, setConfig] = useState(DEFAULT_PANEL_CONFIG);
-  const [vertex, setVertex] = useState<TSARI.MapVertex>();
-  const [edge, setEdge] = useState<TSARI.MapEdge>();
-  const [meta, setMeta] = useState<TSARI.MapMeta>();
+  const [vertex, setVertex] = useState<LSD.MapVertex>();
+  const [edge, setEdge] = useState<LSD.MapEdge>();
+  const [meta, setMeta] = useState<LSD.MapMeta>();
 
   const [selectVertex, setSelectVertex] = useState<string[]>([]);
   const [selectColor, setSelectColor] = useState<number[]>([]);
@@ -47,7 +47,7 @@ function MapMenu({ onEvent }: Props, ref: any) {
     onConfig: (config: any) => {
       setConfig(config);
     },
-    onMapChanged: (vertex: TSARI.MapVertex, edge: TSARI.MapEdge, meta: TSARI.MapMeta) => {
+    onMapChanged: (vertex: LSD.MapVertex, edge: LSD.MapEdge, meta: LSD.MapMeta) => {
       setVertex(vertex);
       setEdge(edge);
       setMeta(meta);

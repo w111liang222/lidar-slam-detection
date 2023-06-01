@@ -16,7 +16,7 @@ export type Config = typeof DEFAULT_CONFIG;
 
 export interface Props {
   imageUrl?: string;
-  images?: TSARI.Detection["images"];
+  images?: LSD.Detection["images"];
   cameraName?: string;
   paused: boolean;
   setCalibEnable?: any;

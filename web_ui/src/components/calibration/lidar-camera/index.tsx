@@ -12,8 +12,8 @@ import CalibCheck from "./CalibCheck";
 type Frame = {
   timestamp?: number;
   imageUrl?: string;
-  points?: TSARI.Detection["points"];
-  images?: TSARI.Detection["images"];
+  points?: LSD.Detection["points"];
+  images?: LSD.Detection["images"];
 };
 
 export default function LidarCameraCalibrator({}) {

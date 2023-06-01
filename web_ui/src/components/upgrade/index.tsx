@@ -13,7 +13,7 @@ async function parse(file: File) {
   let meta = file.slice(0, 4 * 2 ** 10);
   const magic = await meta.slice(0, 5).text();
   console.log(magic);
-  if (magic !== "TSARI") {
+  if (magic !== "LSD") {
     return { valid: false };
   }
   meta = meta.slice(5);

@@ -28,11 +28,11 @@ export type Props = {
 function PointCloudMessage({ name, config, chartList, chart, setChart, chartConfig }: Props) {
   const { t } = useTranslation();
   const [maxNum, setMaxNum] = useState(100e4);
-  const [points, setPoints] = useState<TSARI.PointCloud2>();
+  const [points, setPoints] = useState<LSD.PointCloud2>();
 
   useRequest(() => getMessageData(name, "PointCloud"), {
     pollingInterval: 50,
-    onSuccess: (data: TSARI.PointCloud2 | undefined) => {
+    onSuccess: (data: LSD.PointCloud2 | undefined) => {
       if (data != undefined && data.points != undefined) {
         if (data.points.length >= maxNum) {
           setMaxNum(maxNum * 10);

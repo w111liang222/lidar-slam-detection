@@ -33,7 +33,7 @@ export async function licenceRegister(licence: string): Promise<string> {
   return response.data;
 }
 
-export async function getUsers(): Promise<TSARI.ClientUsers> {
+export async function getUsers(): Promise<LSD.ClientUsers> {
   const response = await axios.get("v1/client-users", { timeout: 2000 });
   return response.data;
 }
@@ -48,12 +48,12 @@ export async function removeBlackList(ip: string): Promise<string> {
   return response.data;
 }
 
-export async function getAvfuns(): Promise<TSARI.webStore> {
+export async function getAvfuns(): Promise<LSD.webStore> {
   const response = await axios.get("v1/get-web-store");
   return response.data;
 }
 
-export async function setAvfuns(store: TSARI.webStore): Promise<TSARI.webStore> {
+export async function setAvfuns(store: LSD.webStore): Promise<LSD.webStore> {
   const payload = {
     method: "set_web_store",
     params: {
@@ -65,12 +65,12 @@ export async function setAvfuns(store: TSARI.webStore): Promise<TSARI.webStore> 
   return (await axios.post("api/", payload)).data.result;
 }
 
-export async function getConfig(): Promise<TSARI.Config> {
+export async function getConfig(): Promise<LSD.Config> {
   const response = await axios.get("v1/config", { timeout: 5000 });
   return response.data;
 }
 
-export async function postConfig(config: TSARI.Config): Promise<{ status: string }> {
+export async function postConfig(config: LSD.Config): Promise<{ status: string }> {
   const response = await axios.post("v1/config", config);
   return response.data;
 }
@@ -81,7 +81,7 @@ export async function restoreConfig(): Promise<string> {
 }
 
 export async function getRoi(): Promise<{ roi: number[][]; inside: boolean }> {
-  const rois: TSARI.Config["roi"] = (await axios.get("v1/roi")).data;
+  const rois: LSD.Config["roi"] = (await axios.get("v1/roi")).data;
   if (rois.length === 0) return { roi: [], inside: true };
   else return { roi: rois[0].contour, inside: rois[0].include };
 }
@@ -114,13 +114,13 @@ export async function getSavingProgress(): Promise<string> {
   return (await axios.get("v1/get-save-progress")).data;
 }
 
-export async function getStatus(): Promise<TSARI.Status> {
+export async function getStatus(): Promise<LSD.Status> {
   const date = new Date().getTime();
   const response = await axios.post("v1/status", { host_date: date });
   return response.data;
 }
 
-export async function getPlayerStatus(): Promise<TSARI.PlayerStatus> {
+export async function getPlayerStatus(): Promise<LSD.PlayerStatus> {
   const response = await axios.get("v1/player-status");
   return response.data;
 }
@@ -145,12 +145,12 @@ export async function setPlayerStep(step: number): Promise<string> {
   return (await axios.post(`v1/player-step`, { step: step })).data;
 }
 
-export async function getRecordFiles(): Promise<TSARI.RecordFiles> {
+export async function getRecordFiles(): Promise<LSD.RecordFiles> {
   const response = await axios.get("v1/record-files");
   return response.data;
 }
 
-export async function getMapFiles(): Promise<TSARI.RecordFiles> {
+export async function getMapFiles(): Promise<LSD.RecordFiles> {
   const response = await axios.get("v1/map-files");
   return response.data;
 }
@@ -167,7 +167,7 @@ export async function mergeMapFile(file: string) {
   return await axios.post("v1/merge-map-file", { map_file: file });
 }
 
-export async function getDetection(displayOnImage: boolean = false, sampleStep = 0): Promise<TSARI.Detection> {
+export async function getDetection(displayOnImage: boolean = false, sampleStep = 0): Promise<LSD.Detection> {
   const r = await axios.post(
     `v1/detection-pb`,
     { display_on_image: displayOnImage, sample_size: sampleStep },
@@ -214,7 +214,7 @@ export async function getDetection(displayOnImage: boolean = false, sampleStep =
   };
 }
 
-export async function getSourceData(doDistort: boolean): Promise<TSARI.Detection> {
+export async function getSourceData(doDistort: boolean): Promise<LSD.Detection> {
   const r = await axios.post(`v1/source-data`, { do_distort: doDistort }, { responseType: "arraybuffer" });
   let det = Detection.decode(new Uint8Array(r.data)) as any as IDetection;
   let points = new Float32Array([]);
@@ -359,17 +359,17 @@ export function arrayToTransform(array: number[] | string) {
   );
 }
 
-export async function getMapVertex(): Promise<TSARI.MapVertex> {
+export async function getMapVertex(): Promise<LSD.MapVertex> {
   const response = await axios.get("v1/map-vertex");
   return response.data;
 }
 
-export async function getMapStatus(): Promise<TSARI.MapStatus> {
+export async function getMapStatus(): Promise<LSD.MapStatus> {
   const response = await axios.get("v1/map-status");
   return response.data;
 }
 
-export async function getMapEdge(): Promise<TSARI.MapEdge> {
+export async function getMapEdge(): Promise<LSD.MapEdge> {
   const payload = {
     method: "get_map_edge",
     params: {},
@@ -379,7 +379,7 @@ export async function getMapEdge(): Promise<TSARI.MapEdge> {
   return (await axios.post("api/", payload)).data.result;
 }
 
-export async function getMapMeta(): Promise<TSARI.MapMeta> {
+export async function getMapMeta(): Promise<LSD.MapMeta> {
   const payload = {
     method: "get_map_meta",
     params: {},
@@ -414,7 +414,7 @@ export async function getColorMap() {
   };
 }
 
-export async function getVertexData(id: string, item: string = "p"): Promise<TSARI.MapKeyframe> {
+export async function getVertexData(id: string, item: string = "p"): Promise<LSD.MapKeyframe> {
   const r = await axios.post(
     `v1/vertex-data`,
     { id: id, item: item },
@@ -608,7 +608,7 @@ export async function findCorners({
   imageData: Uint8Array;
   cameraName: string;
   config: object;
-}): Promise<TSARI.ImageCorner> {
+}): Promise<LSD.ImageCorner> {
   const payload = {
     method: "find_corners",
     params: {
@@ -637,7 +637,7 @@ export async function getHomography(
   pointsLeft: THREE.Vector3[],
   pointsRight: THREE.Vector3[],
   order: string
-): Promise<TSARI.ImageHomography> {
+): Promise<LSD.ImageHomography> {
   const payload = {
     method: "get_homography",
     params: {
@@ -711,7 +711,7 @@ export async function restartLidarInsCalibration() {
   return (await axios.post("api/", payload)).data;
 }
 
-export async function getPositionPoints(): Promise<TSARI.PositionPoints> {
+export async function getPositionPoints(): Promise<LSD.PositionPoints> {
   const r = await axios.get(`v1/get-position-points`, {
     responseType: "arraybuffer",
   });
@@ -780,7 +780,7 @@ export async function restartLidarImuCalibration() {
   return (await axios.post("api/", payload)).data;
 }
 
-export async function getImuPositionPoints(): Promise<TSARI.PositionPoints> {
+export async function getImuPositionPoints(): Promise<LSD.PositionPoints> {
   const r = await axios.get(`v1/get-imu-position-points`, {
     responseType: "arraybuffer",
   });
@@ -811,7 +811,7 @@ export async function calibrateLidarImu() {
   return (await axios.post("api/", payload)).data.result;
 }
 
-export async function getLidarImuLidarPoses(): Promise<TSARI.MapVertex> {
+export async function getLidarImuLidarPoses(): Promise<LSD.MapVertex> {
   const payload = {
     method: "lidar_imu_get_lidar_poses",
     jsonrpc: 2.0,
@@ -820,7 +820,7 @@ export async function getLidarImuLidarPoses(): Promise<TSARI.MapVertex> {
   return (await axios.post("api/", payload)).data.result;
 }
 
-export async function getLidarImuImuPoses(): Promise<TSARI.MapVertex> {
+export async function getLidarImuImuPoses(): Promise<LSD.MapVertex> {
   const payload = {
     method: "lidar_imu_get_imu_poses",
     jsonrpc: 2.0,
@@ -875,7 +875,7 @@ export async function stopMessageSubscribe() {
   return await axios.get("v1/stop-message-subscribe");
 }
 
-export async function getMessageMeta(): Promise<TSARI.MessageMeta> {
+export async function getMessageMeta(): Promise<LSD.MessageMeta> {
   const response = await axios.get("v1/get-message-meta");
   return response.data;
 }

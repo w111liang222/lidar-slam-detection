@@ -19,7 +19,7 @@ const validationSchema = yup.object({
   }),
 });
 
-type Value = TSARI.Config["output"];
+type Value = LSD.Config["output"];
 type ObjectKey = keyof Value["object"];
 export interface Props {
   initialValues: Value;

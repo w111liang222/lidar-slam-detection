@@ -45,7 +45,7 @@ export default function MapOpen({ onFinish, onEvent }: Props) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [tips, showMessage, closeMessage] = useTipsShow();
   const [selectIdx, setSelectIdx] = useState<string | undefined>(undefined);
-  const [recordFile, setRecordFile] = useState<TSARI.RecordFiles>({});
+  const [recordFile, setRecordFile] = useState<LSD.RecordFiles>({});
 
   const handleClickOpen = () => {
     getMapFiles().then((files) => {

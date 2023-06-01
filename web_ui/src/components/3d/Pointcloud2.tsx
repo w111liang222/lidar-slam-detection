@@ -11,7 +11,7 @@ const MAX_POINTS_NUM = 100e4;
 
 export type Props = {
   maxNum?: number;
-  points?: TSARI.PointCloud2;
+  points?: LSD.PointCloud2;
   onPointsUpdate?: () => void;
   color?: "gray" | "height" | "depth" | "intensity" | "rgb";
   size?: number;

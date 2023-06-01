@@ -77,11 +77,11 @@ const validationSchema = yup.object({
   }),
 });
 
-type ISLAM = TSARI.Config["slam"];
+type ISLAM = LSD.Config["slam"];
 
 export interface Props {
   initialValues: ISLAM;
-  config: TSARI.Config;
+  config: LSD.Config;
   t?: (x: string) => string;
 }
 

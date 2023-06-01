@@ -14,8 +14,8 @@ type InfoProp = {
 
 export interface Props {
   onEvent: any;
-  vertex: TSARI.MapVertex;
-  vertexMeta: TSARI.MapMeta["vertex"];
+  vertex: LSD.MapVertex;
+  vertexMeta: LSD.MapMeta["vertex"];
   selectVertex: string[];
   selectedVertexColor: number[];
 }

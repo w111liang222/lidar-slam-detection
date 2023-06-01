@@ -44,7 +44,7 @@ const validationSchema = yup.object({
   }),
 });
 
-type IBoard = TSARI.Config["board"];
+type IBoard = LSD.Config["board"];
 type NetworkError = FormikErrors<{
   DHCP: boolean;
   IP: string;

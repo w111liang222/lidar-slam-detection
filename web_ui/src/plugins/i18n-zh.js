@@ -408,7 +408,7 @@ const translation = {
 
   Help: "帮助",
   MapAbout: "关于",
-  aboutTitle: "TSARI 地图编辑软件",
+  aboutTitle: "LSD 地图编辑软件",
   // TViz
   AddMessage: "添加消息",
   AddChart: "曲线图",
