@@ -21,6 +21,10 @@ LSD currently supports many features:
 - [Mapping & Localization](docs/slam.md)
 - [Object Detection & Tracking](docs/detect.md)
 
+# Changelog
+
+[2023-06-01] [Web UI](web_ui/README.md)(js code of preview, tviz and map editor) is uploaded.
+
 # Prerequisites
 
 LSD can be worked both on x86 PC and Nvidia embedded boards (Xavier-NX, Xavier-AGX and Orin).

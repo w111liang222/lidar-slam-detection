@@ -1,0 +1,25 @@
+.tviz-left {
+  position: relative;
+  top: 0;
+  left: 75%;
+  height: 100%;
+  width: 25%;
+  background-color: rgb(255, 255, 255);
+}
+
+.tviz-right {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 75%;
+  background-color: #000;
+}
+
+.tviz-play {
+  position: fixed;
+  left: 37.5%;
+  bottom: 0;
+  transform: translate(-50%, -50%);
+  margin: 0 auto;
+}

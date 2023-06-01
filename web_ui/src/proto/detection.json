@@ -1,0 +1,445 @@
+{
+  "nested": {
+    "Point3D": {
+      "fields": {
+        "x": {
+          "rule": "required",
+          "type": "double",
+          "id": 1,
+          "options": {
+            "default": null
+          }
+        },
+        "y": {
+          "rule": "required",
+          "type": "double",
+          "id": 2,
+          "options": {
+            "default": null
+          }
+        },
+        "z": {
+          "rule": "required",
+          "type": "double",
+          "id": 3,
+          "options": {
+            "default": null
+          }
+        }
+      }
+    },
+    "Box3D": {
+      "fields": {
+        "center": {
+          "rule": "required",
+          "type": "Point3D",
+          "id": 1
+        },
+        "length": {
+          "rule": "required",
+          "type": "float",
+          "id": 2
+        },
+        "width": {
+          "rule": "required",
+          "type": "float",
+          "id": 3
+        },
+        "height": {
+          "rule": "required",
+          "type": "float",
+          "id": 4
+        },
+        "heading": {
+          "rule": "required",
+          "type": "float",
+          "id": 5
+        }
+      }
+    },
+    "Trajectory": {
+      "fields": {
+        "x": {
+          "rule": "required",
+          "type": "double",
+          "id": 1
+        },
+        "y": {
+          "rule": "required",
+          "type": "double",
+          "id": 2
+        },
+        "z": {
+          "rule": "required",
+          "type": "double",
+          "id": 3
+        },
+        "heading": {
+          "rule": "required",
+          "type": "float",
+          "id": 4
+        },
+        "velocityX": {
+          "rule": "required",
+          "type": "float",
+          "id": 5
+        },
+        "velocityY": {
+          "rule": "required",
+          "type": "float",
+          "id": 6
+        },
+        "relativeTimestamp": {
+          "rule": "required",
+          "type": "uint64",
+          "id": 7
+        }
+      }
+    },
+    "Header": {
+      "fields": {
+        "version": {
+          "type": "bytes",
+          "id": 1
+        },
+        "timestamp": {
+          "type": "uint64",
+          "id": 2
+        },
+        "relativeTimestamp": {
+          "type": "uint64",
+          "id": 3
+        },
+        "fps": {
+          "type": "float",
+          "id": 4
+        }
+      }
+    },
+    "Pose": {
+      "fields": {
+        "x": {
+          "rule": "required",
+          "type": "float",
+          "id": 1
+        },
+        "y": {
+          "rule": "required",
+          "type": "float",
+          "id": 2
+        },
+        "z": {
+          "rule": "required",
+          "type": "float",
+          "id": 3
+        },
+        "heading": {
+          "rule": "required",
+          "type": "float",
+          "id": 4
+        },
+        "pitch": {
+          "rule": "required",
+          "type": "float",
+          "id": 5
+        },
+        "roll": {
+          "rule": "required",
+          "type": "float",
+          "id": 6
+        },
+        "latitude": {
+          "type": "double",
+          "id": 7
+        },
+        "longitude": {
+          "type": "double",
+          "id": 8
+        },
+        "altitude": {
+          "type": "double",
+          "id": 9
+        },
+        "status": {
+          "type": "int32",
+          "id": 10
+        },
+        "state": {
+          "type": "string",
+          "id": 11
+        }
+      }
+    },
+    "Object": {
+      "fields": {
+        "id": {
+          "rule": "required",
+          "type": "uint32",
+          "id": 1
+        },
+        "type": {
+          "rule": "required",
+          "type": "Type",
+          "id": 2
+        },
+        "confidence": {
+          "rule": "required",
+          "type": "float",
+          "id": 3
+        },
+        "box": {
+          "rule": "required",
+          "type": "Box3D",
+          "id": 4
+        },
+        "velocityX": {
+          "rule": "required",
+          "type": "float",
+          "id": 5
+        },
+        "velocityY": {
+          "rule": "required",
+          "type": "float",
+          "id": 6
+        },
+        "angleRate": {
+          "rule": "required",
+          "type": "float",
+          "id": 7
+        },
+        "accelX": {
+          "rule": "required",
+          "type": "float",
+          "id": 8
+        },
+        "valid": {
+          "rule": "required",
+          "type": "bool",
+          "id": 9
+        },
+        "status": {
+          "rule": "required",
+          "type": "Status",
+          "id": 10
+        },
+        "age": {
+          "rule": "required",
+          "type": "uint32",
+          "id": 11
+        },
+        "trajectory": {
+          "rule": "repeated",
+          "type": "Trajectory",
+          "id": 12
+        },
+        "sensor": {
+          "rule": "required",
+          "type": "SensorType",
+          "id": 13
+        }
+      },
+      "nested": {
+        "Type": {
+          "values": {
+            "UNKNOWN": 0,
+            "VEHICLE": 1,
+            "PEDESTRIAN": 2,
+            "CYCLIST": 3,
+            "CONE": 4
+          }
+        },
+        "Status": {
+          "values": {
+            "UNDEFINED": 0,
+            "STATIC": 1,
+            "STOPPED": 2,
+            "MOVING": 3
+          }
+        },
+        "SensorType": {
+          "values": {
+            "LIDAR": 0,
+            "CAMERA": 1,
+            "RADAR": 2,
+            "LIDAR_CAMERA": 3,
+            "RADAR_CAMERA": 4,
+            "LIDAR_RADAR_CAMERA": 5
+          }
+        }
+      }
+    },
+    "FreespaceInfo": {
+      "fields": {
+        "xMin": {
+          "rule": "required",
+          "type": "float",
+          "id": 1
+        },
+        "xMax": {
+          "rule": "required",
+          "type": "float",
+          "id": 2
+        },
+        "yMin": {
+          "rule": "required",
+          "type": "float",
+          "id": 3
+        },
+        "yMax": {
+          "rule": "required",
+          "type": "float",
+          "id": 4
+        },
+        "zMin": {
+          "rule": "required",
+          "type": "float",
+          "id": 5
+        },
+        "zMax": {
+          "rule": "required",
+          "type": "float",
+          "id": 6
+        },
+        "resolution": {
+          "rule": "required",
+          "type": "float",
+          "id": 7
+        },
+        "xNum": {
+          "rule": "required",
+          "type": "int64",
+          "id": 8
+        },
+        "yNum": {
+          "rule": "required",
+          "type": "int64",
+          "id": 9
+        }
+      }
+    },
+    "Freespace": {
+      "fields": {
+        "info": {
+          "type": "FreespaceInfo",
+          "id": 1
+        },
+        "cells": {
+          "type": "bytes",
+          "id": 2
+        }
+      }
+    },
+    "CameraImage": {
+      "fields": {
+        "cameraName": {
+          "rule": "required",
+          "type": "string",
+          "id": 1
+        },
+        "image": {
+          "rule": "required",
+          "type": "bytes",
+          "id": 2
+        }
+      }
+    },
+    "Radar": {
+      "fields": {
+        "radarName": {
+          "type": "string",
+          "id": 1
+        },
+        "radarObject": {
+          "rule": "repeated",
+          "type": "Object",
+          "id": 2
+        }
+      }
+    },
+    "Detection": {
+      "fields": {
+        "header": {
+          "type": "Header",
+          "id": 1
+        },
+        "object": {
+          "rule": "repeated",
+          "type": "Object",
+          "id": 2
+        },
+        "freespace": {
+          "type": "bytes",
+          "id": 3
+        },
+        "points": {
+          "type": "bytes",
+          "id": 4
+        },
+        "image": {
+          "rule": "repeated",
+          "type": "CameraImage",
+          "id": 5
+        },
+        "radar": {
+          "rule": "repeated",
+          "type": "Radar",
+          "id": 6
+        },
+        "pose": {
+          "type": "Pose",
+          "id": 7
+        }
+      }
+    },
+    "LidarPointcloud": {
+      "fields": {
+        "lidarName": {
+          "rule": "required",
+          "type": "string",
+          "id": 1
+        },
+        "points": {
+          "rule": "required",
+          "type": "bytes",
+          "id": 2
+        },
+        "attr": {
+          "type": "bytes",
+          "id": 3
+        },
+        "type": {
+          "type": "string",
+          "id": 4
+        }
+      }
+    },
+    "CameraImageBytes": {
+      "fields": {
+        "cameraName": {
+          "rule": "required",
+          "type": "string",
+          "id": 1
+        },
+        "image": {
+          "rule": "required",
+          "type": "bytes",
+          "id": 2
+        }
+      }
+    },
+    "LidarPointcloudMap": {
+      "fields": {
+        "lp": {
+          "rule": "repeated",
+          "type": "LidarPointcloud",
+          "id": 1
+        },
+        "image": {
+          "rule": "repeated",
+          "type": "CameraImageBytes",
+          "id": 2
+        }
+      }
+    }
+  }
+}

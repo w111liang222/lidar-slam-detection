@@ -1,0 +1,137 @@
+syntax = "proto2";
+
+message Point3D {
+    required double x = 1 [default = nan];  // m
+    required double y = 2 [default = nan];  // m
+    required double z = 3 [default = nan];  // m
+}
+
+message Box3D {
+    required Point3D center = 1;            // center coordinate of the object
+    required float length = 2;              // m
+    required float width = 3;               // m
+    required float height = 4;              // m
+    required float heading = 5;             // rad, 0: -x, pi/2: +y, pi: +x, -pi/2: -y, [-pi, +pi)
+}
+
+message Trajectory {
+    required double x = 1;                  // m
+    required double y = 2;                  // m
+    required double z = 3;                  // m
+    required float heading = 4;             // rad, 0: -x, pi/2: +y, pi: +x, -pi/2: -y, [-pi, +pi)
+    required float velocity_x = 5;          // m/s
+    required float velocity_y = 6;          // m/s
+    required uint64 relative_timestamp = 7; // timestamp of this trajectory relative to the scan start time in us
+}
+
+message Header {
+    optional bytes version = 1;
+    optional uint64 timestamp = 2;          // the start timestamp is from the frame arrival
+    optional uint64 relative_timestamp = 3; // timestamp of this frame relative to the scan start time in us
+    optional float fps = 4;                 // system running frequence
+}
+
+message Pose {
+    required float x = 1;                   // m
+    required float y = 2;                   // m
+    required float z = 3;                   // m
+    required float heading = 4;             // deg
+    required float pitch = 5;               // deg
+    required float roll = 6;                // deg
+    optional double latitude = 7;           // deg
+    optional double longitude = 8;          // deg
+    optional double altitude = 9;           // m
+    optional int32 status = 10;             // enum
+    optional string state = 11;
+}
+
+message Object {
+    required uint32 id = 1;                 // new obstacles are given the last used free ID [0, 255]
+    enum Type {
+        UNKNOWN = 0;
+        VEHICLE = 1;
+        PEDESTRIAN = 2;
+        CYCLIST = 3;
+        CONE = 4;
+    };
+    enum Status {
+        UNDEFINED = 0;
+        STATIC = 1;
+        STOPPED = 2;
+        MOVING = 3;
+    };
+    enum SensorType {
+        LIDAR = 0;
+        CAMERA = 1;
+        RADAR = 2;
+        LIDAR_CAMERA = 3;
+        RADAR_CAMERA = 4;
+        LIDAR_RADAR_CAMERA = 5;
+    };
+    required Type  type = 2;
+    required float confidence = 3;          // confidence of the object [0, 1.0]
+    required Box3D box = 4;
+    required float velocity_x = 5;          // m/s
+    required float velocity_y = 6;          // m/s
+    required float angle_rate = 7;          // rad/s
+    required float accel_x = 8;             // m/s^2
+    required bool  valid = 9;               // True: New valid (detected this frame), False: Older valid
+    required Status status = 10;
+    required uint32 age = 11;               // the age of the object (in frames). This value starts at 1 when the obstacle is first detected, and increments in 1 each frame. (1 ~ 255)
+    repeated Trajectory trajectory = 12;    // prediction trajectory of object
+    required SensorType sensor = 13;        // sensors are used to detect the objects
+}
+
+message FreespaceInfo {
+    required float x_min = 1;               // m
+    required float x_max = 2;               // m
+    required float y_min = 3;               // m
+    required float y_max = 4;               // m
+    required float z_min = 5;               // m
+    required float z_max = 6;               // m
+    required float resolution = 7;          // m, cell resolution
+    required int64 x_num = 8;               // cell num of x axis
+    required int64 y_num = 9;               // cell num of y axis
+}
+
+message Freespace {
+    optional FreespaceInfo info = 1;
+    optional bytes cells = 2;
+}
+
+message CameraImage {
+    required string camera_name = 1;
+    required bytes image = 2;               // jpeg encoding bytes
+}
+
+message Radar {
+    optional string radar_name = 1;
+    repeated Object radar_object = 2;
+}
+
+message Detection {
+    optional Header header = 1;
+    repeated Object object = 2;
+    optional bytes freespace = 3;           // protobuf string bytes of Freespace
+    optional bytes points = 4;
+    repeated CameraImage image = 5;
+    repeated Radar radar = 6;
+    optional Pose pose = 7;
+}
+
+message LidarPointcloud {
+    required string lidar_name = 1;
+    required bytes points = 2;
+    optional bytes attr = 3;
+    optional string type = 4;
+}
+
+message CameraImageBytes {
+    required string camera_name = 1;
+    required bytes image = 2;
+}
+
+message LidarPointcloudMap {
+    repeated LidarPointcloud lp = 1;
+    repeated CameraImageBytes image = 2;
+}

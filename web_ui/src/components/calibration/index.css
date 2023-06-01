@@ -1,0 +1,54 @@
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+.calibration-tab {
+  position: fixed;
+  height: 100vh;
+  width: 100vw;
+  top: 0;
+  left: 0;
+  background-color: #000000;
+  z-index: -1;
+}
+.finetune-panel {
+  width: 15%;
+  position: absolute;
+  right: 0;
+  padding: 1rem;
+  margin-top: 1rem;
+  margin-right: 1rem;
+  border-radius: 0.5rem;
+}
+.finetune-panel-exclude {
+  width: 15%;
+  position: absolute;
+  right: 0;
+  padding: 1rem;
+  margin-top: 16.5rem;
+  margin-right: 1rem;
+  border-radius: 0.5rem;
+}
+.form-panel {
+  width: 25%;
+  min-width: 400px;
+  position: absolute;
+  right: 1rem;
+  border-radius: 1rem;
+}
+
+.frameform-panel {
+  width: 25%;
+  min-width: 300px;
+  position: absolute;
+  margin-top: 0.5rem;
+  right: 0.5rem;
+  font-size: 14px;
+  border-radius: 1rem;
+}

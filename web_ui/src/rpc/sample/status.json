@@ -1,0 +1,17 @@
+{
+  "active_clients": ["::1"],
+  "camera": {
+    "0": { "h": 480, "in_h": 1080, "in_w": 1920, "valid": true, "w": 640 },
+    "1": { "h": 480, "in_h": 1080, "in_w": 1920, "valid": true, "w": 640 }
+  },
+  "disk": {
+    "disk_name": "Backup",
+    "has_disk": true,
+    "status": false,
+    "total": 976521536.0,
+    "used_percent": 0.66
+  },
+  "ins": { "received_count": 0, "valid_count": 0 },
+  "status": "Running",
+  "time": "2021-09-16 17:24:54"
+}
