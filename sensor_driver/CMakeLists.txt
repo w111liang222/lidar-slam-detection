@@ -39,6 +39,7 @@ add_subdirectory(common_lib/logging)
 add_subdirectory(common_lib/network_driver)
 add_subdirectory(common_lib/cpp_utils)
 add_subdirectory(common_lib/iou3d_nms)
+add_subdirectory(point2voxel/voxelize)
 add_subdirectory(lidar_driver)
 add_subdirectory(ins_driver)
 add_subdirectory(radar_driver)
@@ -74,6 +75,7 @@ set_target_properties(point2voxel_ext PROPERTIES PREFIX "")
 set_target_properties(point2voxel_ext PROPERTIES SUFFIX ".so")
 target_link_libraries(point2voxel_ext
     PRIVATE ${PYTHON_LIBARIES}
+    voxelization
 )
 
 pybind11_add_module(cpp_utils_ext common_lib/cpp_utils/cpp_utils.h common_lib/cpp_utils/all.cpp)

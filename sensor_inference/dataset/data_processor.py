@@ -69,8 +69,7 @@ class DataProcessor(object):
         else:
             idx = min(int(num_points / 1000), 500) - 1
             shuffle_idx = self.shuffle_idxs[idx]
-        max_points = min(shuffle_idx.shape[0], config.MAX_POINTS)
-        voxel_output = voxel_generator.generate(points, shuffle_idx, max_points)
+        voxel_output = voxel_generator.generate(points, shuffle_idx, config.MAX_POINTS)
         if isinstance(voxel_output, dict):
             voxels, coordinates, mask = \
                 voxel_output['voxels'], voxel_output['coordinates'], voxel_output["voxel_point_mask"]

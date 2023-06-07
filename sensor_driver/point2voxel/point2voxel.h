@@ -26,9 +26,10 @@
 #include <chrono>
 #include <numeric>
 
-namespace spconv {
 namespace py = pybind11;
 using namespace pybind11::literals;
+
+namespace spconv {
 
 template <typename DType, int NDim>
 int points_to_voxel_3d_np(py::array_t<DType> points, py::array_t<DType> voxels,
@@ -47,7 +48,7 @@ int points_to_voxel_3d_np(py::array_t<DType> points, py::array_t<DType> voxels,
   std::vector<int> num_points_per_voxel_rw(max_voxels, 0);
   auto coor_to_voxelidx_rw = coor_to_voxelidx.mutable_unchecked<NDim>();
   auto shuffle_idx_rw = shuffle_idx.template mutable_unchecked<1>();
-  auto N = max_points_use;
+  auto N = std::min(int(shuffle_idx_rw.shape(0)), max_points_use);
 
   auto num_features = points_rw.shape(1);
   int voxel_num = 0;
@@ -110,3 +111,38 @@ int points_to_voxel_3d_np(py::array_t<DType> points, py::array_t<DType> voxels,
 }
 
 } // namespace spconv
+
+#ifdef HAS_CUDA_ENABLE
+#include "voxelization.hpp"
+
+int points_to_voxel_3d_cuda(py::array_t<float> points, py::array_t<float> voxels,
+                            py::array_t<float> voxel_point_mask,
+                            py::array_t<int> coors,
+                            py::array_t<int> coor_to_voxelidx,
+                            std::vector<float> voxel_size,
+                            std::vector<float> coors_range, int max_points,
+                            int max_voxels,
+                            py::array_t<int> shuffle_idx,
+                            int max_points_use) {
+  VoxelizationParameter voxelization;
+  voxelization.min_range  = nvtype::Float3(coors_range[0], coors_range[1], coors_range[2]);
+  voxelization.max_range  = nvtype::Float3(coors_range[3], coors_range[4], coors_range[5]);
+  voxelization.voxel_size = nvtype::Float3(voxel_size[0], voxel_size[1], voxel_size[2]);
+  voxelization.grid_size  = voxelization.compute_grid_size(voxelization.max_range, voxelization.min_range, voxelization.voxel_size);
+  voxelization.max_points_per_voxel = max_points;
+  voxelization.max_points = max_points_use;
+  voxelization.max_voxels = max_voxels;
+  voxelization.num_feature = 4;
+
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
+  std::shared_ptr<Voxelization> voxelizer = create_voxelization(voxelization);
+
+  int num_points = std::min(int(points.unchecked<2>().shape(0)), max_points_use);
+  voxelizer->forward(points.data(), num_points, CoordinateOrder::ZYX,
+                     voxels.mutable_data(), coors.mutable_data(), voxel_point_mask.mutable_data(), stream);
+
+  return voxelizer->num_voxels();
+}
+
+#endif
