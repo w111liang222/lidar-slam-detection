@@ -86,6 +86,8 @@ bool Localization::init(InitParameter &param) {
     result = mMap->reloadGraph();
   }
   if (!result) {
+    LOG_ERROR("Map Loader: error to load map: {}", mConfig.map_path);
+    mMap.reset(new MapLoader());
     return false;
   }
 

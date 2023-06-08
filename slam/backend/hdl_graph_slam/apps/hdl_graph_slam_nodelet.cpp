@@ -1054,11 +1054,15 @@ bool graph_load_impl(hdl_graph_slam::HdlGraphSlamNodelet &graph_, const std::str
 
   for (auto &kf : kfs) {
     if(graph_.graph_slam->graph->vertices().find(kf->mId) == graph_.graph_slam->graph->vertices().end()) {
-      LOG_WARN("Vertex ID {} does not exist!!", kf->mId);
+      LOG_WARN("Vertex ID {} does not exist in graph.g2o", kf->mId);
       return false;
     }
 
     auto node = dynamic_cast<g2o::VertexSE3*>(graph_.graph_slam->graph->vertices()[kf->mId]);
+    if (node == nullptr) {
+      LOG_ERROR("Vertex ID {} is not g2o::VertexSE3 type in graph.g2o", kf->mId);
+      return false;
+    }
     node->setEstimate(kf->mOdom);
   }
 
