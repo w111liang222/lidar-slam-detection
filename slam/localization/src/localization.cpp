@@ -19,7 +19,10 @@ void Localization::mergeMap(const std::string &directory, std::vector<std::share
   std::unique_ptr<MapLoader> newMap(new MapLoader());
   InitParameter param = mConfig;
   param.map_path = directory;
-  newMap->init(param, true);
+  if (!newMap->init(param, true)) {
+    LOG_ERROR("Map Merge: failed to load map: {}", param.map_path);
+    return;
+  }
   frames = newMap->mKeyFramesWhole;
   mMap->mergeMap(newMap.get());
   newMap.reset(nullptr);

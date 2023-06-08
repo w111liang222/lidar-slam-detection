@@ -39,6 +39,7 @@
 namespace hdl_graph_slam {
 
 const int ODOMETRY_LOCAL_MAP_NUM = 100000;
+const int NORMAL_VERTEX_ID_OFFSET = 100000;
 
 class HdlGraphSlamNodelet {
 public:
@@ -97,7 +98,7 @@ public:
     // gps_edge_stddev_xy = 20.0;
     // gps_edge_stddev_z = 5.0;
     floor_edge_stddev = 10.0;
-    floor_node_id = 100000; // floor node id start from 100000 -
+    floor_node_id = NORMAL_VERTEX_ID_OFFSET; // floor node id start from 100000 -
     floor_height = 0;
 
     imu_time_offset = 0.0;
@@ -1052,7 +1053,10 @@ bool graph_load_impl(hdl_graph_slam::HdlGraphSlamNodelet &graph_, const std::str
   }
   graph_.graph_slam->max_edge_id = edge_id_gen;
 
+  // check the consistent between graph and keyframes
+  std::set<int> keyframe_id_map;
   for (auto &kf : kfs) {
+    keyframe_id_map.insert(kf->mId);
     if(graph_.graph_slam->graph->vertices().find(kf->mId) == graph_.graph_slam->graph->vertices().end()) {
       LOG_WARN("Vertex ID {} does not exist in graph.g2o", kf->mId);
       return false;
@@ -1064,6 +1068,15 @@ bool graph_load_impl(hdl_graph_slam::HdlGraphSlamNodelet &graph_, const std::str
       return false;
     }
     node->setEstimate(kf->mOdom);
+  }
+
+  auto graph_vertices = graph_.graph_slam->graph->vertices();
+  for (auto &v : graph_vertices) {
+    auto node = dynamic_cast<g2o::VertexSE3*>(v.second);
+    if (node != nullptr && keyframe_id_map.find(v.first) == keyframe_id_map.end()) {
+      LOG_WARN("Vertex ID {} does not exist in keyframe", v.first);
+      graph_.graph_slam->del_se3_node(node);
+    }
   }
 
   // load special nodes from file
@@ -1141,7 +1154,7 @@ bool graph_merge(const std::string& directory, std::vector<std::shared_ptr<KeyFr
   }
 
   int max_se3_vertex_id = 0;
-  int max_normal_vertex_id = 0;
+  int max_normal_vertex_id = hdl_graph_slam::NORMAL_VERTEX_ID_OFFSET;
   int max_edge_id = 0;
 
   for(const auto& vertex : graphNode.graph_slam->graph->vertices()) {

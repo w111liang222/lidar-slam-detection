@@ -248,7 +248,7 @@ class MapManager():
                 continue
 
             try:
-                dir_path = file_path + '/{0:06d}'.format(self.save_keyframe_idx)
+                dir_path = file_path + '/{0:06d}'.format(int(idx))
                 do_mkdir(dir_path)
                 slam.dump_keyframe(dir_path, stamps[idx], int(idx), points[idx], pose[idx])
                 # write meta data and images

@@ -345,8 +345,13 @@ int GraphSLAM::optimize(int num_iterations) {
 void GraphSLAM::save(const std::string& filename) {
   g2o::SparseOptimizer* graph = dynamic_cast<g2o::SparseOptimizer*>(this->graph.get());
 
+  g2o::HyperGraph::VertexSet vertices_to_save;
+  for(const auto& v : graph->vertices()) {
+    vertices_to_save.insert(v.second);
+  }
+
   std::ofstream ofs(filename);
-  graph->save(ofs);
+  graph->saveSubset(ofs, vertices_to_save);
 
   g2o::save_robust_kernels(filename + ".kernels", graph);
 }
