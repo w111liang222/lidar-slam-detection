@@ -286,12 +286,12 @@ class CameraDataManager(DataManagerTemplate):
 
     def get_data_online(self, data_dict):
         if not bool(self.camera):
-            return {'image_valid' : False, 'image' : dict()}
+            return {'image_valid' : False, 'image' : dict(), 'image_param' : dict()}
 
         timeout = 0 if 'frame_start_timestamp' in data_dict else 1.0
         frame_dict = self.get_loop_data(timeout)
         if not bool(frame_dict):
-            return {'image_valid' : False, 'image' : dict()}
+            return {'image_valid' : False, 'image' : dict(), 'image_param' : dict()}
 
         if 'frame_start_timestamp' not in data_dict:
             data_dict['frame_start_timestamp'] = int(time.time() * 1000000)
@@ -306,7 +306,7 @@ class CameraDataManager(DataManagerTemplate):
         return data
 
     def get_data_offline(self, data_dict):
-        return {'image_valid' : False, 'image' : dict()}
+        return {'image_valid' : False, 'image' : dict(), 'image_param' : dict()}
 
 class CameraJpegDataManager(DataManagerTemplate):
     def __init__(self, cfgs, data_cfg, logger=None):
