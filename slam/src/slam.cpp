@@ -392,22 +392,35 @@ void SLAM::runLocalizationThread() {
   LOG_INFO("start localization output, destination {}:{}", mDestinationIP, mDestinationPort);
 
   bool isLocalizationOutput = false;
+  bool isImuOnline = true;
   std::unique_ptr<UDPServer> slamUDPServer(new UDPServer(0));
   while (mThreadStart) {
     std::string message;
-    mUnixServer->Recv(message);
+    isImuOnline = (mUnixServer->Recv(message, isImuOnline ? 100000 : 10000) != 0);
 
     RTKType rtk;
     bool found = parseGPCHC(message, rtk);
-    if (found) {
+    if (found || !isImuOnline) {
       Eigen::Matrix4d pose;
-      if (!mSlam->getTimedPose(rtk, pose)) {
-        if (isLocalizationOutput) {
+      bool pose_valid = false;
+      if (isImuOnline) {
+        pose_valid = mSlam->getTimedPose(rtk, pose);
+      }
+      if (!pose_valid) {
+        rtk.timestamp = getCurrentTime();
+        pose_valid = mSlam->getTimedPose(getCurrentTime(), pose);
+        LOG_WARN("localization has no imu to predict, only based on motion model");
+      }
+
+      if (!pose_valid && !isImuOnline) {
+        continue;
+      } else if (!pose_valid && isImuOnline) {
+        if (isImuOnline && isLocalizationOutput) {
           isLocalizationOutput = false;
           LOG_WARN("localization output switch to rtk only mode");
         }
       } else {
-        if (!isLocalizationOutput) {
+        if (isImuOnline && !isLocalizationOutput) {
           isLocalizationOutput = true;
           LOG_INFO("localization output switch to fusion mode");
         }
