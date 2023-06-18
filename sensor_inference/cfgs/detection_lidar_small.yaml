@@ -11,7 +11,7 @@ DATA_CONFIG:
     }
     DATA_PROCESSOR:
         - NAME: transform_points_to_voxels
-          MAX_POINTS: 100000
+          MAX_POINTS: 200000
           VOXEL_SIZE: [0.32, 0.32, 6]
           MAX_POINTS_PER_VOXEL: 20
           MAX_NUMBER_OF_VOXELS: {
