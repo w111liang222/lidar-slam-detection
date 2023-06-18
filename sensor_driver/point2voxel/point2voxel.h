@@ -142,6 +142,7 @@ int points_to_voxel_3d_cuda(py::array_t<float> points, py::array_t<float> voxels
   voxelizer->forward(points.data(), num_points, CoordinateOrder::ZYX,
                      voxels.mutable_data(), coors.mutable_data(), voxel_point_mask.mutable_data(), stream);
 
+  checkRuntime(cudaStreamDestroy(stream));
   return voxelizer->num_voxels();
 }
 
