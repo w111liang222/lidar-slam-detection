@@ -84,20 +84,20 @@ ins:
     ins_fix: {
         use: true,
         status: -1,
-        stable_time: 0.0,
-        precision: 0.5,
+        stable_time: 10.0,
+        precision: 20.0,
     }
     ins_float: {
         use: true,
         status: -1,
         stable_time: 10.0,
-        precision: 5.0,
+        precision: 50.0,
     }
     ins_normal: {
         use: true,
         status: -1,
-        stable_time: 10.0,
-        precision: 20.0,
+        stable_time: 0.0,
+        precision: 200.0,
     }
 
 lidar_all:
