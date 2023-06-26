@@ -196,8 +196,12 @@ void SLAM::getColorMap(PointCloudRGB::Ptr &points) {
 bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
   // check the valid of INS data
   if (rtk->status == 0 && fabs(rtk->longitude) < 1e-4 && fabs(rtk->latitude) < 1e-4) {
-    mLastInsPriority = -1;
-    mLastInsTimestamp = 0;
+    double lost_time = getCurrentTime() / 1000000.0 - mLastInsTimestamp;
+    if (mLastInsPriority != -1 && lost_time >= 1.0) {
+      LOG_WARN("SLAM: rtk status downgrade from {} to invalid", mInsConfig[mLastInsPriority].status_name);
+      mLastInsPriority = -1;
+      mLastInsTimestamp = 0;
+    }
     return false;
   }
 
@@ -230,8 +234,10 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
   }
 
+  int priority = -1;
   if (match_config.priority == mLastInsPriority) {
     // status is not changed
+    priority = match_config.priority;
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
   } else if (match_config.priority < mLastInsPriority) {
     // status downgrade immediately
@@ -239,6 +245,7 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
       mInsConfig[mLastInsPriority].status_name,
       (match_config.priority == -1 ? "invalid" : mInsConfig[match_config.priority].status_name)
     );
+    priority = match_config.priority;
     mLastInsPriority = match_config.priority;
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
   } else if (match_config.priority > mLastInsPriority) {
@@ -248,17 +255,24 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
         (mLastInsPriority == -1 ? "invalid" : mInsConfig[mLastInsPriority].status_name),
         mInsConfig[match_config.priority].status_name
       );
+      priority = match_config.priority;
       mLastInsPriority = match_config.priority;
       mLastInsTimestamp = rtk->timestamp / 1000000.0;
+    } else {
+      LOG_INFO("SLAM: rtk status is upgrading from {} to {}",
+        (mLastInsPriority == -1 ? "invalid" : mInsConfig[mLastInsPriority].status_name),
+        mInsConfig[match_config.priority].status_name
+      );
+      priority = std::max(mLastInsPriority, match_config.priority - 2);
     }
   }
 
-  if (mLastInsPriority == -1) {
+  if (priority < 0) {
     return false;
   }
 
   rtk->dimension = mInsDim;
-  rtk->precision = mInsConfig[mLastInsPriority].precision;
+  rtk->precision = mInsConfig[priority].precision;
   return true;
 }
 
