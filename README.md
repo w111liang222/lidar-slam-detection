@@ -33,17 +33,15 @@ LSD can be worked both on x86 PC and Nvidia embedded boards (Xavier-NX, Xavier-A
 
 Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, G2O, OpenCV 4.5.5, PCL 1.9.1, GTSAM 4.0
 
-### Nvidia Embedded Board
-
-The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2, [Installation](docs/nvidia/README.md)
-
 # Getting Started
+
+nvidia-docker2 is needed to install firstly [Installation](docs/docker.md).
 
 A x86_64 docker image is provided to test.
 ```bash
 docker pull 15liangwang/auto-ipu
 sudo docker run -it -d --net=host --privileged --shm-size=4g --name="LSD" -v /media:/root/exchange 15liangwang/auto-ipu
-docker exec -it LSD /bin/bash
+sudo docker exec -it LSD /bin/bash
 ```
 
 Clone this repository and build the source code
@@ -81,6 +79,10 @@ LSD is NOT built on the Robot Operating System (ROS), but we provides some tools
 
 - [rosbag proxy](tools/rosbag_proxy/README.md): a tool which send the ros topic data to LSD.
 - [pickle to rosbag](tools/pkl_to_rosbag/README.md): a convenient tool to convert the pickle files which are recorded by LSD to rosbag.
+
+## Embedded Platform
+
+The LSD is tested on Xavier-NX, Xavier-AGX and Orin with JetPack5.0.2, [Installation](docs/nvidia/README.md)
 
 # License
 
