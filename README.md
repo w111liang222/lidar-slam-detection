@@ -28,6 +28,7 @@ LSD currently supports many features:
 |--------------------------|----------:|:-------:|:-------:|:-------:|:-------:|:-------:|
 | PointPillar              | 73.71/73.12|65.71/65.17|71.70/60.90|63.52/53.78|65.30/63.77 |63.12/61.64|
 | [**CenterPoint-VoxelNet**](https://github.com/w111liang222/lidar-slam-detection/tree/v2.0) | **74.75/74.24**|**66.09/65.63**|**77.66/71.54**|**68.57/63.02**|**72.03/70.93** |**69.63/68.57**|
+
 **Note: the CenterPoint-VoxelNet is built on [libspconv](https://github.com/NVIDIA-AI-IOT/Lidar_AI_Solution) and the GPU with SM80+ is required.**
 
 **[2023-06-01]** [Web UI](web_ui/README.md)(js code of preview, tviz and map editor) is uploaded.
