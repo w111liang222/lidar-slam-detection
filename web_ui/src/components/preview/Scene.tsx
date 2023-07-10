@@ -56,6 +56,7 @@ export type Props = {
   frameData?: LSD.Detection;
   rangeDrawer: any;
   config?: Config;
+  boardConfig?: LSD.Config;
   props?: any;
   invProps?: any;
   pointView: any;
@@ -67,6 +68,7 @@ export default function Scene({
   frameData,
   rangeDrawer,
   config = DEFAULT_CONFIG,
+  boardConfig,
   props,
   invProps,
   pointView,
@@ -76,7 +78,10 @@ export default function Scene({
   const axisScale = new Array(3).fill(config ? config.axis.size : 1);
   const { visible, radials, radius, circles, divisions, color } = config.polarGrid;
 
-  let mapView = React.useMemo(() => <MapViewer config={config} showMessage={showMessage} />, [config]);
+  let mapView = React.useMemo(
+    () => <MapViewer config={config} boardConfig={boardConfig} showMessage={showMessage} />,
+    [config, boardConfig]
+  );
   let colorMapView = React.useMemo(() => <ColorMapViewer config={config.map} mannual={false} />, [config]);
 
   let control = React.useMemo(

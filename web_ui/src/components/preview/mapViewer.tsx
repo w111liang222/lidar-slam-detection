@@ -12,10 +12,11 @@ import { useTranslation } from "react-i18next";
 
 export interface Props {
   config: Config;
+  boardConfig?: LSD.Config;
   showMessage: any;
 }
 
-export default function MapViewer({ config = DEFAULT_CONFIG, showMessage }: Props) {
+export default function MapViewer({ config = DEFAULT_CONFIG, showMessage, boardConfig }: Props) {
   const { t } = useTranslation();
   const [dispVertex, setDispVertex] = useState<string[]>([]);
   const [component, setComponent] = useState<any[]>([]);
@@ -85,7 +86,13 @@ export default function MapViewer({ config = DEFAULT_CONFIG, showMessage }: Prop
         }
       }
       if (vertexChanged) {
-        component[0] = <TrajectoryView key={-1} trajectory={trajectory} />;
+        component[0] = (
+          <TrajectoryView
+            key={-1}
+            trajectory={trajectory}
+            disable={boardConfig && boardConfig.slam.mode == "localization"}
+          />
+        );
         setDispVertex(dispVertex);
         setComponent(component);
         setTrajectory([...trajectory]);
@@ -119,7 +126,13 @@ export default function MapViewer({ config = DEFAULT_CONFIG, showMessage }: Prop
         );
         trajectory[i - 1] = new THREE.Vector3(data[key][3], data[key][7], data[key][11]);
       }
-      component[0] = <TrajectoryView key={-1} trajectory={trajectory} />;
+      component[0] = (
+        <TrajectoryView
+          key={-1}
+          trajectory={trajectory}
+          disable={boardConfig && boardConfig.slam.mode == "localization"}
+        />
+      );
       setTrajectory([...trajectory]);
     }),
     3000

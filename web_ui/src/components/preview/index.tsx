@@ -358,6 +358,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
         frameData={frameData}
         rangeDrawer={rangeDrawer}
         config={config}
+        boardConfig={boardConfig}
         props={pointProp}
         invProps={invPointProp}
         pointView={pointView}
@@ -367,7 +368,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
         {radarView}
       </Scene>
     ),
-    [frameData, config, sketchpad, rangeDrawer, boundary]
+    [frameData, config, boardConfig, sketchpad, rangeDrawer, boundary]
   );
 
   let dataGuiView = React.useMemo(() => <DatGui className="config-panel" {...{ config, setConfig, t }} />, [config, t]);
