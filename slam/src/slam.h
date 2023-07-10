@@ -22,6 +22,10 @@ struct InsConfig {
 class SLAM {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  enum runType {
+    Online,
+    Offline,
+  };
   enum modeType {
     None,
     RTKM,
@@ -30,8 +34,9 @@ class SLAM {
     FastLIO,
     Localization,
   };
-  SLAM(enum modeType modeIn);
+  SLAM(enum runType run, enum modeType modeIn);
   virtual ~SLAM();
+  static runType getRunModeType(std::string);
   static modeType getMappingTypeByName(std::string);
   static std::string getMappingNameByType(modeType);
   modeType getType() { return mMappingMode; }
@@ -66,6 +71,7 @@ class SLAM {
   void runLocalizationThread();
 
  private:
+  enum runType  mRunMode;
   enum modeType mMappingMode;
   int mInsDim;
   std::map<int, InsConfig> mInsConfig;

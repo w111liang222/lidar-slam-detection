@@ -13,6 +13,14 @@
 #include "InterProcess.h"
 #include "UDPServer.h"
 
+SLAM::runType SLAM::getRunModeType(std::string name) {
+  if (name.compare("online") == 0) {
+    return runType::Online;
+  } else {
+    return runType::Offline;
+  }
+}
+
 SLAM::modeType SLAM::getMappingTypeByName(std::string name) {
   if (name.compare("RTKM") == 0) {
     return modeType::RTKM;
@@ -46,7 +54,7 @@ std::string SLAM::getMappingNameByType(modeType type) {
   }
 }
 
-SLAM::SLAM(modeType modeIn) : mMappingMode(modeIn) {
+SLAM::SLAM(enum runType run, modeType modeIn) : mRunMode(run), mMappingMode(modeIn) {
   if (mMappingMode == modeType::RTKM) {
     mSlam.reset(new Mapping::RTKM());
   } else if (mMappingMode == modeType::FLOAM) {
@@ -174,7 +182,7 @@ bool SLAM::setup() {
   if (mMappingMode != modeType::Localization) {
     mThreadStart = true;
     mMappingThread.reset(new std::thread(&SLAM::runMappingThread, this));
-  } else if (mOutput && mZeroUtm) {
+  } else if (mRunMode == runType::Online && mOutput && mZeroUtm) {
     mThreadStart = true;
     mLocalizationThread.reset(new std::thread(&SLAM::runLocalizationThread, this));
   }

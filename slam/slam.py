@@ -45,7 +45,8 @@ class SLAM(SLAMTemplate):
         register_interface('slam.revert_floor_constraint', self.revert_floor_constraint)
 
     def start(self):
-        self.sensor_input = slam.init_slam(self.map_path, self.method, self.sensor_input, self.resolution,
+        self.sensor_input = slam.init_slam(self.config.input.mode,
+                                           self.map_path, self.method, self.sensor_input, self.resolution,
                                            self.key_frames_interval[0], self.key_frames_interval[1],
                                            self.config.slam.mapping.key_frames_range)
         self.logger.info('SLAM use sensors: %s' % (self.sensor_input))

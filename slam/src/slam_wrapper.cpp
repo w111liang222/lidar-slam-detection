@@ -3,9 +3,10 @@
 
 std::unique_ptr<SLAM> slam_ptr(nullptr);
 
-py::list init_slam(const std::string map_path, const std::string method, py::list& sensor_input,
+py::list init_slam(const std::string mode,
+                   const std::string map_path, const std::string method, py::list& sensor_input,
                    double resolution, float dist_threshold, float degree_threshold, float frame_range) {
-  slam_ptr.reset(new SLAM(SLAM::getMappingTypeByName(method)));
+  slam_ptr.reset(new SLAM(SLAM::getRunModeType(mode), SLAM::getMappingTypeByName(method)));
 
   std::vector<std::string> sensors = slam_ptr->setSensors(list_to_vector(sensor_input));
   slam_ptr->setParams(map_path, resolution, dist_threshold, degree_threshold, frame_range);
@@ -183,7 +184,7 @@ py::array_t<float> get_color_map() {
 PYBIND11_MODULE(slam_wrapper, m) {
   m.doc() = "mapping python interface";
   m.def("init_slam", &init_slam, "init slam",
-        py::arg("map_path"), py::arg("method"), py::arg("sensor_input"),
+        py::arg("mode"), py::arg("map_path"), py::arg("method"), py::arg("sensor_input"),
         py::arg("resolution"), py::arg("dist_threshold"), py::arg("degree_threshold"), py::arg("frame_range")
   );
   m.def("setup_slam", &setup_slam, py::call_guard<py::gil_scoped_release>());
