@@ -114,6 +114,7 @@ struct Global_map
     int                                                          m_updated_frame_index = 0;
     int                                                          m_if_reload_init_voxel_and_hashed_pts = true;
     int                                                          m_last_remove_pts_idx = 0;
+    double                                                       m_last_add_time = 0;
 
     Hash_map_3d< long, RGB_pt_ptr >   m_hashmap_3d_pts;
     Hash_map_3d< long, std::shared_ptr< RGB_Voxel > > m_hashmap_voxels;

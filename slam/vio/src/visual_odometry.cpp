@@ -417,6 +417,7 @@ VisualOdometry::VisualOdometry() {
 
   mInitialized = false;
   mThreadStart = false;
+  mLastTimestamp = 0;
 
   mState = StatesGroup();
   mFrameIdx = 0;
@@ -433,11 +434,6 @@ VisualOdometry::~VisualOdometry() {
     mProcessThread->join();
     mProcessThread.reset(nullptr);
   }
-
-  if (mPointThread != nullptr) {
-    mPointThread->join();
-    mPointThread.reset(nullptr);
-  }
 }
 
 void VisualOdometry::setParameter(const CamParamType &camParam) {
@@ -453,9 +449,10 @@ bool VisualOdometry::isInitialized() {
 }
 
 void VisualOdometry::initialize(const uint64_t& stamp, const Eigen::Matrix4d &t, cv::Mat &image, PointCloud::Ptr& cloud) {
-  if (mInitialized || image.empty()) {
+  if (mInitialized || stamp <= mLastTimestamp || image.empty()) {
     return;
   }
+  mLastTimestamp = stamp;
 
   // wait for loop quit
   mThreadStart = false;
@@ -493,9 +490,10 @@ void VisualOdometry::feedImuData(ImuType &imu) {
 }
 
 bool VisualOdometry::feedImageData(const uint64_t& stamp, const Eigen::Matrix4d &t, cv::Mat &image) {
-  if (!mInitialized || image.empty()) {
+  if (!mInitialized || stamp <= mLastTimestamp || image.empty()) {
     return false;
   }
+  mLastTimestamp = stamp;
 
   mState.rot_end = t.topLeftCorner<3, 3>();
   mState.pos_end = t.topRightCorner<3, 1>();
@@ -515,7 +513,7 @@ void VisualOdometry::updateMap(const Eigen::Matrix4d &t, PointCloud::Ptr &cloud)
     return;
   }
 
-  mPointThread.reset(new std::thread(&VisualOdometry::appendPoints, this, t, cloud));
+  appendPoints(t, cloud);
 }
 
 void VisualOdometry::getColorMap(PointCloudRGB::Ptr &points) {
@@ -559,11 +557,6 @@ void VisualOdometry::processLoop() {
     res_photometric = vio_photometric(mState, mTracker, mImagePose);
     setImagePose(mImagePose, mState);
 
-    // wait for adding points to map
-    if (mPointThread != nullptr) {
-      mPointThread->join();
-      mPointThread.reset(nullptr);
-    }
     render_pts_in_voxels(mImagePose, &mGlobalRGBMap.m_voxels_recent_visited, mImagePose->m_timestamp);
 
     mGlobalRGBMap.update_pose_for_projection(mImagePose, -0.4);

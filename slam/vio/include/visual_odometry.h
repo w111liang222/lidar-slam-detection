@@ -39,8 +39,8 @@ class VisualOdometry {
 
   bool mInitialized;
   bool mThreadStart;
+  uint64_t mLastTimestamp;
   std::unique_ptr<std::thread> mProcessThread;
-  std::unique_ptr<std::thread> mPointThread;
   RWQueue<std::pair<uint64_t, cv::Mat>> mImageQueue;
   RWQueue<Eigen::Matrix4d> mPoseQueue;
 

@@ -195,6 +195,8 @@ template int Global_map::append_points_to_global_map<pcl::PointXYZRGB>(pcl::Poin
 template <typename T>
 int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  added_time,  std::vector<std::shared_ptr<RGB_pts>> *pts_added_vec, int step)
 {
+    added_time = std::max(m_last_add_time, added_time);
+    m_last_add_time = added_time;
     m_in_appending_pts = 1;
     int acc = 0;
     int rej = 0;
@@ -285,13 +287,11 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
 void Global_map::remove_points_from_global_map(double remove_time)
 {
     m_mutex_pts_vec->lock();
-    int j = m_last_remove_pts_idx;
-    for (int i = m_last_remove_pts_idx; i < m_rgb_pts_vec.size(); i++)
+    int i, j;
+    for (i = m_last_remove_pts_idx, j = m_last_remove_pts_idx; i < m_rgb_pts_vec.size(); i++)
     {
         if (m_rgb_pts_vec[i]->m_add_time > remove_time)
         {
-            m_rgb_pts_vec.erase(m_rgb_pts_vec.begin() + j, m_rgb_pts_vec.begin() + i);
-            m_last_remove_pts_idx = j;
             break;
         }
         if (m_rgb_pts_vec[i]->m_N_rgb >= 3)
@@ -306,19 +306,30 @@ void Global_map::remove_points_from_global_map(double remove_time)
             int box_x =  std::round(m_rgb_pts_vec[i]->m_pos[0] / m_voxel_resolution);
             int box_y =  std::round(m_rgb_pts_vec[i]->m_pos[1] / m_voxel_resolution);
             int box_z =  std::round(m_rgb_pts_vec[i]->m_pos[2] / m_voxel_resolution);
-            m_hashmap_3d_pts.m_map_3d_hash_map.erase(hash_point(grid_x, grid_y, grid_z));
-            RGB_voxel_ptr box_ptr = m_hashmap_voxels.m_map_3d_hash_map[hash_point(box_x, box_y, box_z)];
-            int m = 0;
-            for (int n = 0; n < box_ptr->m_pts_in_grid.size(); n++)
+            auto hashmap_3d_pts_it = m_hashmap_3d_pts.m_map_3d_hash_map.find(hash_point(grid_x, grid_y, grid_z));
+            if (hashmap_3d_pts_it != m_hashmap_3d_pts.m_map_3d_hash_map.end())
             {
-                if (box_ptr->m_pts_in_grid[n]->m_add_time > remove_time || box_ptr->m_pts_in_grid[n]->m_N_rgb >= 3)
-                {
-                    box_ptr->m_pts_in_grid[m++] = box_ptr->m_pts_in_grid[n];
-                }
+                m_hashmap_3d_pts.m_map_3d_hash_map.erase(hashmap_3d_pts_it);
             }
-            box_ptr->m_pts_in_grid.resize(m);
+
+            auto hashmap_voxel_it = m_hashmap_voxels.m_map_3d_hash_map.find(hash_point(box_x, box_y, box_z));
+            if (hashmap_voxel_it != m_hashmap_voxels.m_map_3d_hash_map.end())
+            {
+                RGB_voxel_ptr box_ptr = m_hashmap_voxels.m_map_3d_hash_map[hash_point(box_x, box_y, box_z)];
+                int m = 0;
+                for (int n = 0; n < box_ptr->m_pts_in_grid.size(); n++)
+                {
+                    if (box_ptr->m_pts_in_grid[n]->m_add_time > remove_time || box_ptr->m_pts_in_grid[n]->m_N_rgb >= 3)
+                    {
+                        box_ptr->m_pts_in_grid[m++] = box_ptr->m_pts_in_grid[n];
+                    }
+                }
+                box_ptr->m_pts_in_grid.resize(m);
+            }
         }
     }
+    m_rgb_pts_vec.erase(m_rgb_pts_vec.begin() + j, m_rgb_pts_vec.begin() + i);
+    m_last_remove_pts_idx = j;
     m_mutex_pts_vec->unlock();
 }
 

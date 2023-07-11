@@ -195,6 +195,13 @@ void Rgbmap_tracker::track_img( std::shared_ptr< Image_frame > &img_pose, double
     int     after_track = m_last_tracked_pts.size();
     cv::Mat mat_F;
 
+    if (m_last_tracked_pts.size() < 10)
+    {
+        LOG_WARN("no enough tracking points: {}", m_last_tracked_pts.size());
+        m_last_frame_time = m_current_frame_time;
+        return;
+    }
+
     unsigned int pts_before_F = m_last_tracked_pts.size();
     mat_F = cv::findFundamentalMat( m_last_tracked_pts, m_current_tracked_pts, cv::FM_RANSAC, 1.0, 0.997, status );
     unsigned int size_a = m_current_tracked_pts.size();
