@@ -116,8 +116,8 @@ struct Global_map
     int                                                          m_last_remove_pts_idx = 0;
     double                                                       m_last_add_time = 0;
 
-    Hash_map_3d< long, RGB_pt_ptr >   m_hashmap_3d_pts;
-    Hash_map_3d< long, std::shared_ptr< RGB_Voxel > > m_hashmap_voxels;
+    Hash_map_3d< int, RGB_pt_ptr >   m_hashmap_3d_pts;
+    Hash_map_3d< int, std::shared_ptr< RGB_Voxel > > m_hashmap_voxels;
     std::unordered_set< std::shared_ptr< RGB_Voxel > > m_voxels_recent_visited;
     std::vector< std::shared_ptr< RGB_pts > >          m_pts_last_hitted;
     double                                   m_minimum_pts_size = 0.05; // 5cm minimum distance.

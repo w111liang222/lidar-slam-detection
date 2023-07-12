@@ -230,6 +230,10 @@ int Global_map::append_points_to_global_map(pcl::PointCloud<T> &pc_in, double  a
     m_mutex_pts_vec->lock();
     for (int pt_idx = 0; pt_idx < pt_size; pt_idx += step)
     {
+        if (!std::isfinite(pc_in.points[pt_idx].x) || !std::isfinite(pc_in.points[pt_idx].y) || !std::isfinite(pc_in.points[pt_idx].z))
+        {
+            continue;
+        }
         int add = 1;
         int grid_x = std::round(pc_in.points[pt_idx].x / m_minimum_pts_size);
         int grid_y = std::round(pc_in.points[pt_idx].y / m_minimum_pts_size);

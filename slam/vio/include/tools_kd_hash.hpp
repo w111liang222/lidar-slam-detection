@@ -51,12 +51,12 @@ Dr. Fu Zhang < fuzhang@hku.hk >.
 
 class hash_point
 {
-    long x;
-    long y;
-    long z;
+    int x;
+    int y;
+    int z;
 public:
     hash_point() : x(0), y(0), z(0) {}
-    hash_point(long x, long y, long z) : x(x), y(y), z(z) {}
+    hash_point(int x, int y, int z) : x(x), y(y), z(z) {}
 
     bool operator==(hash_point const& other) const
     {
