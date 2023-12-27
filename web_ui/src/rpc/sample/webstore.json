@@ -1,0 +1,24 @@
+{
+  "avfuns": {
+    "config": {
+      "device": true,
+      "lidar": true,
+      "camera": true,
+      "radar": true,
+      "ins": true,
+      "detect": true,
+      "slam": true,
+      "output": true,
+      "advance": true
+    },
+    "calibration": {
+      "calibrate_lidar": true,
+      "calibrate_lidar_camera": true,
+      "calibrate_camera": true,
+      "calibrate_lidar_ins": true,
+      "calibrate_lidar_radar": true,
+      "calibrate_lidar_imu": true,
+      "calibrate_panorama_camera": true
+    }
+  }
+}

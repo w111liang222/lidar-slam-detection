@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+
+    "jsx": "react",
+    "declaration": true,
+    "esModuleInterop": true,
+    "preserveSymlinks": true,
+
+    "outDir": "../../dist",
+    "baseUrl": "./",
+    "types": ["node", "jest"]
+  },
+  "exclude": ["node_modules", ".git"],
+  "include": ["components", "core", "icons", "README.md"]
+}

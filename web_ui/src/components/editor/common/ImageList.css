@@ -1,0 +1,16 @@
+/* https://github.com/react-grid-layout/react-draggable/pull/98 */
+.react-draggable img,
+img.react-draggable {
+  user-drag: none;
+  -moz-user-select: none;
+  -webkit-user-drag: none;
+}
+
+.container {
+  font-size: 0;
+  width: 100px;
+}
+
+.maxIndex {
+  z-index: 999;
+}

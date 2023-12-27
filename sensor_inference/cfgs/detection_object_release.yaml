@@ -1,0 +1,39 @@
+CLASS_NAMES: ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
+
+SCN_ONNX_FILE: 'sensor_inference/detection_lidar_scn.onnx'
+RPN_ONNX_FILE: 'sensor_inference/detection_lidar_rpn.onnx'
+RPN_TRT_FILE:  'sensor_inference/detection_lidar_rpn.trt'
+DATA_CONFIG:
+    POINT_FRAME_NUM: 4
+    POINT_CLOUD_RANGE: [-76.8, -76.8, -2, 76.8, 76.8, 4]
+    VOXELIZATION:
+        MAX_POINTS: 500000
+        VOXEL_SIZE: [0.1, 0.1, 0.15]
+        MAX_POINTS_PER_VOXEL: 5
+        MAX_NUMBER_OF_VOXELS: {
+        'train': 300000,
+        'test': 300000
+        }
+
+MODEL:
+    DENSE_HEAD:
+        NAME: CenterHead
+
+    POST_PROCESSING:
+        RECALL_THRESH_LIST: [0.3, 0.5, 0.7]
+        SCORE_THRESH: {
+            'Vehicle': 0.10,
+            'Pedestrian': 0.10,
+            'Cyclist': 0.10,
+            'Traffic_Cone': 0.10,
+        }
+        OUTPUT_RAW_SCORE: False
+
+        EVAL_METRIC: waymo
+
+        NMS_CONFIG:
+            MULTI_CLASSES_NMS: False
+            NMS_TYPE: nms_gpu
+            NMS_THRESH: 0.25
+            NMS_PRE_MAXSIZE: 2048
+            NMS_POST_MAXSIZE: 256

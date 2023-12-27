@@ -1,0 +1,9 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+from waflib import Utils
+
+def build(ctx):
+    ctx.install_as('${PREFIX}/share/scripts/install-zcm-deps.sh',
+                   'install-deps.sh',
+                   chmod = Utils.O755)

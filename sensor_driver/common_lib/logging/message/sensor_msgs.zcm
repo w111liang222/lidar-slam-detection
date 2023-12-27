@@ -1,0 +1,106 @@
+package sensor_msgs;
+struct PointField
+{
+    const int8_t INT8 = 1;
+    const int8_t UINT8 = 2;
+    const int8_t INT16 = 3;
+    const int8_t UINT16 = 4;
+    const int8_t INT32 = 5;
+    const int8_t UINT32 = 6;
+    const int8_t FLOAT32 = 7;
+    const int8_t FLOAT64 = 8;
+
+    string name;
+    int32_t offset;
+    int8_t datatype;
+    int32_t count;
+}
+
+package sensor_msgs;
+struct Imu
+{
+    .std_msgs.Header header;
+    .geometry_msgs.Quaternion orientation;
+    .geometry_msgs.Vector3 angular_velocity;
+    .geometry_msgs.Vector3 linear_acceleration;
+}
+
+package sensor_msgs;
+struct PointCloud
+{
+    .std_msgs.Header header;
+    int32_t height;
+    int32_t width;
+
+    int32_t fields_num;
+    .sensor_msgs.PointField fields[fields_num];
+
+    boolean is_bigendian;
+    int32_t point_step;
+    int32_t row_step;
+
+    int64_t data_num;
+    byte    data[data_num];
+    boolean is_dense;
+}
+
+package sensor_msgs;
+struct Image
+{
+    .std_msgs.Header header;
+    int32_t height;
+    int32_t width;
+
+    string encoding;
+    int8_t is_bigendian;
+    int32_t step;
+
+    int64_t size;
+    byte data[size];
+}
+
+package sensor_msgs;
+struct CompressedImage
+{
+    .std_msgs.Header header;
+    string format;
+
+    int64_t size;
+    byte data[size];
+}
+
+package sensor_msgs;
+struct NavSatStatus
+{
+    const int8_t STATUS_NO_FIX_N = -1;
+    const int8_t STATUS_FIX_N = 0;
+    const int8_t STATUS_SBAS_FIX = 1;
+    const int8_t STATUS_GBAS_FIX = 2;
+
+    int8_t status;
+
+    const int16_t SERVICE_GPS = 1;
+    const int16_t SERVICE_GLONASS = 2;
+    const int16_t SERVICE_COMPASS = 4;
+    const int16_t SERVICE_GALILEO = 8;
+
+    int16_t service;
+}
+
+package sensor_msgs;
+struct NavSatFix
+{
+    .std_msgs.Header header;
+    .sensor_msgs.NavSatStatus status;
+    double latitude;
+    double longitude;
+    double altitude;
+    double position_covariance[64];
+
+    const int8_t COVARIANCE_TYPE_UNKNOWN = 0;
+    const int8_t COVARIANCE_TYPE_APPROXIMATED = 1;
+    const int8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 2;
+    const int8_t COVARIANCE_TYPE_KNOWN = 3;
+
+    int8_t position_covariance_type;
+}

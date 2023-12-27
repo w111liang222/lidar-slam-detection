@@ -1,0 +1,16 @@
+.subtitle {
+  margin-top: 1rem !important;
+  margin-bottom: 1rem !important;
+  border-bottom: 0.5px solid;
+  border-bottom-color: #aaaaaa;
+}
+
+.subtitle-no-mt {
+  margin-bottom: 1rem !important;
+  border-bottom: 0.5px solid;
+  border-bottom-color: #aaaaaa;
+}
+
+.remove-button {
+  color: rgba(0, 0, 0, 0.54);
+}

@@ -1,0 +1,8 @@
+CLASS_NAMES: ['unknown', 'up', 'left', 'right', 'down', 'u-turn']
+
+ONNX_FILE: 'sensor_inference/detection_trafficlight.onnx'
+TRT_FILE: 'sensor_inference/detection_trafficlight.trt'
+
+MODEL:
+  SCORE_THRESH:  0.4
+  IOU_THRESHOLD: 0.5

@@ -1,0 +1,37 @@
+package std_msgs;
+struct Byte
+{
+    byte data;
+}
+
+package std_msgs;
+struct String
+{
+    string data;
+}
+
+package std_msgs;
+struct Int32
+{
+    int32_t data;
+}
+
+package std_msgs;
+struct Int64
+{
+    int64_t data;
+}
+
+package std_msgs;
+struct Float
+{
+    double data;
+}
+
+package std_msgs;
+struct Header
+{
+    int64_t seq;
+    int64_t stamp;
+    string frame_id;
+}

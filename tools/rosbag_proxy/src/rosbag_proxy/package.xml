@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rosbag_proxy</name>
+  <version>0.0.0</version>
+  <description>LSD Rosbag Proxy</description>
+
+  <maintainer email="15lwang@alumni.tongji.edu.cn">LiangWang</maintainer>
+
+  <license>GPL</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>roscpp</depend>
+  <depend>pcl_ros</depend>
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>sensor_msgs</depend>
+
+  <export>
+  </export>
+</package>

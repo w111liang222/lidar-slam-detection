@@ -1,0 +1,7 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    ctx.program(target = 'zcm-spy-peek',
+                use = ['default', 'zcm'],
+                source = ctx.path.ant_glob('*.cpp'))

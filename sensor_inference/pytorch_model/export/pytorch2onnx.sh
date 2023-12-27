@@ -1,0 +1,1 @@
+python sensor_inference/pytorch_model/export/object_pytorch2onnx.py --ckpt /root/OpenPCDet/output/misc_models/lidar_detection_large/default/ckpt/checkpoint_epoch_50.pth --cfg_file sensor_inference/cfgs/detection_object.yaml

@@ -1,0 +1,243 @@
+board:
+    inference_engine:
+        detection_capability:
+            object: true
+            trafficlight: true
+        detection_config:
+            object: sensor_inference/cfgs/detection_object.yaml
+            trafficlight: sensor_inference/cfgs/detection_trafficlight.yaml
+
+pipeline: [['Source', 'SLAM', 'Sink']]
+
+detection:
+    sensor_input: ["0-Ouster-OS1", "1-Ouster-OS1", "2-Ouster-OS1", "0"]
+
+slam:
+    mode: 'mapping'
+    method: 'FastLIO' # FLOAM, GICPM, FastLIO
+    origin: {
+        use: true,
+        latitude: 0.0,
+        longitude: 0.0,
+        altitude: 0.0,
+    }
+
+    mapping:
+        sensor_input: ["1-Ouster-OS1", "IMU"]
+        ground_constraint: true
+        loop_closure: true
+        key_frames_interval: [4.0, 20.0]  # distance and degree threshold
+        key_frames_range: 1000
+        map_resolution: 0.2
+
+    localization:
+        sensor_input: []
+        colouration: false
+        key_frames_interval: [4.0, 20.0] # distance and degree threshold
+        map_resolution: 0.2
+        map_path: lp_log/map
+
+lidar:
+    - {
+          name: "Custom",
+          port: 2688,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+camera:
+    - {
+          name: "http://127.0.0.1:/imageflir0",  # "http://$IP:$topic", "rtsp://$URI"
+          intrinsic_parameters: [600, 600, 240, 320, 0, 0, 0, 0], # fx, fy, cx, cy, k1, k2, p1, p2
+          extrinsic_parameters: [0, 0, 0, -90, 0, 90],
+          undistortion: false,
+          flip_method: 0,
+          fisheye: false,
+          stream: {
+            sink: "none",        # [none, udp, rtsp]
+            host: 192.168.1.101,
+            port: 8554,
+            bitrate: 1000000,    # 1Mbps
+            enable_audio: false,
+            audio_name: "Y02",
+          },
+        #   crop: [0, 0, 0, 0],     # top, bottom, left, right
+        #   input_width: 1920,   #optional
+        #   input_height: 1080,  #optional
+        #   format: "UYVY",      #optional
+        #   output_width: 640,   #optional, default is 640
+        #   output_height: 480,  #optional, default is 480
+        #   custom_cap: '',      #optional, gstreamer pipeline
+      }
+
+radar: []
+
+ins:
+    port: 9888
+    device: "/dev/ttyUSB0"
+    relay: {
+        use: false,
+        destination: 192.168.1.101,
+    }
+    ins_type: "6D" # 2D (lat, lon), 3D +(alt), 6D +(yaw, pitch, roll)
+    extrinsic_parameters: [0, 0, 0, 0, 0, 0]
+    imu_extrinsic_parameters: [0, 0, 0, 0, 0, 0]
+    ins_fix: {
+        use: true,
+        status: -1,
+        stable_time: 10.0,
+        precision: 20.0,
+    }
+    ins_float: {
+        use: true,
+        status: -1,
+        stable_time: 10.0,
+        precision: 50.0,
+    }
+    ins_normal: {
+        use: true,
+        status: -1,
+        stable_time: 0.0,
+        precision: 200.0,
+    }
+
+lidar_all:
+    - {
+          name: "Ouster-OS1",
+          port: 7502,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "Ouster-OS2",
+          port: 7502,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "VLP-16",
+          port: 2370,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "LS-C-16",
+          port: 2368,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "RS-LiDAR-16",
+          port: 6699,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "RS-LiDAR-32",
+          port: 6699,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "RS-Ruby-Lite",
+          port: 6699,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "RS-Helios-16P",
+          port: 6699,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "RS-Helios",
+          port: 6699,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
+          name: "Custom",
+          port: 2688,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+radar_all:
+    - {
+          name: "ARS408",
+          device: "can0",
+          baud: 500000,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+      }
+
+input:
+    mode: online # [online, offline]
+    data_path: /home/znqc/work/demo_data
+
+output:
+    point_cloud:
+        use: false
+        destination: 192.168.1.101
+
+    object:
+        use: true
+        vehicle: true
+        pedestrian: true
+        cyclist: true
+        traffic_cone: true
+
+    freespace:
+        use: true
+        resolution: 0.25
+        min_height: 0.2
+        max_height: 2.5
+        range: [-20, 20, -6, 6]
+
+    protocol:
+        UDP:
+            use: true
+            destination: 192.168.1.101
+            port: 9000
+        CAN:
+            use: false
+            device: "can0"
+            baud: 500000
+
+    localization:
+        UDP:
+            use: false
+            destination: 192.168.1.101
+            port: 9001
+
+roi:
+    - { contour: [], is_included: true }
+
+system:
+    log_level: INFO
+    record:
+        mode: "normal" # loop
+        loop_duration: 600
+        exclude_keys: ["freespace"]
+        journal: true
+        auto_start: false

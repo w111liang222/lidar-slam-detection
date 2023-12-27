@@ -1,0 +1,33 @@
+<launch>
+    <arg name="points_topic" default="/lidar0RSLiDAR16"/>
+    <arg name="imu_topic" default="/imu_raw"/>
+    <arg name="gps_topic" default="/gps"/>
+    <arg name="device_ip" default="127.0.0.1"/>
+    <arg name="port" default="2688"/>
+
+    <param name="use_sim_time" value="true"/>
+
+    <node pkg="rosbag_proxy" type="rosbag_imu_proxy" name="rosbag_imu_proxy" output="screen">
+        <param name="imu_topic" value="$(arg imu_topic)"/>
+        <param name="gps_topic" value="$(arg gps_topic)"/>
+        <param name="device_ip" value="$(arg device_ip)"/>
+    </node>
+
+    <node pkg="rosbag_proxy" type="rosbag_lidar_proxy" name="rosbag_lidar_proxy" output="screen">
+        <param name="points_topic" value="$(arg points_topic)"/>
+        <param name="device_ip" value="$(arg device_ip)"/>
+        <param name="port" value="$(arg port)"/>
+    </node>
+
+    <!--arg name="points_topic_2" default="/points_2"/>
+    <arg name="device_ip_2" default="192.168.1.101"/>
+    <arg name="port_2" default="2689"/>
+    <node pkg="rosbag_proxy" type="rosbag_lidar_proxy" name="rosbag_lidar_proxy" output="screen">
+        <param name="points_topic" value="$(arg points_topic_2)"/>
+        <param name="device_ip" value="$(arg device_ip_2)"/>
+        <param name="port" value="$(arg port_2)"/>
+    </node-->
+
+    <node pkg="rosbag_proxy" type="rosbag_camera_proxy" name="rosbag_camera_proxy" output="screen"/>
+
+</launch>

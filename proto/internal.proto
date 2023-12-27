@@ -1,0 +1,18 @@
+syntax = "proto2";
+
+message LidarPointcloud {
+    optional string lidar_name = 1;
+    optional bytes points = 2;
+    optional bytes attr = 3;
+    optional string type = 4;
+}
+
+message CameraImageBytes {
+    optional string camera_name = 1;
+    optional bytes image = 2;
+}
+
+message LidarPointcloudMap {
+    repeated LidarPointcloud lp = 1;
+    repeated CameraImageBytes image = 2;
+}

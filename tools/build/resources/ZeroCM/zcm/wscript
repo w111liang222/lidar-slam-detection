@@ -1,0 +1,184 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+import os
+from waflib.Errors import WafError
+
+def build(ctx):
+    ctx.env.RPATH_zcm = [ctx.path.get_bld().abspath()]
+
+    DEPS = ['default', 'zcm_json']
+    if ctx.env.USING_ZMQ:
+        DEPS += ['zmq']
+
+    srcExcludes = ['transport/third-party/embedded']
+    if not ctx.env.USING_TRANS_IPC:
+        srcExcludes += ['transport/transport_zmq_local.cpp']
+    if not ctx.env.USING_TRANS_INPROC:
+        srcExcludes += ['transport/transport_inproc.cpp']
+    if not ctx.env.USING_TRANS_UDPM:
+        srcExcludes += ['transport/udpm/**/*']
+    if not ctx.env.USING_TRANS_SERIAL:
+        srcExcludes += ['transport/transport_serial.cpp']
+    if not ctx.env.USING_TRANS_CAN:
+        srcExcludes += ['transport/transport_can.cpp']
+    if not ctx.env.USING_THIRD_PARTY:
+        srcExcludes.append('transport/third-party')
+
+    ctx.shlib(target = 'zcm',
+              # Note: Had to make the include path one level up so that includes
+              #       within this directory structure would match the structure
+              #       of the installed files. Includes should be written as:
+              #       #include "zcm/file.h".
+              includes = '..',
+              export_includes = '..',
+              use = DEPS,
+              source = ctx.path.ant_glob(['*.cpp', '*.c',
+                                          'util/*.c', 'util/*.cpp',
+                                          'tools/*.c', 'tools/*.cpp',
+                                          'transport/**/*.c', 'transport/**/*.cpp'],
+                                          excl=srcExcludes))
+
+
+    embedSource = ['zcm.h', 'zcm_private.h', 'zcm.c', 'zcm-cpp.hpp', 'zcm-cpp-impl.hpp',
+                   'zcm_coretypes.h', 'transport.h', 'nonblocking.h', 'nonblocking.c',
+                   'transport/generic_serial_transport.h',
+                   'transport/generic_serial_transport.c',
+                   'transport/generic_serial_circ_buff.h',
+                   'transport/generic_serial_circ_buff.c',
+                   'transport/generic_serial_fletcher.h']
+
+    if ctx.env.USING_THIRD_PARTY:
+        embedSource.append('transport/third-party/embedded/**')
+
+    embedSource = ctx.path.ant_glob(embedSource)
+    embedSource.append(ctx.path.find_or_declare("../zcm.gitid"))
+
+    ## Collect files for Embedded
+    ctx(rule   = 'tar czf ${TGT} ${SRC}',
+        name   = 'embed-tar',
+        source = embedSource,
+        target = '.zcm-embed-tmp.tar.gz',
+        color  = "PINK")
+
+    ctx(rule   = package_embedded,
+        name   = 'embed-tar-finish',
+        source = '.zcm-embed-tmp.tar.gz',
+        target = 'zcm-embed.tar.gz',
+        color  = "PINK",
+        after  = 'embed-tar')
+
+    ## Test the embedded export
+    ctx(rule   = exec_test_embedded,
+        name   = 'embed-test',
+        source = 'zcm-embed.tar.gz',
+        target = 'zcm-embed-tests',
+        color  = "PINK",
+        after  = 'embed-tar-finish')
+
+    ctx(rule   = rezip_arduino,
+        source = 'zcm-embed.tar.gz',
+        target = 'zcm-arduino.zip',
+        color  = 'PINK',
+        after  = 'embed-test')
+
+    ctx.install_files('${PREFIX}/include/zcm',
+                      ['zcm.h', 'zcm_coretypes.h', 'transport.h', 'transport_registrar.h',
+                       'url.h', 'eventlog.h', 'zcm-cpp.hpp', 'zcm-cpp-impl.hpp',
+                       'transport_register.hpp', 'message_tracker.hpp'])
+
+    ctx.install_files('${PREFIX}/include/zcm/tools',
+                      ['tools/IndexerPlugin.hpp',
+                       'tools/TranscoderPlugin.hpp'])
+
+    ctx.install_files('${PREFIX}/include/zcm/util', 'util/Filter.hpp')
+    ctx.install_files('${PREFIX}/include/zcm/util', 'util/topology.hpp')
+
+    ctx.install_files('${PREFIX}/include/zcm/json',
+                      ['json/json.h', 'json/json-forwards.h'])
+
+    ctx.install_files('${PREFIX}/include/zcm/transport',
+                      ['transport/generic_serial_transport.h'])
+
+    ctx.install_files('${PREFIX}/share/embedded', ['zcm-embed.tar.gz'])
+
+    ctx.recurse('util')
+
+    ctx.recurse('json')
+
+    if ctx.env.USING_JAVA:
+        ctx.recurse('java');
+
+    if ctx.env.USING_NODEJS:
+        ctx.recurse('js');
+
+    if ctx.env.USING_PYTHON:
+        ctx.recurse('python')
+
+    if ctx.env.USING_JULIA:
+        ctx.recurse('julia')
+
+
+
+def package_embedded(tsk):
+    gen = tsk.generator
+    bld = gen.bld
+
+    outputDir = os.path.dirname(tsk.outputs[0].abspath())
+
+    cmd = 'export fldr=' + tsk.outputs[0].relpath() + ' && rm -rf ${fldr%%.*} && ' + \
+          'mkdir -p ${fldr%%.*} && cd ${fldr%%.*} && tar -xaf ' + str(tsk.inputs[0])
+    ret = tsk.exec_command(cmd)
+    if ret != 0:
+        raise WafError('Unable to prep files for zcm-embed tarball generation')
+
+    cmd = 'export fldr=' + tsk.outputs[0].relpath() + ' && ' + \
+          bld.path.abspath() + '/scripts/prepend-embed-guards.sh ${fldr%%.*}'
+    ret = tsk.exec_command(cmd)
+    if ret != 0:
+        raise WafError('Unable to prepend embed guard in zcm-embed tarball generation')
+
+    cmd = 'export fldr=' + tsk.outputs[0].relpath() + ' && cd ${fldr%%.*} && ' + \
+          'tar czf ' + tsk.outputs[0].abspath() + ' *'
+    ret = tsk.exec_command(cmd)
+    if ret != 0:
+        raise WafError('Unable to generate zcm-embed tarball')
+
+    return 0
+
+def rezip_arduino(tsk):
+    gen = tsk.generator
+    bld = gen.bld
+
+    outputDir = os.path.dirname(tsk.outputs[0].abspath())
+
+    cmd = 'export fldr=' + tsk.outputs[0].relpath() + ' && ' + \
+          'rm -rf ${fldr%%.*} && rm -rf ' + tsk.outputs[0].abspath() + ' && '\
+          'mkdir -p ${fldr%%.*} && cd ${fldr%%.*} && tar -xaf ' + str(tsk.inputs[0])
+    ret = tsk.exec_command(cmd)
+    if ret != 0:
+        raise WafError('Unable to prep files for zcm-embed zip generation')
+
+    cmd = 'export fldr=' + tsk.outputs[0].relpath() + ' && cd ${fldr%%.*} && ' + \
+          'echo "#include <zcm/zcm.h>" > zcm-arduino.h && ' + \
+          'for f in $(find -name "*.c*" | grep -v third-party | xargs); do echo "#include \\"$f\\"" > $(basename $f); done && ' + \
+          'for f in $(find -name "*.c*" | grep arduino | xargs); do echo "#include \\"$f\\"" > $(basename $f); done && ' + \
+          'zip -r ' + tsk.outputs[0].abspath() + ' * > /dev/null'
+    ret = tsk.exec_command(cmd)
+    if ret != 0:
+        raise WafError('Unable to generate zcm-embed zipped archive')
+
+    return 0
+
+
+def exec_test_embedded(tsk):
+    src = tsk.inputs[0].abspath()
+    blddir =  os.path.dirname(src)
+    testdir = blddir+'/test-embed'
+    ret =  tsk.exec_command('rm -rf {0} && mkdir {0} && cd {0} && tar xf {1} && ' \
+                            'cc -std=c89 -I. -DZCM_EMBEDDED -c zcm/*.c && ' \
+                            'echo "embed passed" > {2}' \
+                            .format(testdir, src, tsk.outputs[0].abspath()))
+    if ret != 0:
+        raise WafError('Embedded build failed, check embedded core files for C89 compliance')
+    return ret

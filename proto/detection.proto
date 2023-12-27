@@ -1,0 +1,111 @@
+syntax = "proto2";
+
+message Point3D {
+    optional double x = 1 [default = nan];  // m
+    optional double y = 2 [default = nan];  // m
+    optional double z = 3 [default = nan];  // m
+}
+
+message Box3D {
+    optional Point3D center = 1;            // center coordinate of the object
+    optional float length = 2;              // m
+    optional float width = 3;               // m
+    optional float height = 4;              // m
+    optional float heading = 5;             // rad, 0: -x, pi/2: +y, pi: +x, -pi/2: -y, [-pi, +pi)
+}
+
+message Trajectory {
+    optional double x = 1;                  // m
+    optional double y = 2;                  // m
+    optional double z = 3;                  // m
+    optional float heading = 4;             // rad, 0: -x, pi/2: +y, pi: +x, -pi/2: -y, [-pi, +pi)
+    optional float velocity_x = 5;          // m/s
+    optional float velocity_y = 6;          // m/s
+    optional uint64 relative_timestamp = 7; // timestamp of this trajectory relative to the scan start time in us
+}
+
+message Header {
+    optional bytes version = 1;
+    optional uint64 timestamp = 2;          // the start timestamp is from the frame arrival
+    optional uint64 relative_timestamp = 3; // timestamp of this frame relative to the scan start time in us
+    optional float fps = 4;                 // system running frequence
+}
+
+message Pose {
+    optional float x = 1;                   // m
+    optional float y = 2;                   // m
+    optional float z = 3;                   // m
+    optional float heading = 4;             // deg
+    optional float pitch = 5;               // deg
+    optional float roll = 6;                // deg
+    optional double latitude = 7;           // deg
+    optional double longitude = 8;          // deg
+    optional double altitude = 9;           // m
+    optional int32 status = 10;             // enum
+    optional string state = 11;
+}
+
+message Object {
+    optional uint32 id = 1;                 // new obstacles are given the last used free ID [0, 255]
+    enum Type {
+        UNKNOWN = 0;
+        VEHICLE = 1;
+        PEDESTRIAN = 2;
+        CYCLIST = 3;
+        CONE = 4;
+    };
+    enum Status {
+        UNDEFINED = 0;
+        STATIC = 1;
+        STOPPED = 2;
+        MOVING = 3;
+    };
+    optional Type  type = 2;
+    optional float confidence = 3;          // confidence of the object [0, 1.0]
+    optional Box3D box = 4;
+    optional float velocity_x = 5;          // m/s
+    optional float velocity_y = 6;          // m/s
+    optional float angle_rate = 7;          // rad/s
+    optional float accel_x = 8;             // m/s^2
+    optional bool  valid = 9;               // True: New valid (detected this frame), False: Older valid
+    optional Status status = 10;
+    optional uint32 age = 11;               // the age of the object (in frames). This value starts at 1 when the obstacle is first detected, and increments in 1 each frame. (1 ~ 255)
+    repeated Trajectory trajectory = 12;    // prediction trajectory of object
+}
+
+message FreespaceInfo {
+    optional float x_min = 1;               // m
+    optional float x_max = 2;               // m
+    optional float y_min = 3;               // m
+    optional float y_max = 4;               // m
+    optional float z_min = 5;               // m
+    optional float z_max = 6;               // m
+    optional float resolution = 7;          // m, cell resolution
+    optional int64 x_num = 8;               // cell num of x axis
+    optional int64 y_num = 9;               // cell num of y axis
+}
+
+message Freespace {
+    optional FreespaceInfo info = 1;
+    optional bytes cells = 2;
+}
+
+message CameraImage {
+    optional string camera_name = 1;
+    optional bytes image = 2;               // jpeg encoding bytes
+}
+
+message Radar {
+    optional string radar_name = 1;
+    repeated Object radar_object = 2;
+}
+
+message Detection {
+    optional Header header = 1;
+    repeated Object object = 2;
+    optional bytes freespace = 3;           // protobuf string bytes of Freespace
+    optional bytes points = 4;
+    repeated CameraImage image = 5;
+    repeated Radar radar = 6;
+    optional Pose pose = 7;
+}

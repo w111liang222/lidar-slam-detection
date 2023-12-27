@@ -1,0 +1,7 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    ctx.program(target = 'zcm-topology-visualizer',
+                use    = ['default', 'zcm', 'zcm_tools_util', 'jsoncpp'],
+                source = ctx.path.ant_glob('*.cpp'))

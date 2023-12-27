@@ -1,0 +1,12 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    source = ctx.path.ant_glob('*.c *.cpp **/*.c **/*.cpp', excl='disabled/*')
+    ctx.program(target = 'zcm-gen',
+                includes = '.', # need this because some files under emit include up to base dir
+                use = ['default','zcm_json'],
+                source = source)
+
+    ctx.install_files('${PREFIX}/share/waf/',
+                      ['../waftools/zcm-gen.py'])

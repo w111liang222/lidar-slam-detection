@@ -1,0 +1,7 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+def build(ctx):
+    ctx.program(target = 'zcm-log-transcoder',
+                use    = ['default', 'zcm', 'zcm_tools_util'],
+                source = ctx.path.ant_glob('*.cpp'))

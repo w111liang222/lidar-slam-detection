@@ -1,0 +1,24 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+import os
+
+def build(ctx):
+
+    def build_node_pkg(task):
+        srcdir = os.path.dirname(task.inputs[0].abspath())
+        blddir = task.generator.path.get_bld().abspath()
+        task.exec_command('(cd %s && npm pack %s > /dev/null)' % (blddir, srcdir))
+
+    tarball = 'zerocm-' + ctx.env.VERSION + '.tgz'
+
+    ctx(rule = build_node_pkg,
+        color = 'PINK',
+        source = ctx.path.ant_glob('node/*'),
+        target = tarball)
+
+    ctx(rule = 'cp ${SRC} ${TGT}',
+        source = 'client/zcm-client.js',
+        target = 'zcm-client.js')
+
+    ctx.install_files('${PREFIX}/share/node', ['zcm-client.js', tarball])
