@@ -8,7 +8,7 @@ py::array_t<float> pointcloud_align(py::array_t<float> &source_point, py::array_
 
 void set_mapping_ground_constraint(bool enable);
 bool get_mapping_ground_constraint();
-void set_mapping_loop_closure(bool enable);
+void set_mapping_constraint(bool loop_closure, bool gravity_constraint);
 void set_map_colouration(bool enable);
 
 py::dict get_graph_edges();

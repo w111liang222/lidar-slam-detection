@@ -27,7 +27,6 @@ class FrameSink(SinkTemplate):
 
         register_interface('frame.start_record', self.start)
         register_interface('frame.stop_record', self.stop)
-        register_interface('frame.is_recording', self.is_started)
         register_interface('frame.get_status', self.get_status)
 
     def init_runtime_variable(self):
@@ -106,11 +105,9 @@ class FrameSink(SinkTemplate):
             self.sink(data_dict)
         self.logger.info('deamon %s stops' % self.name)
 
-    def is_started(self):
-        return self.is_start
-
     def get_status(self):
         return dict(
+            status       = self.is_start,
             frame_success= self.success_num,
             frame_lost   = self.lost_num,
             frame_error  = self.error_num,

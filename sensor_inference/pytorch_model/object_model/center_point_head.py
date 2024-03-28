@@ -59,6 +59,7 @@ class CenterHead(nn.Module):
         self.point_cloud_range = point_cloud_range
         self.voxel_size = voxel_size
         self.feature_map_stride = self.model_cfg.get('FEATURE_MAP_STRIDE', None)
+        self.engine = self.model_cfg.get('ENGINE', "")
 
         self.class_names = class_names
         self.class_names_each_head = []
@@ -89,7 +90,10 @@ class CenterHead(nn.Module):
             nn.Conv2d(input_channels, self.shared_conv_channel,
             kernel_size=3, padding=1, bias=True),
             nn.BatchNorm2d(self.shared_conv_channel),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Conv2d(self.shared_conv_channel, 128, 3, padding=1, bias=True),
+            nn.BatchNorm2d(128),
+            nn.ReLU(True),
         )
 
         self.heads_list = nn.ModuleList()
@@ -99,7 +103,7 @@ class CenterHead(nn.Module):
 
             heads['hm'] = dict(out_channels=num_cls, num_conv=2)
             self.heads_list.append(
-                SeparateHead(self.shared_conv_channel, heads, init_bias=-2.19, use_bias=True)
+                SeparateHead(128, heads, init_bias=-2.19, use_bias=True)
             )
         self.forward_ret_dict = {}
 
@@ -111,11 +115,17 @@ class CenterHead(nn.Module):
         for task in self.heads_list:
             ret_dicts.append(task(x))
 
-        batch_cls_preds, batch_box_preds = self.predict(ret_dicts)
+        if self.engine == "TensorRT":
+            batch_cls_preds, batch_box_preds = self.predict_tensorrt(ret_dicts)
+        elif self.engine == "RKNN":
+            batch_cls_preds, batch_box_preds = self.predict_rknn(ret_dicts)
+        else:
+            raise NotImplementedError
+
         return batch_cls_preds, batch_box_preds
 
     @torch.no_grad()
-    def predict(self, preds_dicts):
+    def predict_tensorrt(self, preds_dicts):
 
         batch_box_preds_list = []
         batch_hm_list = []
@@ -163,6 +173,52 @@ class CenterHead(nn.Module):
                 batch_box_preds = torch.cat([xs, ys, batch_hei, batch_dim, batch_vel, batch_rot], dim=1)
             else:
                 batch_box_preds = torch.cat([xs, ys, batch_hei, batch_dim, batch_rot], dim=1)
+
+            batch_box_preds_list.append(batch_box_preds)
+            batch_hm_list.append(batch_hm)
+
+        batch_box_preds = torch.cat(batch_box_preds_list, dim=0)
+        batch_cls_preds = torch.cat(batch_hm_list, dim=0)
+
+        return batch_cls_preds, batch_box_preds
+
+    @torch.no_grad()
+    def predict_rknn(self, preds_dicts):
+
+        batch_box_preds_list = []
+        batch_hm_list = []
+        H = self.H
+        W = self.W
+        num_cls = self.num_class
+
+        for task_id, preds_dict in enumerate(preds_dicts):
+            # convert N C H W to N H W C
+            for key, val in preds_dict.items():
+                preds_dict[key] = val.permute(0, 2, 3, 1).contiguous()
+
+            batch_hm = torch.sigmoid(preds_dict['hm'])
+
+            batch_dim = preds_dict['dim']
+
+            batch_rot = preds_dict['rot']
+            batch_reg = preds_dict['center']
+            batch_hei = preds_dict['center_z']
+            batch_iou = preds_dict['iou']
+
+            batch_reg = batch_reg.reshape(H*W, 2)
+            batch_hei = batch_hei.reshape(H*W, 1)
+
+            batch_rot = batch_rot.reshape(H*W, 2)
+            batch_dim = batch_dim.reshape(H*W, 3)
+            batch_hm = batch_hm.reshape(H*W, num_cls)
+            batch_iou = batch_iou.reshape(H*W, 1)
+
+            if 'vel' in preds_dict:
+                batch_vel = preds_dict['vel']
+                batch_vel = batch_vel.reshape(H*W, 2)
+                batch_box_preds = torch.cat([batch_reg, batch_hei, batch_dim, batch_vel, batch_rot, batch_iou], dim=1)
+            else:
+                batch_box_preds = torch.cat([batch_reg, batch_hei, batch_dim, batch_rot, batch_iou], dim=1)
 
             batch_box_preds_list.append(batch_box_preds)
             batch_hm_list.append(batch_hm)

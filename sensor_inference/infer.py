@@ -4,11 +4,11 @@ from sensor_inference.object_infer import ObjectInfer
 from sensor_inference.trafficlight_infer import TrafficLightInfer
 
 class DetInfer():
-    def __init__(self, detection_capability, detection_config, logger = None, max_size = 3):
-        self.engine_start = Value('b', False)
-        self.max_size = max_size
+    def __init__(self, detection_capability, detection_config, logger = None, max_size = 1):
         self.logger = logger
+        self.max_size = max_size
         self.capability = detection_capability
+        self.engine_start = Value('b', False)
         self.engines = []
         if detection_capability.object:
             self.engines.append(ObjectInfer(self.engine_start, detection_config.object, logger, max_size))
@@ -28,7 +28,7 @@ class DetInfer():
 
     def set_config(self, cfg):
         for engine in self.engines:
-            engine.set_config(cfg.detection)
+            engine.set_config(cfg)
 
     def is_prepared_done(self):
         prepared = True
@@ -65,11 +65,8 @@ class DetInfer():
 
         input_dict = data_dict.copy()
         # pop out unused data
-        input_dict.pop('points_attr', None)
         input_dict.pop('image_jpeg', None)
         input_dict.pop('radar', None)
-        input_dict.pop('ins_data', None)
-        input_dict.pop('imu_data', None)
 
         # add detection capability for fusion
         input_dict['detection_capability'] = self.capability.copy()

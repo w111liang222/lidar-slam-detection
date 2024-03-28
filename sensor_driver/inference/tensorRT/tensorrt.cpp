@@ -127,6 +127,10 @@ public:
         return true;
     }
 
+    virtual int32_t getBindingIndex(const std::string& name) override{
+        return engine_->getBindingIndex(name.c_str());
+    }
+
     virtual int64_t getBindingNumel(const std::string& name) override{
         nvinfer1::Dims d = engine_->getBindingDimensions(engine_->getBindingIndex(name.c_str()));
         return std::accumulate(d.d, d.d + d.nbDims, 1, std::multiplies<int64_t>());

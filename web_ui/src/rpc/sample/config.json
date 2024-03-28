@@ -163,19 +163,13 @@
     }
   ],
   "output": {
-    "freespace": {
-      "max_height": 2.5,
-      "min_height": 0.2,
-      "range": [-20, 20, -6, 6],
-      "resolution": 0.25,
-      "use": true
-    },
     "object": {
       "cyclist": true,
       "pedestrian": true,
       "traffic_cone": true,
       "use": true,
-      "vehicle": true
+      "vehicle": true,
+      "freespace": true
     },
     "point_cloud": { "destination": "192.168.1.101", "use": false },
     "protocol": {
@@ -214,6 +208,7 @@
     },
     "mapping": {
       "ground_constraint": true,
+      "gravity_constraint": true,
       "key_frames_interval": [4.0, 20.0],
       "key_frames_range": 1000,
       "loop_closure": true,
@@ -229,7 +224,16 @@
       "use": true
     }
   },
-  "detection": { "sensor_input": ["0-Ouster-OS1-128"] },
+  "detection": {
+    "sensor_input": ["0-Ouster-OS1-128"],
+    "freespace": {
+      "mode": "rule",
+      "max_height": 2.5,
+      "min_height": 0.2,
+      "range": [-20, 20, -6, 6],
+      "resolution": 0.25
+    }
+  },
   "system": {
     "log_level": "INFO",
     "record": {

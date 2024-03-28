@@ -20,11 +20,11 @@ class ManagerTemplate():
 
     def tear_down(self):
         if self.loop_thread is not None:
-            self.logger.info('%s wait for loop join' % (self.name))
+            self.logger.info(f'{self.name} wait for loop join')
             self.loop_thread.join()
         self.loop_thread = None
         self.peer = None
-        self.logger.info('%s tear down success' % (self.name))
+        self.logger.info(f'{self.name} tear down success')
 
     def release(self):
         raise NotImplementedError
@@ -69,28 +69,28 @@ class ManagerTemplate():
         util.set_thread_priority(self.name, 30)
         self.start()
         while self.system.is_initialized:
-            if self.cfg.input.mode == "online" and not self.system.is_running:
+            if (not self.system.is_running) and (self.cfg.input.mode == "online"):
                 time.sleep(1e-2)
                 continue
 
             fps = self.period.hit()
             if fps > 8.0:
-                self.logger.debug('%s, FPS: %.1f' % (self.name, fps))
+                self.logger.debug(f'{self.name}, FPS: {fps:.1f}')
             else:
-                self.logger.warn('%s, FPS: %.1f' % (self.name, fps))
+                self.logger.warn(f'{self.name}, FPS: {fps:.1f}')
             data_dict = self.get_data()
             if not bool(data_dict):
                 if self.system.is_running:
-                    self.logger.warn('%s has no data' % (self.name))
+                    self.logger.warn(f'{self.name} has no data')
                 continue
 
             if not self.peer.try_enqueue():
-                self.logger.debug('%s is overload' % (self.peer.name))
+                self.logger.debug(f'{self.peer.name} is overload')
                 continue
 
             data_dict = self.peer.pre_process(data_dict)
             self.peer.enqueue(data_dict, self.name)
 
-        self.logger.info('%s loop try to stop' % (self.name))
+        self.logger.info(f'{self.name} loop try to stop')
         self.stop()
-        self.logger.info('%s loop stopped' % (self.name))
+        self.logger.info(f'{self.name} loop stopped')

@@ -95,7 +95,7 @@ void LsqRegistration<PointTarget, PointSource>::computeTransformation(PointCloud
       auto elapseMs = since(clock).count();
       if (elapseMs > lm_timeout_ && is_converged_low(delta)) {
         converged_ = true;
-        std::cerr << "lm is timeout, iter: " << i << ", elapse ms: " << elapseMs << ", converge: true" << std::endl;
+        // std::cerr << "lm is timeout, iter: " << i << ", elapse ms: " << elapseMs << ", converge: true" << std::endl;
         break;
       } else if (elapseMs > (1.5 * lm_timeout_)) {
         std::cerr << "lm is timeout, iter: " << i << ", elapse ms: " << elapseMs << ", converge: false" << std::endl;
@@ -189,7 +189,7 @@ bool LsqRegistration<PointTarget, PointSource>::step_lm(Eigen::Isometry3d& x0, E
     }
 
     if (rho < 0) {
-      if (is_converged(delta)) {
+      if (is_converged_low(delta)) {
         return true;
       }
 

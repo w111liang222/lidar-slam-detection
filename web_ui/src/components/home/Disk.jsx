@@ -72,7 +72,7 @@ export default function Disk({
         <div className={classes.line}>
           <Typography variant="h6">{t("disk")}</Typography>
           <Box flexGrow={1} />
-          {frame_success != undefined && (
+          {isRecording && frame_success != undefined && (
             <>
               <GreenTextTypography variant="subtitle1">{frame_success}</GreenTextTypography>
               <span>&nbsp;</span>

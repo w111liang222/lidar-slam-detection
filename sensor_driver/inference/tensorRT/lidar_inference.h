@@ -62,10 +62,12 @@ class LidarInference {
     int max_points;
 
     // output
-    float* d_cls_preds;
-    float* d_box_preds;
-    int*   d_label_preds;
+    float* d_bev_mask = nullptr;
+    float* d_cls_preds = nullptr;
+    float* d_box_preds = nullptr;
+    int*   d_label_preds = nullptr;
 
+    unsigned int bev_mask_size;
     unsigned int cls_preds_size;
     unsigned int box_preds_size;
     unsigned int label_preds_size;
@@ -74,8 +76,9 @@ class LidarInference {
     LidarInference(LidarEngineParameter parameter);
     ~LidarInference();
 
+    void reset();
     int forward(const float* points, int point_num, const float* motion, bool runtime);
-    void get_output(float* cls_preds, float* box_preds, int* label_preds);
+    void get_output(float* cls_preds, float* box_preds, int* label_preds, float* freespace);
 };
 
 std::shared_ptr<LidarInference> create_engine(LidarEngineParameter parameter);

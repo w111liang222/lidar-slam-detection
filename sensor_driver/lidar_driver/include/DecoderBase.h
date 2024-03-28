@@ -94,8 +94,101 @@ struct Firing {
     double intensity[LSC16_SCANS_PER_FIRING];
 };
 
-/**RS-LiDAR decorder strcut**/
 #pragma pack(push, 1)
+/* Livox lidar packet*/
+typedef struct {
+  uint8_t version;
+  uint16_t length;
+  uint16_t time_interval;      /**< unit: 0.1 us */
+  uint16_t dot_num;
+  uint16_t udp_cnt;
+  uint8_t frame_cnt;
+  uint8_t data_type;
+  uint8_t time_type;
+  uint8_t rsvd[12];
+  uint32_t crc32;
+  uint8_t timestamp[8];
+  uint8_t data[1];             /**< Point cloud data. */
+} LivoxLidarEthernetPacket;
+
+// SDK related
+typedef enum {
+  kIndustryLidarType = 1,
+  kVehicleLidarType = 2,
+  kDirectLidarType = 4,
+  kLivoxLidarType = 8
+} LidarProtoType;
+
+typedef struct {
+  int32_t x;            /**< X axis, Unit:mm */
+  int32_t y;            /**< Y axis, Unit:mm */
+  int32_t z;            /**< Z axis, Unit:mm */
+  uint8_t reflectivity; /**< Reflectivity */
+  uint8_t tag;          /**< Tag */
+} LivoxLidarCartesianHighRawPoint;
+
+typedef struct {
+  int16_t x;            /**< X axis, Unit:cm */
+  int16_t y;            /**< Y axis, Unit:cm */
+  int16_t z;            /**< Z axis, Unit:cm */
+  uint8_t reflectivity; /**< Reflectivity */
+  uint8_t tag;          /**< Tag */
+} LivoxLidarCartesianLowRawPoint;
+
+typedef struct {
+  uint32_t depth;
+  uint16_t theta;
+  uint16_t phi;
+  uint8_t reflectivity;
+  uint8_t tag;
+} LivoxLidarSpherPoint;
+
+typedef struct {
+  unsigned int version_offset = 0;            
+  unsigned int length_offset = 1;            
+  unsigned int time_interval_offset = 3;            
+  unsigned int dot_num_offset = 5;            
+  unsigned int udp_cnt_offset = 7;            
+  unsigned int frame_cnt_offset = 9;            
+  unsigned int data_type_offset = 10;            
+  unsigned int time_type_offset = 11;            
+  unsigned int reserved_offset = 12;         
+  unsigned int crc32_offset = 24;         
+  unsigned int timestamp_offset = 28;            
+  unsigned int data_offset = 36;
+  unsigned int cartesian_high_size = 14;
+  unsigned int cartesian_low_size = 8;
+  unsigned int spher_size = 10;
+  uint64_t frame_interval_ = 100000000; // ns
+  LivoxLidarCartesianHighRawPoint high_point;
+  LivoxLidarCartesianLowRawPoint low_point;
+  LivoxLidarSpherPoint spher_point;
+} LivoxLidarPacketOffsetInfo;
+
+
+typedef enum {
+  kLivoxLidarImuData = 0,
+  kLivoxLidarCartesianCoordinateHighData = 0x01,
+  kLivoxLidarCartesianCoordinateLowData = 0x02,
+  kLivoxLidarSphericalCoordinateData = 0x03
+} LivoxLidarPointDataType;
+
+/* Livox lidar rawpacket*/
+typedef struct {
+  LidarProtoType lidar_type;
+  uint16_t length;
+  uint32_t handle;
+  bool extrinsic_enable;
+  uint32_t point_num;
+  uint8_t data_type;
+  uint8_t line_num;
+  uint64_t time_stamp;
+  uint64_t point_interval;
+  std::vector<uint8_t> raw_data;
+} RawPacket;
+
+
+/**RS-LiDAR decorder strcut**/
 typedef struct
 {
   uint8_t year;

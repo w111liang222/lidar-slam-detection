@@ -35,7 +35,7 @@ class DetectManager(ManagerTemplate):
             module.set_config(cfg)
             module.start()
 
-        self.frame_queue = queue.Queue(maxsize=10)
+        self.frame_queue = queue.Queue(maxsize=3)
 
     def release(self):
         for module in self.modules:
@@ -56,28 +56,17 @@ class DetectManager(ManagerTemplate):
             module.set_config(cfg)
 
     def try_enqueue(self):
-        retry = 0
-        while True:
-            if self.frame_queue.full() or self.detection.is_overload() or self.fusion.is_overload() or \
-               self.tracking.is_overload():
-                retry = retry + 1
-                if self.cfg.input.mode == 'offline' and retry < 100:
-                    time.sleep(1e-2)
-                    continue
-                else:
-                    self.logger.warn('overload: frame queue {}, engine {}, fusion {}, tracking {}'.format(
-                                      self.frame_queue.full(),
-                                      self.detection.is_overload(),
-                                      self.fusion.is_overload(),
-                                      self.tracking.is_overload()))
-                    return False
-            else:
-                break
+        if self.frame_queue.full() or self.detection.is_overload() or self.fusion.is_overload() or self.tracking.is_overload():
+            self.logger.warn('overload: frame queue {}, detection {}, fusion {}, tracking {}'.format(
+                              self.frame_queue.full(),
+                              self.detection.is_overload(),
+                              self.fusion.is_overload(),
+                              self.tracking.is_overload()))
+            return False
 
         return True
 
     def pre_process(self, data_dict):
-        data_dict.pop('image_det', None)
         data_dict.pop('pred_boxes', None)
         data_dict.pop('pred_attr', None)
         data_dict.pop('pred_traj', None)
@@ -85,7 +74,7 @@ class DetectManager(ManagerTemplate):
 
     def enqueue(self, input_dict, module_name):
         input_dict['do_detection'] = self.detection.enqueue(input_dict)
-        self.frame_queue.put_nowait(input_dict)
+        self.frame_queue.put(input_dict)
 
     def get_data(self, **kwargs):
         # wait until get points or thread quit
@@ -95,24 +84,19 @@ class DetectManager(ManagerTemplate):
                 break
             except queue.Empty:
                 self.logger.warn('frame queue is Empty')
-                frame_dict = dict()
-                continue
         # wait until get tracking result or thread quit
         while self.system.is_initialized and frame_dict['do_detection']:
-            track_dict = self.tracking.get_output(block=True, timeout=1.0)
-            if track_dict:
-                if frame_dict['frame_start_timestamp'] != track_dict['frame_start_timestamp']:
-                    self.logger.warn('tracking output order is wrong!')
-                else:
-                    frame_dict.update(track_dict)
-                    break
-            else:
+            try:
+                track_dict = self.tracking.get_output(block=True, timeout=1.0)
+                frame_dict.update(track_dict)
+                break
+            except queue.Empty:
                 self.logger.warn('tracking queue is Empty')
 
         if not self.system.is_initialized:
             return dict()
 
-        frame_dict = self.object_filter.filter(frame_dict)
         frame_dict.pop('do_detection')
+        frame_dict = self.object_filter.filter(frame_dict)
 
         return frame_dict

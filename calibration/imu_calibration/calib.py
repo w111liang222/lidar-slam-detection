@@ -1,3 +1,4 @@
+import time
 import numpy as np
 
 from module.export_interface import call
@@ -21,6 +22,7 @@ from sensor_driver.common_lib.cpp_utils import (
 class ImuCalib():
     is_origin_set = False
     origin = None
+    last_stamp = 0
     last_pose = None
     last_imu_data = None
     last_position = None
@@ -34,6 +36,7 @@ class ImuCalib():
     def reset(extrinsic_parameters=None):
         ImuCalib.is_origin_set = False
         ImuCalib.origin = None
+        ImuCalib.last_stamp = 0
         ImuCalib.last_pose = None
         ImuCalib.last_imu_data = None
         ImuCalib.last_position = None
@@ -79,9 +82,16 @@ class ImuCalib():
             return False
 
     @staticmethod
-    def getPositionPoints():
+    def getPositionPoints(config):
         det = detection_pb2.Detection()
-        result_dict = call('source.get_source_data_pb', raw_data = True)
+        retry = 0
+        while retry < 100:
+            retry = retry + 1
+            result_dict = call('bank.get_frame_data')
+            if 'frame_start_timestamp' in result_dict and result_dict['frame_start_timestamp'] != ImuCalib.last_stamp:
+                ImuCalib.last_stamp = result_dict['frame_start_timestamp']
+                break
+            time.sleep(0.01)
 
         if 'points' in result_dict and result_dict['lidar_valid']:
             points = np.concatenate(list(result_dict['points'].values()), axis=0)
@@ -112,8 +122,8 @@ class ImuCalib():
 
         position = ImuCalib.parse_data(result_dict['ins_data'])
 
-        # judge whether gps latitude and longitude is  zero
-        if  result_dict['ins_data']['latitude'] == 0 and result_dict['ins_data']['longitude'] == 0:
+        # judge whether gps latitude and longitude is zero
+        if config['ins']['ins_type'] != '6D' or (result_dict['ins_data']['latitude'] == 0 and result_dict['ins_data']['longitude'] == 0):
             T = calib_imu_get_lidar_T_R(points)
         else:
             ImuCalib.set_origin(position)

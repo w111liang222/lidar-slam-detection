@@ -38,7 +38,7 @@ class GlobalLocalization {
   void setInitPoseRange(PoseRange &r);
   void setInitPose(const Eigen::Matrix4d &t);
   int  getEstimatePose(Eigen::Matrix4d &t);
-  void setGraphMap(std::vector<std::shared_ptr<KeyFrame>> &map, pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr &graphKDTree, std::vector<EdgeType> &connections);
+  void setGraphMap(std::vector<std::shared_ptr<KeyFrame>> &map, std::vector<EdgeType> &connections);
 
  private:
   void runSearchPose();
@@ -47,6 +47,7 @@ class GlobalLocalization {
   std::pair<int, float> globalSearch(PointCloud::Ptr &cloud);
   void imageSearch(PointCloud::Ptr &cloud, std::pair<std::string, ImageType> &im, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess);
   bool registrationAlign(const std::string &sensor, std::pair<int, float> &init_match, Eigen::Matrix4f &init_guess, PointCloud::Ptr &cloud, Eigen::Isometry3d &pose);
+  void buildGraphKDTree();
   PointCloud::Ptr downsample(PointCloud::Ptr& cloud);
 
  protected:

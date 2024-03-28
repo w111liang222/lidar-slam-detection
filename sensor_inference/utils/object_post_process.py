@@ -10,11 +10,9 @@ class PostProcesser():
         for name, thresh in model_cfg.POST_PROCESSING.SCORE_THRESH.items():
             self.score_dict[self.class_names.index(name)+1] = thresh
 
-    def forward(self, cls_preds, box_preds, label_preds):
-        pred_dicts = self.post_processing(cls_preds, box_preds, label_preds)
-        return pred_dicts
+        self.map_score = model_cfg.POST_PROCESSING.MAP_SCORE_THRESH
 
-    def post_processing(self, cls_preds, box_preds, label_preds):
+    def forward(self, cls_preds, box_preds, label_preds, freespace):
         post_process_cfg = self.model_cfg.POST_PROCESSING
 
         final_scores, final_boxes, final_labels = model_nms_utils.class_agnostic_nms(

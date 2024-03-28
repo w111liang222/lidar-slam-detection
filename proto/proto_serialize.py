@@ -50,8 +50,19 @@ def serialize_to_string(result_dict, display_on_image=False, use_raw_image=False
     if 'freespace' in result_dict:
         det.freespace = result_dict['freespace']
 
+    #traffic_light
+    if 'trafficlight' in result_dict:
+        pred_ids, pred_scores, pred_pictograms, pred_colors, pred_names = result_dict['trafficlight']['pred_ids'], result_dict['trafficlight']['pred_scores'], result_dict['trafficlight']['pred_pictograms'], result_dict['trafficlight']['pred_colors'], result_dict['trafficlight']['pred_names']
+        for id, score, pictogram, color, name in zip(pred_ids, pred_scores, pred_pictograms, pred_colors, pred_names):
+            trafficlight = det.light.add()
+            trafficlight.id = int(id)
+            trafficlight.pictogram = int(pictogram)
+            trafficlight.color = int(color)
+            trafficlight.confidence = score
+            trafficlight.name = name
+
     # points
-    if 'points' in result_dict and result_dict['lidar_valid']:
+    if result_dict['lidar_valid']:
         points = np.concatenate(list(result_dict['points'].values()), axis=0)
         points = cpp_utils.pointcloud_downsample(points, sample_size) if sample_size > 0 else points
         det.points = points.tobytes()
@@ -59,7 +70,7 @@ def serialize_to_string(result_dict, display_on_image=False, use_raw_image=False
         det.points = np.zeros((0, 4), dtype=np.float32).tobytes()
 
     # image
-    if 'image' in result_dict and bool(result_dict['image']):
+    if result_dict['image_valid']:
         if use_raw_image is True or display_on_image is True or 'image_jpeg' not in result_dict:
             if display_on_image is True and 'pred_boxes' in result_dict and 'pred_attr' in result_dict:
                 # draw detection results
@@ -87,7 +98,7 @@ def serialize_to_string(result_dict, display_on_image=False, use_raw_image=False
             camera_image.image = img
 
     # radar
-    if 'radar' in result_dict and result_dict['radar_valid']:
+    if result_dict['radar_valid']:
         for name, radar in result_dict['radar'].items():
             radar_msg = det.radar.add()
             radar_msg.radar_name = name
@@ -131,7 +142,10 @@ def serialize_to_string(result_dict, display_on_image=False, use_raw_image=False
         det.pose.altitude = pose_dict['altitude']
         det.pose.status = int(pose_dict['Status'])
         det.pose.state = pose_dict['state']
-    elif 'ins_data' in result_dict and result_dict['ins_valid']:
+        if pose_dict['area'] is not None:
+            det.pose.area.type = pose_dict['area']['type']
+            det.pose.area.name = pose_dict['area']['name']
+    elif result_dict['ins_valid']:
         det.pose.x = 0
         det.pose.y = 0
         det.pose.z = 0
@@ -145,9 +159,8 @@ def serialize_to_string(result_dict, display_on_image=False, use_raw_image=False
         det.pose.state = result_dict['ins_data']['state'] if 'state' in result_dict['ins_data'] else "Unknown"
 
     # timestamp
-    if 'frame_start_timestamp' in result_dict:
-        det.header.timestamp = result_dict['frame_start_timestamp']
-        det.header.relative_timestamp = abs(int(time.time() * 1000000) - result_dict['frame_start_timestamp'])
+    det.header.timestamp = result_dict['frame_start_timestamp']
+    det.header.relative_timestamp = abs(int(time.time() * 1000000) - result_dict['frame_start_timestamp'])
 
     return det.SerializeToString()
 

@@ -46,6 +46,7 @@ class LidarDriver {
     RS_Ruby_Lite,
     RS_Helios_16P,
     RS_Helios,
+    Livox_Mid_360,
     Custom,
   };
 
@@ -86,9 +87,14 @@ class LidarDriver {
   void packagePrase_RS_Ruby_Lite(char buf[]);
   void packagePrase_RS_Helios_16P(char buf[]);
   void packagePrase_RS_Helios(char buf[]);
+  void packagePrase_Livox_Mid_360(char buf[]);
   void packagePrase_Custom(char buf[]);
 
   void xmlCorrection(void);
+  void CopyCartesianHighRawPoint(char buf[], RawPacket& raw_packet,
+                                 unsigned int& start_pos, unsigned int& offset);
+  void CopyCartesianlowRawPoint(char buf[], RawPacket& raw_packet,
+                                unsigned int& start_pos, unsigned int& offset);                                 
 
  public:
   moodycamel::BlockingReaderWriterQueue<LidarScan*> scanQueue;
@@ -195,6 +201,10 @@ class LidarDriver {
   RSDecoderMechConstParam mech_const_param_;
   ChanAngles chan_angles_;
 
+  // livox mid360
+  bool livox_first = true, livox_frame_start = true;
+  uint64_t last_frame_time_;
+  std::unique_ptr<LivoxLidarPacketOffsetInfo> livox_offset_;
 };
 
 }  // namespace LIDAR

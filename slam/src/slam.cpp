@@ -436,6 +436,9 @@ void SLAM::runLocalizationThread() {
       if (!pose_valid && !isImuOnline) {
         continue;
       } else if (!pose_valid && isImuOnline) {
+        if (mInsDim != 6) {
+          continue;
+        }
         if (isImuOnline && isLocalizationOutput) {
           isLocalizationOutput = false;
           LOG_WARN("localization output switch to rtk only mode");
@@ -445,9 +448,16 @@ void SLAM::runLocalizationThread() {
           isLocalizationOutput = true;
           LOG_INFO("localization output switch to fusion mode");
         }
+
+        nav_msgs::Odometry odometry_message;
+        odometry_message.header.stamp = rtk.timestamp;
+        fromOdometry(pose, odometry_message);
         if (mZeroUtm) {
           mProjector->FromLocalToGlobal((*mZeroUtm)(0) + pose(0, 3), (*mZeroUtm)(1) + pose(1, 3), rtk.latitude, rtk.longitude);
           rtk.altitude = (*mZeroUtm)(2) + pose(2, 3);
+          odometry_message.pose.pose.position.x += (*mZeroUtm)(0);
+          odometry_message.pose.pose.position.y += (*mZeroUtm)(1);
+          odometry_message.pose.pose.position.z += (*mZeroUtm)(2);
         } else {
           rtk.latitude  = 0;
           rtk.longitude = 0;
@@ -455,9 +465,6 @@ void SLAM::runLocalizationThread() {
         }
 
         // publish fusion pose message
-        nav_msgs::Odometry odometry_message;
-        odometry_message.header.stamp = rtk.timestamp;
-        fromOdometry(pose, odometry_message);
         get_core()->publish("slam.odometry", &odometry_message);
 
         double x, y, z;

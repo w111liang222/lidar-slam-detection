@@ -14,7 +14,13 @@ export const CONTROL_TYPE = {
   DRIVER: 7,
 };
 
-export default function Controls({ type = CONTROL_TYPE.NORMAL, height = 50, position = [0, 0, 0], enable = true }) {
+export default function Controls({
+  type = CONTROL_TYPE.NORMAL,
+  height = 50,
+  position = [0, 0, 0],
+  target = [0, 0, 0],
+  enable = true,
+}) {
   const { camera, gl } = useThree();
 
   const [controls, setControls] = useState();
@@ -44,7 +50,7 @@ export default function Controls({ type = CONTROL_TYPE.NORMAL, height = 50, posi
         camera.position.set(position[0] - 15, position[1], position[2] + 20);
         camera.lookAt(position[0], position[1], position[2]);
         control = new MapControls(camera, gl.domElement);
-        control.target.set(position[0], position[1], position[2]);
+        control.target.set(position[0] + target[0], position[1] + target[1], position[2] + target[2]);
         setControls(control);
         control.update();
         break;
@@ -94,8 +100,11 @@ export default function Controls({ type = CONTROL_TYPE.NORMAL, height = 50, posi
       // controls.object.position.set(position[0] - 15, position[1], position[2] + 20);
       controls.object.lookAt(position[0], position[1], position[2]);
       controls.target.set(position[0], position[1], position[2]);
+    } else if (type == CONTROL_TYPE.NORMAL && controls) {
+      controls.target.set(controls.target.x, controls.target.y, position[2] + target[2]);
+      controls.update();
     }
-  }, [position]);
+  }, [position, target]);
 
   useEffect(() => {
     if (controls) {

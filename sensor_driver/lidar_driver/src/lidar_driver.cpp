@@ -13,6 +13,8 @@ namespace LIDAR {
 static const double Ang2Rad = 0.01745329251994;
 static const uint64_t kPointNumMax = 500000;
 
+const uint8_t kLineNumberMid360 = 4;
+
 void LidarDriver::veloRun() {
   std::string name = std::to_string(AffinityCpu) + "-" + getLidarNameByType(LidarType);
   prctl(PR_SET_NAME, name.c_str(), 0, 0, 0);
@@ -118,6 +120,12 @@ void LidarDriver::setParseFun() {
       setOusterCfgMap(); 
       break;
     }        
+    case lidarType::Livox_Mid_360: {
+      parseFun = std::bind(&LIDAR::LidarDriver::packagePrase_Livox_Mid_360, this,
+                           std::placeholders::_1);
+      livox_offset_ = std::make_unique<LivoxLidarPacketOffsetInfo>();
+      break;
+    }       
     case lidarType::Custom: {
       parseFun = std::bind(&LIDAR::LidarDriver::packagePrase_Custom, this,
                            std::placeholders::_1);
@@ -235,6 +243,8 @@ LidarDriver::lidarType LidarDriver::getLidarTypeByName(std::string name) {
     return lidarType::RS_Helios_16P;
   } else if (name.compare("RS-Helios") == 0) {
     return lidarType::RS_Helios;
+  } else if (name.compare("Livox-Mid-360") == 0) {
+    return lidarType::Livox_Mid_360;    
   } else if (name.compare("Custom") == 0) {
     return lidarType::Custom;
   } else {
@@ -271,6 +281,9 @@ std::string LidarDriver::getLidarNameByType(lidarType type) {
     case lidarType::RS_Helios: {
       return "RS-Helios";
     }
+    case lidarType::Livox_Mid_360: {
+      return "Livox-Mid-360";
+    }    
     case lidarType::Custom: {
       return "Custom";
     }
@@ -1213,6 +1226,108 @@ void LidarDriver::packagePrase_RS_Helios(char buf[1248]) {
     return;
   }
   azimuthForRSHelios = azimuth;
+}
+
+void LidarDriver::CopyCartesianHighRawPoint(char buf[], RawPacket& raw_packet,
+                               unsigned int& start_pos, unsigned int& offset) {
+  LivoxLidarCartesianHighRawPoint raw_point;
+  for (size_t i = livox_offset_->data_offset; i < raw_packet.length; i += livox_offset_->cartesian_high_size) {
+    memcpy(&raw_point, buf + i, livox_offset_->cartesian_high_size);
+    float x = raw_point.x / 1000.0;
+    float y = raw_point.y / 1000.0;
+    float z = raw_point.z / 1000.0;
+    float intensity = raw_point.reflectivity / 255.0f;
+    float line = static_cast<float>(i / livox_offset_->cartesian_high_size % raw_packet.line_num);
+    float offset_time = raw_packet.time_stamp - scanStartTime + i / livox_offset_->cartesian_high_size * raw_packet.point_interval;
+    if (pointsInROI(x, y, z)) {
+      pointCloud->emplace_back(x);
+      pointCloud->emplace_back(y);
+      pointCloud->emplace_back(z);
+      pointCloud->emplace_back(intensity);
+      pointCloudAttr->emplace_back(offset_time);
+      pointCloudAttr->emplace_back(line);
+    }
+  }
+}
+
+void LidarDriver::CopyCartesianlowRawPoint(char buf[], RawPacket& raw_packet,
+                              unsigned int& start_pos, unsigned int& offset) {
+  LivoxLidarCartesianLowRawPoint raw_point;
+  for (size_t i = livox_offset_->data_offset; i < raw_packet.length; i += livox_offset_->cartesian_low_size) {
+    memcpy(&raw_point, buf + i, livox_offset_->cartesian_low_size);
+    float x = raw_point.x / 100.0;
+    float y = raw_point.y / 100.0;
+    float z = raw_point.z / 100.0;
+    float intensity = raw_point.reflectivity / 255.0f;
+    float line = static_cast<float>(i / livox_offset_->cartesian_low_size % raw_packet.line_num);
+    float offset_time = raw_packet.time_stamp - scanStartTime + i / livox_offset_->cartesian_low_size * raw_packet.point_interval;
+    
+    if (pointsInROI(x, y, z)) {
+      pointCloud->emplace_back(x);
+      pointCloud->emplace_back(y);
+      pointCloud->emplace_back(z);
+      pointCloud->emplace_back(intensity);
+      pointCloudAttr->emplace_back(offset_time);
+      pointCloudAttr->emplace_back(line);
+    }
+  }
+}
+
+void LidarDriver::packagePrase_Livox_Mid_360(char buf[]) {
+  auto now_time = getCurrentTime();
+  //First Set
+  if (livox_first || now_time - last_frame_time_ > 1000000) {
+    last_frame_time_ = now_time;
+    livox_first = false;
+    // return;
+  }
+  LivoxLidarEthernetPacket* packet = reinterpret_cast<LivoxLidarEthernetPacket*>(buf);
+  RawPacket raw_packet = {};
+  // packet.handle = handle;
+  raw_packet.length = packet->length;
+  raw_packet.lidar_type = LidarProtoType::kLivoxLidarType;
+  raw_packet.extrinsic_enable = false; 
+  raw_packet.line_num = kLineNumberMid360;
+
+  raw_packet.data_type = packet->data_type;
+  raw_packet.point_num = packet->dot_num;
+  raw_packet.point_interval = packet->time_interval * 100 / packet->dot_num / 1000;  // us
+  raw_packet.time_stamp = now_time; // us
+
+  if (livox_frame_start) {
+    scanStartTime = raw_packet.time_stamp;
+    livox_frame_start  = false;
+  }
+
+  switch (packet->data_type) {
+    case kLivoxLidarCartesianCoordinateHighData:
+      CopyCartesianHighRawPoint(buf, raw_packet, 
+                                livox_offset_->data_offset,
+                                livox_offset_->cartesian_high_size);
+      break;
+    case kLivoxLidarCartesianCoordinateLowData:
+      CopyCartesianlowRawPoint(buf, raw_packet, 
+                               livox_offset_->data_offset,
+                               livox_offset_->cartesian_low_size);
+      break;                                
+    case kLivoxLidarSphericalCoordinateData:
+      LOG_WARN("not support data type: {} !!", static_cast<int>(packet->data_type));
+      return;
+    default:
+      LOG_WARN("unknown data type: {} !!", static_cast<int>(packet->data_type));
+      return;
+  }
+
+  if (now_time - last_frame_time_ < livox_offset_->frame_interval_ / 1000) {
+    return;
+  }
+
+  last_frame_time_ += livox_offset_->frame_interval_ / 1000;
+  livox_frame_start = true;
+
+  LidarScan *scan = new LidarScan("Livox-Mid-360", scanStartTime, 2, pointCloud, pointCloudAttr);
+  scanQueue.enqueue(scan);
+  resetPoints();
 }
 
 void LidarDriver::packagePrase_Custom(char buf[1206]) {

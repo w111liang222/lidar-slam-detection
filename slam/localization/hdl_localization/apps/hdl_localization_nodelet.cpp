@@ -46,9 +46,9 @@ public:
     for (int i = 0; i < 2; i++) {
       if (registration[i] == nullptr) {
 #ifdef HAVE_CUDA_ENABLE
-        registration[i] = select_registration_method("NDT_CUDA", 100000);
+        registration[i] = select_registration_method("NDT_CUDA", 50000);
 #else
-        registration[i] = select_registration_method("FAST_VGICP", 100000);
+        registration[i] = select_registration_method("FAST_VGICP", 50000);
 #endif
       }
     }
@@ -60,9 +60,8 @@ public:
     pose_data.clear();
     imu_data.clear();
     ins_data.clear();
-    image_data = ImageType();
-    downsample_filter = nullptr;
 
+    downsample_filter = nullptr;
     pose_estimator.reset(nullptr);
     delta_estimator.reset(nullptr);
     visual_odometry.reset(nullptr);
@@ -225,8 +224,8 @@ public:
     // enqueue image data to vo
     bool use_vo = false;
     Eigen::Matrix4d camera_pose;
-    if (map_colouration && get_timed_pose(image_data.stamp, camera_pose)) {
-      use_vo = visual_odometry->feedImageData(image_data.stamp, camera_pose, image_data.image);
+    if (map_colouration && get_timed_pose(image.stamp, camera_pose)) {
+      use_vo = visual_odometry->feedImageData(image.stamp, camera_pose, image.image);
     }
 
     // imu process
@@ -279,23 +278,30 @@ public:
         gps_observation = ins_data.back();
         ins_data.clear();
       } else if (stamp > ins_data.front()->timestamp && ins_data.size() >= 2) {
+        bool gps_data_valid = true;
         auto first_ins  = ins_data.begin();
         auto second_ins = ins_data.begin();
         for(; second_ins != ins_data.end(); second_ins++) {
           auto dt = ((*first_ins)->timestamp - double(stamp)) / 1000000.0;
           auto dt2 = ((*second_ins)->timestamp - double(stamp)) / 1000000.0;
+          if (((*first_ins)->latitude - (*second_ins)->latitude) > 1e-3 || ((*first_ins)->longitude - (*second_ins)->longitude) > 1e-3) {
+            LOG_WARN("localization get wrong GPS data: ({}, {}), ({}, {})", (*first_ins)->latitude, (*first_ins)->longitude, (*second_ins)->latitude, (*second_ins)->longitude);
+            gps_data_valid = false;
+          }
           if(dt <= 0 && dt2 >= 0) {
             break;
           }
           first_ins = second_ins;
         }
-        std::shared_ptr<RTKType> gps_obs_ptr(new RTKType());
-        double t_diff_ratio = static_cast<double>(stamp - (*first_ins)->timestamp) /
-                              static_cast<double>((*second_ins)->timestamp - (*first_ins)->timestamp + 1);
-        gps_obs_ptr->precision = (*first_ins)->precision;
-        gps_obs_ptr->dimension = (*first_ins)->dimension;
-        gps_obs_ptr->T = interpolateTransform((*first_ins)->T, (*second_ins)->T, t_diff_ratio);
-        gps_observation = gps_obs_ptr;
+        if (gps_data_valid) {
+          std::shared_ptr<RTKType> gps_obs_ptr(new RTKType());
+          double t_diff_ratio = static_cast<double>(stamp - (*first_ins)->timestamp) /
+                                static_cast<double>((*second_ins)->timestamp - (*first_ins)->timestamp + 1);
+          gps_obs_ptr->precision = (*first_ins)->precision;
+          gps_obs_ptr->dimension = (*first_ins)->dimension;
+          gps_obs_ptr->T = interpolateTransform((*first_ins)->T, (*second_ins)->T, t_diff_ratio);
+          gps_observation = gps_obs_ptr;
+        }
       }
     }
     ins_data_mutex.unlock();
@@ -339,12 +345,16 @@ public:
       result = false;
     }
 
+    if (isnan(pose(0, 3)) || isnan(pose(1, 3))) {
+      LOG_ERROR("localization error, pose ({:.2f}, {:.2f})", pose(0, 3), pose(1, 3));
+      result = false;
+    }
+
     // update map or initialize visual odometry
     visual_odometry->updateMap(pose.matrix(), cloud->cloud);
-    if (map_colouration && result && !visual_odometry->isInitialized() && get_timed_pose(image_data.stamp, camera_pose)) {
-      visual_odometry->initialize(image_data.stamp, camera_pose, image_data.image, cloud->cloud);
+    if (map_colouration && result && !visual_odometry->isInitialized() && get_timed_pose(image.stamp, camera_pose)) {
+      visual_odometry->initialize(image.stamp, camera_pose, image.image, cloud->cloud);
     }
-    image_data = image;
 
     return (result ? LocType::OK : LocType::ERROR);
   }
@@ -419,8 +429,6 @@ private:
   // imu input buffer
   std::mutex imu_data_mutex;
   std::vector<ImuType> imu_data;
-  // camera data
-  ImageType image_data;
 
   pcl::Filter<PointT>::Ptr downsample_filter;
 

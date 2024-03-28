@@ -41,6 +41,8 @@ from pytorch_quantization.nn.modules import _utils
 from absl import logging as quant_logging
 
 from sensor_inference.pytorch_model.object_model.spconv_backbone import SparseBasicBlock
+from sensor_inference.pytorch_model.object_model.base_bev_backbone import BasicBlock
+import funcs
 from spconv.pytorch.conv import SparseConvolution, SparseConvTensor
 from spconv.core import ConvAlgo
 from typing import List, Optional, Tuple, Union
@@ -63,10 +65,15 @@ def insert_quant_add_to_block(self):
     self.quant_add = QuantAdd()
     self.quant_add.__init__()
 
+def insert_residual_to_block(self):
+    self.residual_quantizer = quant_nn.TensorQuantizer(quant_nn.QuantConv2d.default_quant_desc_input)
+
 def quant_add_module(model):
     for name, block in model.named_modules():
         if isinstance(block, SparseBasicBlock):
             insert_quant_add_to_block(block)
+        elif isinstance(block, BasicBlock):
+            insert_residual_to_block(block)
 # Replace add to quant_add
 
 # Replace spconv to spconv_quant
@@ -157,6 +164,124 @@ def quant_sparseconv_module(model):
     replace_module(model)
 # Replace spconv to spconv_quant
 
+def new_basic_block_forward(self, is_fuse_relu=True):
+    def basic_block_forward(x):
+        identity = x
+        out = self.conv1(x)
+        if is_fuse_relu == False:
+            out = self.relu1(out)
+
+        out = self.conv2(out)
+
+        if self.downsample:
+            identity = self.downsample_layer(x)
+
+        if hasattr(self, 'residual_quantizer'):
+            out += self.residual_quantizer(identity)
+        else:
+            out += identity
+        out = self.relu2(out)
+        return out
+    return basic_block_forward
+
+def fuse_basic_block(self, is_fuse_bn = False, is_fuse_relu=True):
+    self.forward = new_basic_block_forward(self, is_fuse_relu=is_fuse_relu)
+    if is_fuse_relu == True:
+        self.conv1.act_type = tv.gemm.Activation.ReLU 
+
+    if is_fuse_bn == True:
+        funcs.fuse_conv_bn(self.conv1, self.bn1)
+        funcs.fuse_conv_bn(self.conv2, self.bn2)
+        delattr(self, "bn1")
+        delattr(self, "bn2")
+
+def layer_fusion_bn_backbone2d(model):
+    for name, block in model.named_modules():
+        if isinstance(block, BasicBlock):
+            fuse_basic_block(block, is_fuse_bn = True, is_fuse_relu =False)
+
+    module = model._modules['deblocks']
+    for name in module._modules:
+        submodule = module._modules[name]
+        if isinstance(submodule,  nn.Sequential):
+            c, b, r = [submodule[i] for i in range(3)]
+            funcs.fuse_conv_bn(c, b, True)
+            module._modules[name] = nn.Sequential(c, r)
+
+    def replace_module(module, prefix=""):
+        for name in module._modules:
+            submodule = module._modules[name]
+            submodule_name = name if prefix == "" else prefix + "." + name
+            replace_module(submodule, submodule_name)
+            if isinstance(submodule,  nn.Sequential):
+                if len(submodule) == 2:
+                    c, b = [submodule[i] for i in range(2)]
+                    funcs.fuse_conv_bn(c, b)
+                    module._modules[name] = nn.Sequential(c)
+
+    replace_module(model.blocks)
+    return model
+
+def layer_fusion_bn_head(model):
+    def replace_module(module, prefix=""):
+        for name in module._modules:
+            submodule = module._modules[name]
+            submodule_name = name if prefix == "" else prefix + "." + name
+            replace_module(submodule, submodule_name)
+
+            if isinstance(submodule,  nn.Sequential):
+                if len(submodule) == 3:
+                    c, b, r = [submodule[i] for i in range(3)]
+                    funcs.fuse_conv_bn(c, b)
+                    module._modules[name] = nn.Sequential(c, r)
+                elif len(submodule) == 6:
+                    c1, b1, r1, c2, b2, r2 = [submodule[i] for i in range(6)]
+                    funcs.fuse_conv_bn(c1, b1)
+                    funcs.fuse_conv_bn(c2, b2)
+                    module._modules[name] = nn.Sequential(c1, r1, c2, r2)
+
+    replace_module(model)
+    return model
+
+def transfer_conv2d_to_quantization(nninstance : torch.nn.Module, quantmodule):
+    quant_instance = quantmodule.__new__(quantmodule)
+    for k, val in vars(nninstance).items():
+        setattr(quant_instance, k, val)
+    def __init__(self):
+        if isinstance(self, quant_nn.QuantConv2d):
+            quant_desc_input = tensor_quant.QuantDescriptor(num_bits=8, calib_method = 'histogram')
+            quant_desc_weight = tensor_quant.QUANT_DESC_8BIT_CONV2D_WEIGHT_PER_CHANNEL
+            self.init_quantizer(quant_desc_input, quant_desc_weight)
+
+    __init__(quant_instance)
+    return quant_instance
+
+def transfer_convtranpose2d_to_quantization(nninstance : torch.nn.Module, quantmodule):
+    quant_instance = quantmodule.__new__(quantmodule)
+    for k, val in vars(nninstance).items():
+        setattr(quant_instance, k, val)
+    def __init__(self):
+        if isinstance(self, quant_nn.QuantConvTranspose2d):
+            quant_desc_input = tensor_quant.QuantDescriptor(num_bits=8, calib_method = 'histogram')
+            quant_desc_weight = tensor_quant.QUANT_DESC_8BIT_CONVTRANSPOSE2D_WEIGHT_PER_CHANNEL
+            self.init_quantizer(quant_desc_input, quant_desc_weight)
+
+    __init__(quant_instance)
+    return quant_instance
+
+def quant_conv_module(model):
+    def replace_module(module, prefix=""):
+        for name in module._modules:
+            submodule = module._modules[name]
+            submodule_name = name if prefix == "" else prefix + "." + name
+            replace_module(submodule, submodule_name)
+
+            if isinstance(submodule,  nn.Conv2d):
+                module._modules[name] = transfer_conv2d_to_quantization(submodule, quant_nn.QuantConv2d)
+            elif isinstance(submodule,  nn.ConvTranspose2d):
+                module._modules[name] = transfer_convtranpose2d_to_quantization(submodule, quant_nn.QuantConvTranspose2d)
+
+    replace_module(model)
 # Set the log level
 def initialize():
     quant_logging.set_verbosity(quant_logging.ERROR)    

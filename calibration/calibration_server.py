@@ -1,4 +1,5 @@
 
+from flask import request
 from flask.helpers import make_response
 from jsonrpc.backend.flask import api
 
@@ -25,6 +26,7 @@ class CalibrationServer:
         # camera calibration
         add_method(self.find_corners, name='find_corners')
         add_method(self.calibrate_camera, name='calibrate_camera')
+        self.app.add_url_rule("/v1/source-data", view_func=self.get_source_data, methods=["POST"])
         # ins calibration
         add_method(self.restart_lidar_ins_calibration, name='restart_lidar_ins_calibration')
         self.app.add_url_rule("/v1/get-position-points", view_func=self.get_position_points, methods=["GET"])
@@ -135,6 +137,14 @@ class CalibrationServer:
         self.perception.set_config(config)
         return result
 
+    def get_source_data(self):
+        response = make_response(self.perception.call('calibration.get_calibrate_camera',
+                                                      dict(config=self.perception.get_config(),
+                                                           do_distort=request.get_json()['do_distort'])
+                                                     ))
+        response.headers["Content-Type"] = "application/octet-stream"
+        return response
+
     def restart_lidar_ins_calibration(self):
         self.perception.call('calibration.restart_lidar_ins_calibration',
                              dict(config=self.perception.get_config())
@@ -168,7 +178,7 @@ class CalibrationServer:
                                     )
 
     def get_imu_position_points(self):
-        response = make_response(self.perception.call('calibration.get_imu_position_points'))
+        response = make_response(self.perception.call('calibration.get_imu_position_points', dict(config=self.perception.get_config())))
         response.headers["Content-Type"] = "application/octet-stream"
         return response
 

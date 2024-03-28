@@ -33,6 +33,7 @@ function MapMenu({ onEvent }: Props, ref: any) {
   const [selectVertex, setSelectVertex] = useState<string[]>([]);
   const [selectColor, setSelectColor] = useState<number[]>([]);
   const [selectPoint, setSelectPoint] = useState<Float32Array>();
+  const [selectArea, setSelectArea] = useState<string>();
   const [selectPointIndex, setSelectPointIndex] = useState<MapFrameIndex>({});
 
   useImperativeHandle(ref, () => ({
@@ -43,6 +44,9 @@ function MapMenu({ onEvent }: Props, ref: any) {
     onSelectPoints: (points: Float32Array | undefined, index: MapFrameIndex) => {
       setSelectPoint(points);
       setSelectPointIndex(index);
+    },
+    onSelectArea: (select: string) => {
+      setSelectArea(select);
     },
     onConfig: (config: any) => {
       setConfig(config);
@@ -77,6 +81,7 @@ function MapMenu({ onEvent }: Props, ref: any) {
             selectColor={selectColor}
             selectPoints={selectPoint}
             selectPointIndex={selectPointIndex}
+            selectArea={selectArea}
             ref={refs[idx]}
           />
         );

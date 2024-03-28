@@ -18,10 +18,11 @@ export interface Props {
   selectColor: number[];
   selectPoints?: Float32Array;
   selectPointIndex: MapFrameIndex;
+  selectArea?: string;
 }
 
 function MenuView(
-  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex }: Props,
+  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex, selectArea }: Props,
   ref: any
 ) {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ function MenuView(
     setAnchorEl(null);
   };
 
-  const [selector, onHandleROI] = useSelector({
+  const [selector, onHandleROI, selectorDialog] = useSelector({
     config: config,
     onEvent: onEvent,
     onFinish: handleClose,
@@ -96,6 +97,7 @@ function MenuView(
           }}
         />
       )}
+      {selectorDialog}
     </>
   );
 }

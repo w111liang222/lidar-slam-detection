@@ -11,5 +11,7 @@ PYBIND11_MODULE(inference_ext, m) {
 
   m.def("inference_forward", &inference_forward, "inference forward",
         "points"_a = 1, "motion"_a = 2, "realtime"_a = 3,
-        "cls_preds"_a = 4, "box_preds"_a = 5, "label_preds"_a = 6);
+        "cls_preds"_a = 4, "box_preds"_a = 5, "label_preds"_a = 6, "freespace"_a = 7);
+
+  m.def("inference_reset", &inference_reset, "inference reset");
 }

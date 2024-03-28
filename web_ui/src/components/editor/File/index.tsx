@@ -20,10 +20,11 @@ export interface Props {
   selectColor: number[];
   selectPoints?: Float32Array;
   selectPointIndex: MapFrameIndex;
+  selectArea?: string;
 }
 
 function MenuFile(
-  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex }: Props,
+  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex, selectArea }: Props,
   ref: any
 ) {
   const { t } = useTranslation();

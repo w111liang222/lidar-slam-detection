@@ -79,9 +79,14 @@ class LidarDriver():
             points_hom = np.hstack((points[:, :3], np.ones((points.shape[0], 1), dtype=np.float32)))
             points[:, 0:3] = np.dot(tM, points_hom.T).T[:, 0:3]
 
-        x_idx = np.bitwise_and(points[:, 0] < self.points_range[3], points[:, 0] > self.points_range[0])
-        y_idx = np.bitwise_and(points[:, 1] < self.points_range[4], points[:, 1] > self.points_range[1])
-        xy_idx = np.bitwise_and(x_idx, y_idx)
+        x_idx  = np.bitwise_and(points[:, 0] < self.points_range[3], points[:, 0] > self.points_range[0])
+        y_idx  = np.bitwise_and(points[:, 1] < self.points_range[4], points[:, 1] > self.points_range[1])
+
+        ex_idx = np.bitwise_and(points[:, 0] < self.exclude[3], points[:, 0] > self.exclude[0])
+        ey_idx = np.bitwise_and(points[:, 1] < self.exclude[4], points[:, 1] > self.exclude[1])
+        ez_idx = np.bitwise_and(points[:, 2] < self.exclude[5], points[:, 2] > self.exclude[2])
+        xy_idx = ~(ex_idx & ey_idx & ez_idx) & x_idx & y_idx
+
         points = points[xy_idx]
         attr['points_attr'] = attr['points_attr'][xy_idx]
         return points, attr

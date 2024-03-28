@@ -217,9 +217,16 @@ struct EdgeInfo {
   int vertex_num;
 };
 
+struct AreaInfo {
+  std::string type;
+  std::string name;
+  std::vector<Eigen::Vector3d> polygon;
+};
+
 struct GraphInfo {
   std::map<int, VertexInfo> vertex;
   std::map<int, EdgeInfo> edge;
+  std::map<int, AreaInfo> area;
 };
 
 #endif

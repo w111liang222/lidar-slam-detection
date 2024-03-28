@@ -73,7 +73,7 @@ class SLAMManager(ManagerTemplate):
         while True:
             if self.slam.is_overload() or self.frame_queue.full():
                 retry = retry + 1
-                if self.cfg.input.mode == 'offline' and retry < 200:
+                if self.cfg.input.mode == 'offline' and retry < 100:
                     time.sleep(1e-2)
                     continue
                 else:
@@ -85,7 +85,7 @@ class SLAMManager(ManagerTemplate):
 
     def enqueue(self, input_dict, module_name):
         input_dict['do_slam'] = self.slam.enqueue(input_dict)
-        self.frame_queue.put_nowait(input_dict)
+        self.frame_queue.put(input_dict)
 
     def get_data(self):
         # wait until get points or thread quit
@@ -94,19 +94,15 @@ class SLAMManager(ManagerTemplate):
                 frame_dict = self.frame_queue.get(block=True, timeout=1.0)
                 break
             except queue.Empty:
-                frame_dict = dict()
-                continue
+                self.logger.warn('frame queue is Empty')
         # wait until get slam result or thread quit
         while self.system.is_initialized and frame_dict['do_slam']:
-            slam_dict = self.slam.get_output(block=True, timeout=1.0)
-            if slam_dict:
-                if frame_dict['frame_start_timestamp'] != slam_dict['frame_start_timestamp']:
-                    self.logger.warn('SLAM output order is wrong!')
-                else:
-                    frame_dict.update(slam_dict)
-                    break
-            else:
-                self.logger.warn('SLAM ouput is Empty')
+            try:
+                slam_dict = self.slam.get_output(block=True, timeout=1.0)
+                frame_dict.update(slam_dict)
+                break
+            except queue.Empty:
+                self.logger.warn('SLAM output is Empty')
 
         if not self.system.is_initialized:
             return dict()

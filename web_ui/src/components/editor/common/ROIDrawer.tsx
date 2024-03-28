@@ -42,13 +42,13 @@ function ROIDrawer({ state, setState, onFinish }: Props, ref: any) {
   }, []);
 
   const addPoints = (e: ThreeEvent<MouseEvent>) => {
-    if (state == "drawing") {
+    if (state.includes("drawing")) {
       setRoi([...roi, e.intersections[0].point]);
     }
   };
 
   const moveLine = (e: ThreeEvent<MouseEvent>) => {
-    if (state == "drawing" && roi.length > 0) {
+    if (state.includes("drawing") && roi.length > 0) {
       const line = lineRef.current;
       line?.geometry.setFromPoints([...roi, e.intersections[0].point, roi[0]]);
     }
@@ -80,7 +80,7 @@ function ROIDrawer({ state, setState, onFinish }: Props, ref: any) {
       <line ref={lineRef}>
         <lineBasicMaterial color={0xffffff} linewidth={2} />
       </line>
-      {state == "drawing" && (
+      {state.includes("drawing") && (
         <mesh ref={meshRef} onClick={addPoints} onPointerMove={moveLine} visible={false}>
           <planeBufferGeometry args={[10000, 10000]} />
         </mesh>

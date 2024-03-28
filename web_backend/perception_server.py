@@ -56,7 +56,6 @@ class PerceptionServer:
         # preview
         self.app.add_url_rule("/v1/detection-pb", view_func=self.get_output, methods=["POST"])
         self.app.add_url_rule("/v1/lidar-pointcloud-map", view_func=self.get_raw_output)
-        self.app.add_url_rule("/v1/source-data", view_func=self.get_source_data, methods=["POST"])
 
         # json rpc
         add_method(self.reboot, name='reboot')
@@ -119,11 +118,6 @@ class PerceptionServer:
 
     def get_raw_output(self):
         response = make_response(self.perception.call('sink.get_proto_http_raw'))
-        response.headers["Content-Type"] = "application/octet-stream"
-        return response
-
-    def get_source_data(self):
-        response = make_response(self.perception.call('source.get_source_data_pb', request.get_json()))
         response.headers["Content-Type"] = "application/octet-stream"
         return response
 

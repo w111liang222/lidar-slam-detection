@@ -255,7 +255,7 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
 #ifdef INTELIPC
   const uint64_t WARM_UP_TIME = std::numeric_limits<uint64_t>::max();
 #else
-  const uint64_t WARM_UP_TIME = 5000000;
+  const uint64_t WARM_UP_TIME = 10000000;
 #endif
 
   // check if wrong global localization result, then fastly fall back to initializing
@@ -337,7 +337,6 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
   gps_quat.normalized();
   gps_mean.middleRows(0, 3) = gps_pose.block<3, 1>(0, 3);
   gps_mean.middleRows(3, 4) = Eigen::Vector4f(gps_quat.w(), gps_quat.x(), gps_quat.y(), gps_quat.z());
-  gps_mean(2) = fused_mean(2);
 
   fusion_pose(fused_cov, gps_cov, fused_mean, gps_mean, observation_cov, observation);
   return true;

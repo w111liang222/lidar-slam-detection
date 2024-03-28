@@ -25,22 +25,28 @@ class TrafficLightInfer(InferBase):
         self.cfg = copy.deepcopy(parse_config(self.cfg_file))
         self.create_queue()
 
-    def build_engine(self, calib):
+    def build_engine(self):
         from sensor_inference.utils.trafficlight_post_process import PostProcesser
         self.engine = build_engine(self.cfg.TRT_FILE)
         self.post_processer = PostProcesser(model_cfg=self.cfg.MODEL,
                                             num_class=len(self.cfg.CLASS_NAMES),
-                                            class_names=self.cfg.CLASS_NAMES)
+                                            class_names=self.cfg.CLASS_NAMES,
+                                            ins_extrinsic=self.base_cfg.ins.extrinsic_parameters,
+                                            map_path=self.base_cfg.slam.localization.map_path)
+
+    def reset_engine(self):
+        pass
 
     def prepare_data(self, data_dict):
         # pop out non-relative data of image
         data_dict.pop('points', None)
+        data_dict.pop('points_attr', None)
 
         # seperate the data dict
         images = data_dict.pop('image', None)
 
         image_data = dict()
-        for sensor in self.base_cfg.sensor_input:
+        for sensor in self.base_cfg.detection.sensor_input:
             if sensor in images:
                 image_data[sensor] = images[sensor]
                 break
@@ -65,9 +71,13 @@ class TrafficLightInfer(InferBase):
         preds = self.engine.run([image_infer])
 
         # postprocess
-        pred_dicts = self.post_processer.forward(image, preds[0])
+        pred_dicts = self.post_processer.forward(image, preds[0],
+                                                 data_dict['infos']['ins_data'] if data_dict['infos']['motion_valid'] else None,
+                                                 data_dict['infos']['image_param'][image_name])
         pred_dicts['image_name'] = image_name
-
         data_dict['infos']['trafficlight'] = pred_dicts
+
+        data_dict['infos'].pop('ins_data', None)
+        data_dict['infos'].pop('imu_data', None)
         result = {'trafficlight' : data_dict['infos']}
         return result

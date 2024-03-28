@@ -51,9 +51,6 @@ public:
   virtual void onInit(InitParameter &param) {
     LOG_INFO("initializing hdl graph nodelet...");
     init_config = param;
-    // init parameters
-    map_frame_id = "map";
-    odom_frame_id = "odom";
 
     // keyframe selector
     initialized = false;
@@ -95,17 +92,20 @@ public:
     inf_calclator.reset(new InformationMatrixCalculator());
 
     gps_time_offset = 0.0;
+    gps_last_update_pose << 0, 0, 0;
     // gps_edge_stddev_xy = 20.0;
     // gps_edge_stddev_z = 5.0;
     floor_edge_stddev = 10.0;
     floor_node_id = NORMAL_VERTEX_ID_OFFSET; // floor node id start from 100000 -
     floor_height = 0;
+    floor_last_update_distance = 0;
 
     imu_time_offset = 0.0;
     enable_imu_orientation = false;
     enable_imu_acceleration = false;
     imu_orientation_edge_stddev = 0.1;
-    imu_acceleration_edge_stddev = 3.0;
+    imu_acceleration_edge_stddev = 100.0;
+    imu_last_update_id = 0;
 
     points_topic = "/velodyne_points";
 
@@ -233,7 +233,7 @@ public:
       if (!initialized) {
         if (dx < (keyframe_updater->keyframe_delta_trans / 2.0) && da >= (keyframe_updater->keyframe_delta_angle * 3.0 / 2.0)) {
           LOG_WARN("map initializing, do not allow only rotation, resetting...");
-        } else if (best_score > 0.1 || best_inlier_ratio < 0.9) {
+        } else if (best_score > 0.15 || best_inlier_ratio < 0.85) {
           LOG_WARN("map initializing, odometry not stable, resetting...");
         } else {
           initialized = true;
@@ -425,19 +425,40 @@ public:
       }
       gps_cursor = first_gps;
 
+      if ((*first_gps)->precision != (*second_gps)->precision) {
+        continue;
+      }
+
       // convert (latitude, longitude, altitude) -> (easting, northing, altitude) in UTM coordinate
       int gps_dim = (*first_gps)->dimension;
       double gps_xyz_stddev = (*first_gps)->precision;
       double gps_rot_stddev = (*first_gps)->precision;
       Eigen::Matrix4d utm_transform = interpolated_transform(*first_gps, *second_gps, keyframe->stamp);
       Eigen::Vector3d xyz = utm_transform.block<3, 1>(0, 3);
+      xyz[2] = (gps_dim == 2) ? 0 : xyz[2];
+
+      double update_threshold;
+      if ((*first_gps)->precision < 100.0) {
+        update_threshold = 10.0;
+      } else if ((*first_gps)->precision < 1000.0) {
+        update_threshold = 20.0;
+      } else {
+        update_threshold = 50.0;
+      }
+
+      if (gps_last_update_pose.norm() > 0 && (gps_last_update_pose - xyz).norm() < update_threshold) {
+        continue;
+      }
 
       keyframe->utm_coord = xyz;
+      gps_last_update_pose = xyz;
 
       g2o::OptimizableGraph::Edge* edge;
       if(gps_dim == 2) {
-        Eigen::Matrix2d information_matrix = Eigen::Matrix2d::Identity() / gps_xyz_stddev;
-        edge = graph_slam->add_se3_prior_xy_edge(keyframe->node, xyz.head<2>(), information_matrix);
+        Eigen::Matrix3d information_matrix = Eigen::Matrix3d::Identity();
+        information_matrix.block<2, 2>(0, 0) /= gps_xyz_stddev;
+        information_matrix(2, 2) = 1.0 / (xyz.norm() * xyz.norm());
+        edge = graph_slam->add_se3_prior_xyz_edge(keyframe->node, xyz, information_matrix);
       } else {
         Eigen::Matrix3d information_matrix = Eigen::Matrix3d::Identity();
         information_matrix.block<2, 2>(0, 0) /= gps_xyz_stddev;
@@ -472,79 +493,61 @@ public:
     return updated;
   }
 
-  // void imu_callback(const sensor_msgs::ImuPtr& imu_msg) {
-  //   if(!enable_imu_orientation && !enable_imu_acceleration) {
-  //     return;
-  //   }
+  void imu_callback(const uint64_t &timestamp, Eigen::Vector3d &gyro, Eigen::Vector3d &acc) {
+    if(!enable_imu_orientation && !enable_imu_acceleration) {
+      return;
+    }
 
-  //   std::lock_guard<std::mutex> lock(imu_queue_mutex);
-  //   imu_msg->header.stamp += ros::Duration(imu_time_offset);
-  //   imu_queue.push_back(imu_msg);
-  // }
+    std::lock_guard<std::mutex> lock(imu_queue_mutex);
+    ImuType imu;
+    imu.stamp = timestamp;
+    imu.gyr = gyro;
+    imu.acc = acc / acc.norm();
+    imu_queue.push_back(imu);
+  }
 
   bool flush_imu_queue() {
-    return false;
-    // std::lock_guard<std::mutex> lock(imu_queue_mutex);
-    // if(keyframes.empty() || imu_queue.empty() || base_frame_id.empty()) {
-    //   return false;
-    // }
+    std::lock_guard<std::mutex> lock(imu_queue_mutex);
 
-    // bool updated = false;
-    // auto imu_cursor = imu_queue.begin();
+    if(keyframes.empty() || imu_queue.empty()) {
+      return false;
+    }
 
-    // for(auto& keyframe : keyframes) {
-    //   if(keyframe->stamp > imu_queue.back()->header.stamp) {
-    //     break;
-    //   }
+    bool updated = false;
+    auto imu_cursor = imu_queue.begin();
 
-    //   if(keyframe->stamp < (*imu_cursor)->header.stamp || keyframe->acceleration) {
-    //     continue;
-    //   }
+    for(auto& keyframe : keyframes) {
+      if(keyframe->stamp > imu_queue.back().stamp) {
+        break;
+      }
 
-    //   // find imu data which is closest to the keyframe
-    //   auto closest_imu = imu_cursor;
-    //   for(auto imu = imu_cursor; imu != imu_queue.end(); imu++) {
-    //     auto dt = ((*closest_imu)->header.stamp - double(keyframe->stamp)).toSec();
-    //     auto dt2 = ((*imu)->header.stamp - double(keyframe->stamp)).toSec();
-    //     if(std::abs(dt) < std::abs(dt2)) {
-    //       break;
-    //     }
+      if(keyframe->stamp < imu_cursor->stamp || keyframe->acceleration) {
+        continue;
+      }
 
-    //     closest_imu = imu;
-    //   }
+      // find imu data which is closest to the keyframe
+      auto closest_imu = imu_cursor;
+      for(auto imu = imu_cursor; imu != imu_queue.end(); imu++) {
+        auto dt = (closest_imu->stamp - double(keyframe->stamp)) / 1000000.0;
+        auto dt2 = (imu->stamp - double(keyframe->stamp)) / 1000000.0;
+        if(std::abs(dt) < std::abs(dt2)) {
+          break;
+        }
 
-    //   imu_cursor = closest_imu;
-    //   if(0.2 < std::abs(((*closest_imu)->header.stamp - double(keyframe->stamp)).toSec())) {
-    //     continue;
-    //   }
+        closest_imu = imu;
+      }
 
-    //   const auto& imu_ori = (*closest_imu)->orientation;
-    //   const auto& imu_acc = (*closest_imu)->linear_acceleration;
+      imu_cursor = closest_imu;
+      if(0.2 < std::abs((closest_imu->stamp - double(keyframe->stamp)) / 1000000.0)) {
+        continue;
+      }
 
-    //   geometry_msgs::Vector3Stamped acc_imu;
-    //   geometry_msgs::Vector3Stamped acc_base;
-    //   geometry_msgs::QuaternionStamped quat_imu;
-    //   geometry_msgs::QuaternionStamped quat_base;
+      if ((keyframe->id() - imu_last_update_id) <= 10) {
+        continue;
+      }
 
-    //   quat_imu.header.frame_id = acc_imu.header.frame_id = (*closest_imu)->header.frame_id;
-    //   quat_imu.header.stamp = acc_imu.header.stamp = ros::Time(0);
-    //   acc_imu.vector = (*closest_imu)->linear_acceleration;
-    //   quat_imu.quaternion = (*closest_imu)->orientation;
-
-    //   try {
-    //     tf_listener.transformVector(base_frame_id, acc_imu, acc_base);
-    //     tf_listener.transformQuaternion(base_frame_id, quat_imu, quat_base);
-    //   } catch(std::exception& e) {
-    //     std::cerr << "failed to find transform!!" << std::endl;
-    //     return false;
-    //   }
-
-    //   keyframe->acceleration = Eigen::Vector3d(acc_base.vector.x, acc_base.vector.y, acc_base.vector.z);
-    //   keyframe->orientation = Eigen::Quaterniond(quat_base.quaternion.w, quat_base.quaternion.x, quat_base.quaternion.y, quat_base.quaternion.z);
-    //   keyframe->orientation = keyframe->orientation;
-    //   if(keyframe->orientation->w() < 0.0) {
-    //     keyframe->orientation->coeffs() = -keyframe->orientation->coeffs();
-    //   }
+      imu_last_update_id = keyframe->id();
+      keyframe->acceleration = closest_imu->acc;
 
     //   if(enable_imu_orientation) {
     //     Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / imu_orientation_edge_stddev;
@@ -552,18 +555,18 @@ public:
     //     graph_slam->add_robust_kernel(edge, "NONE", 1.0);
     //   }
 
-    //   if(enable_imu_acceleration) {
-    //     Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / imu_acceleration_edge_stddev;
-    //     g2o::OptimizableGraph::Edge* edge = graph_slam->add_se3_prior_vec_edge(keyframe->node, -Eigen::Vector3d::UnitZ(), *keyframe->acceleration, info);
-    //     graph_slam->add_robust_kernel(edge, "NONE", 1.0);
-    //   }
-    //   updated = true;
-    // }
+      if(enable_imu_acceleration) {
+        Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / imu_acceleration_edge_stddev;
+        g2o::OptimizableGraph::Edge* edge = graph_slam->add_se3_prior_vec_edge(keyframe->node, Eigen::Vector3d::UnitZ(), *keyframe->acceleration, info);
+        graph_slam->add_robust_kernel(edge, "Huber", 1.0);
+      }
+      updated = true;
+    }
 
-    // auto remove_loc = std::upper_bound(imu_queue.begin(), imu_queue.end(), keyframes.back()->stamp, [=](const ros::Time& stamp, const sensor_msgs::ImuConstPtr& imu) { return stamp < imu->header.stamp; });
-    // imu_queue.erase(imu_queue.begin(), remove_loc);
+    auto remove_loc = std::upper_bound(imu_queue.begin(), imu_queue.end(), keyframes.back()->stamp, [=](const uint64_t& stamp, const ImuType& imu) { return stamp < imu.stamp; });
+    imu_queue.erase(imu_queue.begin(), remove_loc);
 
-    // return updated;
+    return updated;
   }
 
   /**
@@ -603,6 +606,10 @@ public:
         continue;
       }
 
+      if (floor_plane_node && (found->second->accum_distance - floor_last_update_distance) < 100.0) {
+        continue;
+      }
+
       if(!floor_plane_node) {
         floor_height = fix_first_node ? 0 : found->second->node->estimate()(2, 3);
         floor_plane_node = graph_slam->add_plane_node(Eigen::Vector4d(0.0, 0.0, 1.0, -floor_height), floor_node_id);
@@ -611,11 +618,13 @@ public:
       }
 
       const auto& keyframe = found->second;
+      floor_last_update_distance = keyframe->accum_distance;
 
       Eigen::Vector4d coeffs(floor_coeffs.coeffs[0], floor_coeffs.coeffs[1], floor_coeffs.coeffs[2], floor_coeffs.coeffs[3]);
       Eigen::Matrix3d information = Eigen::Matrix3d::Identity() * (1.0 / floor_edge_stddev);
       auto edge = graph_slam->add_se3_plane_edge(keyframe->node, floor_plane_node, coeffs, information);
-      graph_slam->add_robust_kernel(edge, "NONE", 1.0);
+      graph_slam->add_robust_kernel(edge, "Huber", 1.0);
+      LOG_INFO("Add Floor plane edge, {}, {}, {}, {}", coeffs[0], coeffs[1], coeffs[2], coeffs[3]);
 
       keyframe->floor_coeffs = coeffs;
 
@@ -726,8 +735,6 @@ public:
     return extract_cloud;
   }
 
-  std::string map_frame_id;
-  std::string odom_frame_id;
   InitParameter init_config;
 
   std::mutex trans_odom2map_mutex;
@@ -746,7 +753,6 @@ public:
   PointCloud::Ptr odom_local_map;
 
   // keyframe queue
-  std::string base_frame_id;
   std::mutex keyframe_queue_mutex;
   std::deque<KeyFrame::Ptr> keyframe_queue;
 
@@ -755,6 +761,7 @@ public:
   double gps_edge_stddev_xy;
   double gps_edge_stddev_z;
   boost::optional<Eigen::Vector3d> zero_utm;
+  Eigen::Vector3d gps_last_update_pose;
   std::mutex gps_queue_mutex;
   std::deque<std::shared_ptr<RTKType>> gps_queue;
 
@@ -764,13 +771,15 @@ public:
   double imu_orientation_edge_stddev;
   bool enable_imu_acceleration;
   double imu_acceleration_edge_stddev;
+  long imu_last_update_id;
   std::mutex imu_queue_mutex;
-  std::deque<std::shared_ptr<RTKType>> imu_queue;
+  std::deque<ImuType> imu_queue;
 
   // floor_coeffs queue
   double floor_edge_stddev;
   bool floor_enable;
   double floor_height;
+  double floor_last_update_distance;
   std::mutex floor_coeffs_queue_mutex;
   std::deque<FloorCoeffs> floor_coeffs_queue;
   int floor_node_id;
@@ -838,9 +847,10 @@ bool get_ground_constaint() {
   return graphNode.floor_enable;
 }
 
-void set_loop_closure(bool enable) {
+void set_constraint(bool loop_closure, bool gravity_constraint) {
   std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
-  graphNode.loop_enable = enable;
+  graphNode.loop_enable = loop_closure;
+  graphNode.enable_imu_acceleration = gravity_constraint;
 }
 
 bool enqueue_graph(PointCloudAttrImagePose &frame, PointCloudAttrImagePose &keyframe) {
@@ -853,6 +863,10 @@ void enqueue_graph_floor(FloorCoeffs& floor_coeffs) {
 
 void enqueue_graph_gps(std::shared_ptr<RTKType>& rtk) {
   graphNode.gps_callback(rtk);
+}
+
+void enqueue_graph_imu(const uint64_t &timestamp, Eigen::Vector3d &gyro, Eigen::Vector3d &acc) {
+  graphNode.imu_callback(timestamp, gyro, acc);
 }
 
 void graph_optimization(bool &is_running) {

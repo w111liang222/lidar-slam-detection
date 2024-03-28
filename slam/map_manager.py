@@ -1,7 +1,9 @@
 import os
 import copy
 import datetime
+import json
 import numpy as np
+from shapely.geometry import Point, Polygon
 from threading import Thread
 
 import slam_wrapper as slam
@@ -15,6 +17,15 @@ def prepend(header, file):
         fw.write(data)
         fw.close()
 
+def load_map_meta(file):
+    if not os.path.exists(file):
+        return { 'area': {} }
+    return json.load(open(file, 'r'))
+
+def dump_map_meta(file, meta):
+    with open(file, 'w') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=4)
+
 class MapManager():
     def __init__(self, config, logger):
         self.config = config
@@ -26,8 +37,9 @@ class MapManager():
             stamps = dict(),
         )
         self.meta = dict(
-            vertex = dict(), edge = dict(),
+            vertex = dict(), edge = dict(), area = dict(),
         )
+        self.area_polygon = {}
         self.vertex_id = 0
         self.color_map_bytes = b""
         self.save_keyframe_idx = 0
@@ -38,14 +50,17 @@ class MapManager():
             self.thread.join()
             self.thread = None
 
-    def update(self, data, replace):
+    def update(self, data, meta, replace):
         if replace is True:
             self.data = data
+            self.meta = meta
         else:
             self.data['points'].update(data['points'])
             self.data['images'].update(data['images'])
             self.data['poses'].update(data['poses'])
             self.data['stamps'].update(data['stamps'])
+            self.meta['area'].update(meta['area'])
+        self.update_area_polygon()
 
         keyframe_ids = list(self.data['stamps'])
         self.vertex_id = max([int(id) for id in keyframe_ids]) + 1 if len(keyframe_ids) > 0 else 0
@@ -60,7 +75,7 @@ class MapManager():
         self.data['edges'] = edges
 
     def update_meta(self, meta):
-        self.meta = meta
+        self.meta.update(meta)
         for k, v in self.data['stamps'].items():
             self.meta["vertex"][k]["stamps"] = v
 
@@ -116,6 +131,18 @@ class MapManager():
         slam.del_graph_edge(id)
         self.logger.info('delete edge (%d) success' % (id))
 
+    def add_area(self, area):
+        ids = list(self.meta['area'])
+        new_id = max([int(id) for id in ids]) + 1 if len(ids) > 0 else 0
+        self.meta['area'][str(new_id)] = area
+        self.update_area_polygon()
+        self.logger.info('add area (%s) success' % (str(new_id)))
+
+    def del_area(self, id):
+        self.meta['area'].pop(id)
+        self.update_area_polygon()
+        self.logger.info('delete area (%s) success' % (id))
+
     def set_vertex_fix(self, id, fix):
         slam.set_graph_vertex_fix(id, fix)
 
@@ -139,6 +166,23 @@ class MapManager():
     def keyframe_align(self, source, target, guess):
         guess = np.array(guess).reshape(4, 4)
         return slam.pointcloud_align(self.data['points'][source], self.data['points'][target], guess).flatten().tolist()
+
+    def update_area_polygon(self):
+        self.area_polygon = {}
+        for id, area in self.meta['area'].items():
+            poly_pts = []
+            for pts in area['polygon']:
+                poly_pts.append(pts[:2])
+            poly_pts.append(area['polygon'][0][:2])
+            self.area_polygon[id] = Polygon(poly_pts)
+
+    def is_in_area(self, pose):
+        pt = Point(pose[0, 3], pose[1, 3])
+        for id, area in self.area_polygon.items():
+            if pt.within(area):
+                return self.meta['area'][id]
+
+        return None
 
     def set_export_map_config(self, z_min, z_max, color):
         slam.set_export_map_config(z_min, z_max, color)
@@ -199,6 +243,7 @@ class MapManager():
         return "ok"
 
     def saving_thread_loop(self, file_path, pose, points, image, stamps):
+        dump_map_meta(file_path + "/map_meta.json", {'area': self.meta["area"]})
         vertexes = slam.dump_graph(file_path)
         for idx, stamp in stamps.items():
             if idx not in vertexes:

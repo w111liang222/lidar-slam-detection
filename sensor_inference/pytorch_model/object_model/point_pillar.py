@@ -5,8 +5,8 @@ import torch.nn as nn
 
 from .mean_vfe import MeanVFE
 from .spconv_backbone import VoxelResBackBone8x
-from .base_bev_backbone import BaseBEVBackbone
-from .center_point_head import CenterHead
+from .base_bev_backbone import BaseBEVBackbone, BaseBEVResBackbone
+from .detection_segment_head import BEVDetectionSegmentationHead
 
 class PointPillar(nn.Module):
     def __init__(self, model_cfg, num_class, dataset):
@@ -17,6 +17,7 @@ class PointPillar(nn.Module):
         self.class_names = dataset.class_names
         # build model
         self.build_networks()
+        self.register_buffer('global_step', torch.LongTensor(1).zero_())
 
     def forward(self, input_list):
         voxel_features = input_list[0]
@@ -25,10 +26,10 @@ class PointPillar(nn.Module):
         spatial_features = self.backbone_3d(voxel_features, voxel_coords)
         spatial_features_2d = self.backbone_2d(spatial_features)
 
-        batch_cls_preds, batch_box_preds = self.dense_head(spatial_features_2d)
+        batch_cls_preds, batch_box_preds, masks_bev = self.dense_head(spatial_features_2d)
         cls_preds, box_preds, label_preds = self.post_processing(batch_cls_preds, batch_box_preds)
 
-        return cls_preds, box_preds, label_preds
+        return cls_preds, box_preds, label_preds, masks_bev
 
     def build_networks(self):
         model_info_dict = {
@@ -91,7 +92,7 @@ class PointPillar(nn.Module):
         if self.model_cfg.get('BACKBONE_2D', None) is None:
             return None, model_info_dict
 
-        backbone_2d_module = BaseBEVBackbone(
+        backbone_2d_module = BaseBEVResBackbone(
             model_cfg=self.model_cfg.BACKBONE_2D,
             input_channels=model_info_dict.get('num_bev_features', None)
         )
@@ -102,7 +103,7 @@ class PointPillar(nn.Module):
     def build_dense_head(self, model_info_dict):
         if self.model_cfg.get('DENSE_HEAD', None) is None:
             return None, model_info_dict
-        dense_head_module = CenterHead(
+        dense_head_module = BEVDetectionSegmentationHead(
             model_cfg=self.model_cfg.DENSE_HEAD,
             input_channels=model_info_dict['num_bev_features'],
             num_class=self.num_class if not self.model_cfg.DENSE_HEAD.CLASS_AGNOSTIC else 1,
@@ -174,7 +175,7 @@ class PointPillar(nn.Module):
         return cls_preds, box_preds, label_preds
 
 
-    def load_params_from_file(self, filename, to_cpu=False):
+    def load_params_from_file(self, filename, to_cpu=False, strict=False):
         if not os.path.isfile(filename):
             raise FileNotFoundError
 
@@ -191,6 +192,7 @@ class PointPillar(nn.Module):
         for key, val in model_state_disk.items():
             if key in self.state_dict() and self.state_dict()[key].shape == model_state_disk[key].shape:
                 update_model_state[key] = val
+        update_model_state = model_state_disk if strict else update_model_state
 
         state_dict = self.state_dict()
         state_dict.update(update_model_state)

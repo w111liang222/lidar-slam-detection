@@ -1,19 +1,18 @@
 import ins_driver_ext as driver
 
 class InsDriver():
-    def __init__(self, port, device, ins_type,
-                 ex_param = [0, 0, 0, 0, 0, 0],
-                 logger = None):
+    def __init__(self, port, device, ins_type, mode, extrinsic_param, logger = None):
         self.port = port
         self.device = device
         self.ins_type = ins_type
-        self.ex_param = ex_param
+        self.mode = mode
+        self.extrinsic_param = extrinsic_param
         self.logger = logger
 
     def open(self):
-        driver.create_ins(self.ins_type)
-        driver.set_external_param(self.ex_param[0], self.ex_param[1], self.ex_param[2],
-                                  self.ex_param[5], self.ex_param[4], self.ex_param[3])
+        driver.create_ins(self.ins_type, self.mode)
+        driver.set_extrinsic_param(self.extrinsic_param[0], self.extrinsic_param[1], self.extrinsic_param[2],
+                                   self.extrinsic_param[5], self.extrinsic_param[4], self.extrinsic_param[3])
 
     def close(self):
         driver.destory_ins()
@@ -31,22 +30,7 @@ class InsDriver():
         driver.stop_transfer()
 
     def trigger(self, timestamp):
-        data_dict = driver.trigger(timestamp)
-        return data_dict
+        return driver.trigger(timestamp)
 
-    def get_valid_message_count(self):
-        return driver.get_valid_message_count()
-
-    def get_receive_message_count(self):
-        return driver.get_receive_message_count()
-
-    def set_offline_mode(self):
-        driver.set_offline_mode()
-
-    def set_offline_data(self, data):
-        driver.set_offline_data(data)
-
-    def set_external_param(self, ex_param):
-        self.ex_param = ex_param
-        driver.set_external_param(self.ex_param[0], self.ex_param[1], self.ex_param[2],
-                                  self.ex_param[5], self.ex_param[4], self.ex_param[3])
+    def set_offline_data(self, ins_data, imu_data):
+        driver.set_offline_data(ins_data, imu_data)

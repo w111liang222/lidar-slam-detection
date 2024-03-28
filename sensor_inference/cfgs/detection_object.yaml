@@ -4,8 +4,8 @@ SCN_ONNX_FILE: 'sensor_inference/detection_lidar_scn.onnx'
 RPN_ONNX_FILE: 'sensor_inference/detection_lidar_rpn.onnx'
 RPN_TRT_FILE:  'sensor_inference/detection_lidar_rpn.trt'
 DATA_CONFIG:
-    POINT_FRAME_NUM: 4
-    POINT_CLOUD_RANGE: [-76.8, -76.8, -2, 76.8, 76.8, 4]
+    POINT_FRAME_NUM: 2
+    POINT_CLOUD_RANGE: [-64.0, -64.0, -2, 64.0, 64.0, 4]
     VOXELIZATION:
         MAX_POINTS: 500000
         VOXEL_SIZE: [0.1, 0.1, 0.15]
@@ -26,33 +26,41 @@ MODEL:
         NUM_BEV_FEATURES: 256
 
     BACKBONE_2D:
-        NAME: BaseBEVBackbone
-
-        LAYER_NUMS: [5, 5]
-        LAYER_STRIDES: [1, 2]
-        NUM_FILTERS: [128, 256]
-        UPSAMPLE_STRIDES: [1, 2]
-        NUM_UPSAMPLE_FILTERS: [256, 256]
+        NAME: BaseBEVResBackbone
+        LAYER_NUMS: [5, 5, 5]
+        LAYER_STRIDES: [1, 2, 2]
+        NUM_FILTERS: [128, 128, 256]
+        UPSAMPLE_STRIDES: [1, 2, 4]
+        NUM_UPSAMPLE_FILTERS: [128, 128, 128]
 
     DENSE_HEAD:
-        NAME: CenterHead
+        NAME: BEVDetectionSegmentationHead
         CLASS_AGNOSTIC: False
-        FEATURE_MAP_STRIDE: 8
 
-        CLASS_NAMES_EACH_HEAD: [
-            ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
-        ]
+        SEGMENT:
+            CLASS_NAMES: ['drivable_area', 'obstacle']
+            GRID_TRANSFROM:
+                input_scope: [[-64.0, 64.0, 0.8], [-64.0, 64.0, 0.8]]
+                output_scope: [[-40, 40, 0.4], [-40, 40, 0.4]]
 
-        COMMON_HEADS: {
-            'center': {'out_channels': 2, 'num_conv': 2},
-            'center_z': {'out_channels': 1, 'num_conv': 2},
-            'dim': {'out_channels': 3, 'num_conv': 2},
-            'rot': {'out_channels': 2, 'num_conv': 2},
-            'iou': {'out_channels': 1, 'num_conv': 2},
-        }
+        DETECTION:
+            FEATURE_MAP_STRIDE: 8
+            ENGINE: "TensorRT" # TensorRT, RKNN
 
-        LOSS_CONFIG:
-            CODE_WEIGHTS: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+            CLASS_NAMES_EACH_HEAD: [
+                ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
+            ]
+
+            COMMON_HEADS: {
+                'center': {'out_channels': 2, 'num_conv': 2},
+                'center_z': {'out_channels': 1, 'num_conv': 2},
+                'dim': {'out_channels': 3, 'num_conv': 2},
+                'rot': {'out_channels': 2, 'num_conv': 2},
+                'iou': {'out_channels': 1, 'num_conv': 2},
+            }
+
+            LOSS_CONFIG:
+                CODE_WEIGHTS: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
     POST_PROCESSING:
         RECALL_THRESH_LIST: [0.3, 0.5, 0.7]
@@ -61,6 +69,10 @@ MODEL:
             'Pedestrian': 0.10,
             'Cyclist': 0.10,
             'Traffic_Cone': 0.10,
+        }
+        MAP_SCORE_THRESH: {
+            'drivable_area': 0.45,
+            'obstacle': 0.45,
         }
         OUTPUT_RAW_SCORE: False
 

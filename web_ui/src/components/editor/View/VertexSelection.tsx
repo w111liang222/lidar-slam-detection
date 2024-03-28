@@ -1,14 +1,34 @@
-import { ListItemIcon, ListItemText, MenuItem } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogTitle,
+  FormControl,
+  Grid,
+  InputLabel,
+  ListItemIcon,
+  ListItemText,
+  MenuItem,
+  Select,
+  TextField,
+} from "@mui/material";
 import HighlightAltIcon from "@mui/icons-material/HighlightAlt";
 import HubIcon from "@mui/icons-material/Hub";
 import GrainIcon from "@mui/icons-material/Grain";
+import SignalCellular0BarIcon from "@mui/icons-material/SignalCellular0Bar";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { insidePolygon } from "@utils/transform";
 import * as THREE from "three";
 import { NestedMenuItem } from "@components/general/mui-nested-menu/components/NestedMenuItem";
 import { Config, MapFrame, MapFrameIndex } from "..";
-import { arrayToTransform } from "@rpc/http";
+import { arrayToTransform, addMapArea } from "@rpc/http";
+
+type AreaType = {
+  type: string | undefined;
+  name: string;
+  polygon: number[][];
+};
 
 export interface Props {
   config: Config;
@@ -17,10 +37,19 @@ export interface Props {
   vertex?: LSD.MapVertex;
 }
 
-export default function useSelector({ config, onEvent, onFinish, vertex }: Props): [React.ReactNode, any] {
+export default function useSelector({
+  config,
+  onEvent,
+  onFinish,
+  vertex,
+}: Props): [React.ReactNode, any, React.ReactNode] {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
   const [isVertexSelecting, setIsVertexSelecting] = useState(false);
   const [isPointsSelecting, setIsPointsSelecting] = useState(false);
+  const [isAreaSelecting, setIsAreaSelecting] = useState(false);
+  const [area, setArea] = useState<AreaType>();
 
   const onVertexSelect = () => {
     setIsVertexSelecting(true);
@@ -34,6 +63,26 @@ export default function useSelector({ config, onEvent, onFinish, vertex }: Props
     onEvent("ClearSelection");
     onEvent("StartROI");
     onFinish();
+  };
+
+  const onAreaSelect = () => {
+    setIsAreaSelecting(true);
+    onEvent("ClearSelection");
+    onEvent("StartROI", "drawing_bev");
+    onFinish();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const onHanleDialog = async (confirm: boolean) => {
+    if (confirm && area && area.type) {
+      addMapArea(area).then(() => {
+        onEvent("RefreshMap");
+      });
+    }
+    setOpen(false);
   };
 
   const onHanleRoi = (mapFrame: MapFrame, roi: THREE.Vector3[] | undefined, camera: THREE.Camera) => {
@@ -111,23 +160,92 @@ export default function useSelector({ config, onEvent, onFinish, vertex }: Props
         onEvent("SetSelectPoint", { points: selectPoint.slice(0, selectNum), index: selectPointIndex });
       }
     }
+    if (isAreaSelecting) {
+      setIsAreaSelecting(false);
+      if (roi) {
+        let polygon = [];
+        for (let i = 0; i < roi.length - 1; i++) {
+          polygon.push([roi[i].x, roi[i].y, roi[i].z]);
+        }
+        setArea({
+          type: undefined,
+          name: "",
+          polygon: polygon,
+        });
+        setOpen(true);
+      }
+    }
   };
 
   return [
-    <NestedMenuItem parentMenuOpen={true} leftIcon={<HighlightAltIcon fontSize="small" />} label={t("MapSelection")}>
-      <MenuItem onClick={onVertexSelect} disabled={isVertexSelecting || isPointsSelecting}>
-        <ListItemIcon>
-          <HubIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>{t("VertexSelection")}</ListItemText>
-      </MenuItem>
-      <MenuItem onClick={onPointsSelect} disabled={isVertexSelecting || isPointsSelecting}>
-        <ListItemIcon>
-          <GrainIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>{t("PointsSelection")}</ListItemText>
-      </MenuItem>
-    </NestedMenuItem>,
+    <>
+      <NestedMenuItem parentMenuOpen={true} leftIcon={<HighlightAltIcon fontSize="small" />} label={t("MapSelection")}>
+        <MenuItem onClick={onVertexSelect} disabled={isVertexSelecting || isPointsSelecting || isAreaSelecting}>
+          <ListItemIcon>
+            <HubIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("VertexSelection")}</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={onPointsSelect} disabled={isVertexSelecting || isPointsSelecting || isAreaSelecting}>
+          <ListItemIcon>
+            <GrainIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("PointsSelection")}</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={onAreaSelect} disabled={isVertexSelecting || isPointsSelecting || isAreaSelecting}>
+          <ListItemIcon>
+            <SignalCellular0BarIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>{t("AreaSelection")}</ListItemText>
+        </MenuItem>
+      </NestedMenuItem>
+    </>,
     onHanleRoi,
+    <>
+      {area && (
+        <Dialog open={open} onClose={handleClose}>
+          <DialogTitle>{t("ConfirmAddArea")}</DialogTitle>
+          <div style={{ minWidth: "450px" }}>
+            <Grid style={{ paddingLeft: "1rem", paddingRight: "1rem" }} container>
+              <Grid item md>
+                <FormControl>
+                  <InputLabel>{t("AreaType")}</InputLabel>
+                  <Select
+                    label={t("AreaType")}
+                    value={area.type}
+                    onChange={(event) => {
+                      area.type = event.target.value;
+                      setArea({ ...area });
+                    }}>
+                    <MenuItem value={"indoor"}>{t("Indoor")}</MenuItem>
+                    <MenuItem value={"outdoor"}>{t("Outdoor")}</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <Grid style={{ paddingLeft: "1rem", paddingRight: "1rem" }} container>
+              <Grid item sm>
+                <TextField
+                  label={t("AreaName")}
+                  value={area.name}
+                  onChange={(event) => {
+                    area.name = event.target.value;
+                    setArea({ ...area });
+                  }}
+                />
+              </Grid>
+            </Grid>
+          </div>
+          <DialogActions>
+            <Button onClick={() => onHanleDialog(false)} color="primary">
+              {t("False")}
+            </Button>
+            <Button onClick={() => onHanleDialog(true)} color="primary">
+              {t("True")}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+    </>,
   ];
 }

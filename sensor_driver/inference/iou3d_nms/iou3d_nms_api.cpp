@@ -165,15 +165,67 @@ int boxes_union_bev_gpu(py::array_t<float> boxes_a, py::array_t<float> boxes_b, 
 #else
 
 int nms_gpu(py::array_t<float> &boxes, py::array_t<long> &keep, float nms_overlap_thresh){
-    return 0;
+    // params boxes: (N, 7) [x, y, z, dx, dy, dz, heading]
+    // params keep: (N);
+
+    int boxes_num = boxes.unchecked<2>().shape(0);
+    const float * boxes_data = boxes.data();
+    long * keep_data = keep.mutable_data();
+
+    std::vector<unsigned int> mask_cpu(boxes_num * boxes_num, 0);
+    for (int i = 0; i < boxes_num; i++){
+        for (int j = 0; j < boxes_num; j++){
+            if (iou_bev(boxes_data + i * 7, boxes_data + j * 7) > nms_overlap_thresh) {
+                mask_cpu[i * boxes_num + j] = 1;
+            }
+        }
+    }
+
+    unsigned int remv_cpu[boxes_num];
+    memset(remv_cpu, 0, boxes_num * sizeof(unsigned int));
+
+    int num_to_keep = 0;
+
+    for (int i = 0; i < boxes_num; i++){
+        if (!remv_cpu[i]){
+            keep_data[num_to_keep++] = i;
+            for (int j = i + 1; j < boxes_num; j++){
+                remv_cpu[j] |= mask_cpu[i * boxes_num + j];
+            }
+        }
+    }
+
+    return num_to_keep;
 }
 
 int boxes_overlap_bev_gpu(py::array_t<float> boxes_a, py::array_t<float> boxes_b, py::array_t<float> ans_overlap){
-    return 0;
+    int num_boxes_a = boxes_a.unchecked<2>().shape(0);
+    int num_boxes_b = boxes_b.unchecked<2>().shape(0);
+    const float *boxes_a_data = boxes_a.data();
+    const float *boxes_b_data = boxes_b.data();
+    float *ans_overlap_data = ans_overlap.mutable_data();
+
+    for (int i = 0; i < num_boxes_a; i++){
+        for (int j = 0; j < num_boxes_b; j++){
+            ans_overlap_data[i * num_boxes_b + j] = overlap_bev(boxes_a_data + i * 7, boxes_b_data + j * 7);
+        }
+    }
+    return 1;
 }
 
 int boxes_union_bev_gpu(py::array_t<float> boxes_a, py::array_t<float> boxes_b, py::array_t<float> ans_union){
-    return 0;
+    int num_boxes_a = boxes_a.unchecked<2>().shape(0);
+    int num_boxes_b = boxes_b.unchecked<2>().shape(0);
+    const float *boxes_a_data = boxes_a.data();
+    const float *boxes_b_data = boxes_b.data();
+    float *ans_union_data = ans_union.mutable_data();
+
+    for (int i = 0; i < num_boxes_a; i++){
+        for (int j = 0; j < num_boxes_b; j++){
+            ans_union_data[i * num_boxes_b + j] = union_bev(boxes_a_data + i * 7, boxes_b_data + j * 7);
+        }
+    }
+    return 1;
 }
 
 #endif

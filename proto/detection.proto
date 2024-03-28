@@ -31,6 +31,11 @@ message Header {
     optional float fps = 4;                 // system running frequence
 }
 
+message Area {
+    optional string type = 1;               // indoor / outdoor
+    optional string name = 2;
+}
+
 message Pose {
     optional float x = 1;                   // m
     optional float y = 2;                   // m
@@ -43,6 +48,7 @@ message Pose {
     optional double altitude = 9;           // m
     optional int32 status = 10;             // enum
     optional string state = 11;
+    optional Area area=12;
 }
 
 message Object {
@@ -71,6 +77,28 @@ message Object {
     optional Status status = 10;
     optional uint32 age = 11;               // the age of the object (in frames). This value starts at 1 when the obstacle is first detected, and increments in 1 each frame. (1 ~ 255)
     repeated Trajectory trajectory = 12;    // prediction trajectory of object
+}
+
+message Trafficlight {
+    optional uint32 id = 1;
+    enum Pictogram {
+        OTHER = 0;
+        UP_ARROW = 1;
+        LEFT_ARROW = 2;
+        RIGHT_ARROW = 3;
+        DOWN_ARROW = 4;
+        UTURN = 5;
+    };
+    enum Color {
+        RED = 0;
+        GREEN = 1;
+        YELLOW = 2;
+        OFF = 3;
+    };
+    optional Pictogram pictogram = 2;
+    optional Color color = 3;
+    optional float confidence = 4;          // confidence of the object [0, 1.0]
+    optional string name = 5;               // traffic light name in xodr file
 }
 
 message FreespaceInfo {
@@ -108,4 +136,5 @@ message Detection {
     repeated CameraImage image = 5;
     repeated Radar radar = 6;
     optional Pose pose = 7;
+    repeated Trafficlight light = 8;
 }

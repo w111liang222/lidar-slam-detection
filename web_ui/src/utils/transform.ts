@@ -51,6 +51,15 @@ export function getVecFromTransform(transMatrix: THREE.Matrix4) {
   return _vector;
 }
 
+export function getPoseClient(point: THREE.Vector3, ev: any, camera: THREE.Camera) {
+  const poseClient = point.clone().project(camera);
+  const element = ev.srcElement ? ev.srcElement : ev.nativeEvent.srcElement;
+  poseClient.x = ((poseClient.x + 1) / 2) * element.offsetWidth;
+  poseClient.y = (-(poseClient.y - 1) / 2) * element.offsetHeight;
+  poseClient.z = 0;
+  return poseClient;
+}
+
 export function pointToLineDistance(x: number, y: number, x1: number, y1: number, x2: number, y2: number) {
   const A = x - x1;
   const B = y - y1;

@@ -4,8 +4,8 @@ from sensor_driver.radar_driver.radar_driver import RadarDriver
 from ..export_interface import register_interface
 
 class RadarDataManager(DataManagerTemplate):
-    def __init__(self, cfg, data_cfg, logger=None):
-        super().__init__('Radar', cfg, data_cfg, logger = logger)
+    def __init__(self, cfg, logger=None):
+        super().__init__('Radar', cfg, logger = logger)
 
         self.radar = dict()
         self.radar_info = dict()
@@ -25,7 +25,7 @@ class RadarDataManager(DataManagerTemplate):
             self.radar_info[str(i) + '-' + rc.name] = {'num' : 0, 'valid' : False}
         for radar in self.radar.values():
             radar.open()
-        register_interface('radar.get_radar_status', self.get_radar_status)
+        register_interface('radar.get_status', self.get_status)
 
     def loop_run_once(self, sensor, sensor_name):
         valid = True
@@ -54,7 +54,7 @@ class RadarDataManager(DataManagerTemplate):
             for radar in self.radar.values():
                 radar.close()
 
-    def get_radar_status(self):
+    def get_status(self):
         return self.radar_info
 
     def update_radar_info(self, radar_dict):
@@ -65,7 +65,7 @@ class RadarDataManager(DataManagerTemplate):
             else:
                 info['valid'] = False
 
-    def post_process_data(self, data_dict, **kwargs):
+    def post_process_data(self, data_dict):
         radar_dict = data_dict['radar']
         if self.mode == "offline":
             for name, data in radar_dict.copy().items():

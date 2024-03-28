@@ -1,4 +1,7 @@
-CLASS_NAMES: ['unknown', 'up', 'left', 'right', 'down', 'u-turn']
+CLASS_NAMES: ['red_other', 'red_up', 'red_left', 'red_right', 'red_down', 'red_uturn',
+              'green_other', 'green_up', 'green_left', 'green_right', 'green_down', 'green_uturn', 
+              'yellow_other', 'yellow_up', 'yellow_left', 'yellow_right', 'yellow_down', 'yellow_uturn', 
+              'off']
 
 ONNX_FILE: 'sensor_inference/detection_trafficlight.onnx'
 TRT_FILE: 'sensor_inference/detection_trafficlight.trt'

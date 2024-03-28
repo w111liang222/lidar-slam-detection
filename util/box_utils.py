@@ -200,10 +200,10 @@ class DetectionDrawer():
     class_color[6] = (255, 198, 177)
 
     traffic_color = dict()
-    traffic_color[0] = (255, 255, 255)  # Traffic light, unknown color
-    traffic_color[1] = (0,   0,   255)  # Traffic light, red
-    traffic_color[2] = (0,   255,   0)  # Traffic light, green
-    traffic_color[3] = (0,   255, 255)  # Traffic light, yellow
+    traffic_color[0] = (0,   0,   255)  # Traffic light, red
+    traffic_color[1] = (0,   255,   0)  # Traffic light, green
+    traffic_color[2] = (0,   255, 255)  # Traffic light, yellow
+    traffic_color[3] = (255, 255, 255)  # Traffic light, off
 
     @staticmethod
     def draw_boxes(image, image_param, lidar_boxes, label):
@@ -245,5 +245,6 @@ class DetectionDrawer():
             color = DetectionDrawer.traffic_color[trafficlight['pred_colors'][i]]
             box = trafficlight['pred_boxes'][i, :]
             cv2.rectangle(images[image_name], (round(box[0]), round(box[1])), (round(box[2]), round(box[3])), color, 2)
+            cv2.putText(images[image_name], trafficlight['pred_names'][i], (round(box[0]), round(box[1])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
         return images

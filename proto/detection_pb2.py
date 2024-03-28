@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x0f\x64\x65tection.proto\"9\n\x07Point3D\x12\x0e\n\x01x\x18\x01 \x01(\x01:\x03nan\x12\x0e\n\x01y\x18\x02 \x01(\x01:\x03nan\x12\x0e\n\x01z\x18\x03 \x01(\x01:\x03nan\"a\n\x05\x42ox3D\x12\x18\n\x06\x63\x65nter\x18\x01 \x01(\x0b\x32\x08.Point3D\x12\x0e\n\x06length\x18\x02 \x01(\x02\x12\r\n\x05width\x18\x03 \x01(\x02\x12\x0e\n\x06height\x18\x04 \x01(\x02\x12\x0f\n\x07heading\x18\x05 \x01(\x02\"\x82\x01\n\nTrajectory\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\x12\t\n\x01z\x18\x03 \x01(\x01\x12\x0f\n\x07heading\x18\x04 \x01(\x02\x12\x12\n\nvelocity_x\x18\x05 \x01(\x02\x12\x12\n\nvelocity_y\x18\x06 \x01(\x02\x12\x1a\n\x12relative_timestamp\x18\x07 \x01(\x04\"U\n\x06Header\x12\x0f\n\x07version\x18\x01 \x01(\x0c\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x1a\n\x12relative_timestamp\x18\x03 \x01(\x04\x12\x0b\n\x03\x66ps\x18\x04 \x01(\x02\"\xab\x01\n\x04Pose\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01z\x18\x03 \x01(\x02\x12\x0f\n\x07heading\x18\x04 \x01(\x02\x12\r\n\x05pitch\x18\x05 \x01(\x02\x12\x0c\n\x04roll\x18\x06 \x01(\x02\x12\x10\n\x08latitude\x18\x07 \x01(\x01\x12\x11\n\tlongitude\x18\x08 \x01(\x01\x12\x10\n\x08\x61ltitude\x18\t \x01(\x01\x12\x0e\n\x06status\x18\n \x01(\x05\x12\r\n\x05state\x18\x0b \x01(\t\"\x8a\x03\n\x06Object\x12\n\n\x02id\x18\x01 \x01(\r\x12\x1a\n\x04type\x18\x02 \x01(\x0e\x32\x0c.Object.Type\x12\x12\n\nconfidence\x18\x03 \x01(\x02\x12\x13\n\x03\x62ox\x18\x04 \x01(\x0b\x32\x06.Box3D\x12\x12\n\nvelocity_x\x18\x05 \x01(\x02\x12\x12\n\nvelocity_y\x18\x06 \x01(\x02\x12\x12\n\nangle_rate\x18\x07 \x01(\x02\x12\x0f\n\x07\x61\x63\x63\x65l_x\x18\x08 \x01(\x02\x12\r\n\x05valid\x18\t \x01(\x08\x12\x1e\n\x06status\x18\n \x01(\x0e\x32\x0e.Object.Status\x12\x0b\n\x03\x61ge\x18\x0b \x01(\r\x12\x1f\n\ntrajectory\x18\x0c \x03(\x0b\x32\x0b.Trajectory\"G\n\x04Type\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0b\n\x07VEHICLE\x10\x01\x12\x0e\n\nPEDESTRIAN\x10\x02\x12\x0b\n\x07\x43YCLIST\x10\x03\x12\x08\n\x04\x43ONE\x10\x04\"<\n\x06Status\x12\r\n\tUNDEFINED\x10\x00\x12\n\n\x06STATIC\x10\x01\x12\x0b\n\x07STOPPED\x10\x02\x12\n\n\x06MOVING\x10\x03\"\x9b\x01\n\rFreespaceInfo\x12\r\n\x05x_min\x18\x01 \x01(\x02\x12\r\n\x05x_max\x18\x02 \x01(\x02\x12\r\n\x05y_min\x18\x03 \x01(\x02\x12\r\n\x05y_max\x18\x04 \x01(\x02\x12\r\n\x05z_min\x18\x05 \x01(\x02\x12\r\n\x05z_max\x18\x06 \x01(\x02\x12\x12\n\nresolution\x18\x07 \x01(\x02\x12\r\n\x05x_num\x18\x08 \x01(\x03\x12\r\n\x05y_num\x18\t \x01(\x03\"8\n\tFreespace\x12\x1c\n\x04info\x18\x01 \x01(\x0b\x32\x0e.FreespaceInfo\x12\r\n\x05\x63\x65lls\x18\x02 \x01(\x0c\"1\n\x0b\x43\x61meraImage\x12\x13\n\x0b\x63\x61mera_name\x18\x01 \x01(\t\x12\r\n\x05image\x18\x02 \x01(\x0c\":\n\x05Radar\x12\x12\n\nradar_name\x18\x01 \x01(\t\x12\x1d\n\x0cradar_object\x18\x02 \x03(\x0b\x32\x07.Object\"\xa9\x01\n\tDetection\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x17\n\x06object\x18\x02 \x03(\x0b\x32\x07.Object\x12\x11\n\tfreespace\x18\x03 \x01(\x0c\x12\x0e\n\x06points\x18\x04 \x01(\x0c\x12\x1b\n\x05image\x18\x05 \x03(\x0b\x32\x0c.CameraImage\x12\x15\n\x05radar\x18\x06 \x03(\x0b\x32\x06.Radar\x12\x13\n\x04pose\x18\x07 \x01(\x0b\x32\x05.Pose')
+  serialized_pb=_b('\n\x0f\x64\x65tection.proto\"9\n\x07Point3D\x12\x0e\n\x01x\x18\x01 \x01(\x01:\x03nan\x12\x0e\n\x01y\x18\x02 \x01(\x01:\x03nan\x12\x0e\n\x01z\x18\x03 \x01(\x01:\x03nan\"a\n\x05\x42ox3D\x12\x18\n\x06\x63\x65nter\x18\x01 \x01(\x0b\x32\x08.Point3D\x12\x0e\n\x06length\x18\x02 \x01(\x02\x12\r\n\x05width\x18\x03 \x01(\x02\x12\x0e\n\x06height\x18\x04 \x01(\x02\x12\x0f\n\x07heading\x18\x05 \x01(\x02\"\x82\x01\n\nTrajectory\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\x12\t\n\x01z\x18\x03 \x01(\x01\x12\x0f\n\x07heading\x18\x04 \x01(\x02\x12\x12\n\nvelocity_x\x18\x05 \x01(\x02\x12\x12\n\nvelocity_y\x18\x06 \x01(\x02\x12\x1a\n\x12relative_timestamp\x18\x07 \x01(\x04\"U\n\x06Header\x12\x0f\n\x07version\x18\x01 \x01(\x0c\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x1a\n\x12relative_timestamp\x18\x03 \x01(\x04\x12\x0b\n\x03\x66ps\x18\x04 \x01(\x02\"\"\n\x04\x41rea\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\"\xc0\x01\n\x04Pose\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01z\x18\x03 \x01(\x02\x12\x0f\n\x07heading\x18\x04 \x01(\x02\x12\r\n\x05pitch\x18\x05 \x01(\x02\x12\x0c\n\x04roll\x18\x06 \x01(\x02\x12\x10\n\x08latitude\x18\x07 \x01(\x01\x12\x11\n\tlongitude\x18\x08 \x01(\x01\x12\x10\n\x08\x61ltitude\x18\t \x01(\x01\x12\x0e\n\x06status\x18\n \x01(\x05\x12\r\n\x05state\x18\x0b \x01(\t\x12\x13\n\x04\x61rea\x18\x0c \x01(\x0b\x32\x05.Area\"\x8a\x03\n\x06Object\x12\n\n\x02id\x18\x01 \x01(\r\x12\x1a\n\x04type\x18\x02 \x01(\x0e\x32\x0c.Object.Type\x12\x12\n\nconfidence\x18\x03 \x01(\x02\x12\x13\n\x03\x62ox\x18\x04 \x01(\x0b\x32\x06.Box3D\x12\x12\n\nvelocity_x\x18\x05 \x01(\x02\x12\x12\n\nvelocity_y\x18\x06 \x01(\x02\x12\x12\n\nangle_rate\x18\x07 \x01(\x02\x12\x0f\n\x07\x61\x63\x63\x65l_x\x18\x08 \x01(\x02\x12\r\n\x05valid\x18\t \x01(\x08\x12\x1e\n\x06status\x18\n \x01(\x0e\x32\x0e.Object.Status\x12\x0b\n\x03\x61ge\x18\x0b \x01(\r\x12\x1f\n\ntrajectory\x18\x0c \x03(\x0b\x32\x0b.Trajectory\"G\n\x04Type\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x0b\n\x07VEHICLE\x10\x01\x12\x0e\n\nPEDESTRIAN\x10\x02\x12\x0b\n\x07\x43YCLIST\x10\x03\x12\x08\n\x04\x43ONE\x10\x04\"<\n\x06Status\x12\r\n\tUNDEFINED\x10\x00\x12\n\n\x06STATIC\x10\x01\x12\x0b\n\x07STOPPED\x10\x02\x12\n\n\x06MOVING\x10\x03\"\xa0\x02\n\x0cTrafficlight\x12\n\n\x02id\x18\x01 \x01(\r\x12*\n\tpictogram\x18\x02 \x01(\x0e\x32\x17.Trafficlight.Pictogram\x12\"\n\x05\x63olor\x18\x03 \x01(\x0e\x32\x13.Trafficlight.Color\x12\x12\n\nconfidence\x18\x04 \x01(\x02\x12\x0c\n\x04name\x18\x05 \x01(\t\"`\n\tPictogram\x12\t\n\x05OTHER\x10\x00\x12\x0c\n\x08UP_ARROW\x10\x01\x12\x0e\n\nLEFT_ARROW\x10\x02\x12\x0f\n\x0bRIGHT_ARROW\x10\x03\x12\x0e\n\nDOWN_ARROW\x10\x04\x12\t\n\x05UTURN\x10\x05\"0\n\x05\x43olor\x12\x07\n\x03RED\x10\x00\x12\t\n\x05GREEN\x10\x01\x12\n\n\x06YELLOW\x10\x02\x12\x07\n\x03OFF\x10\x03\"\x9b\x01\n\rFreespaceInfo\x12\r\n\x05x_min\x18\x01 \x01(\x02\x12\r\n\x05x_max\x18\x02 \x01(\x02\x12\r\n\x05y_min\x18\x03 \x01(\x02\x12\r\n\x05y_max\x18\x04 \x01(\x02\x12\r\n\x05z_min\x18\x05 \x01(\x02\x12\r\n\x05z_max\x18\x06 \x01(\x02\x12\x12\n\nresolution\x18\x07 \x01(\x02\x12\r\n\x05x_num\x18\x08 \x01(\x03\x12\r\n\x05y_num\x18\t \x01(\x03\"8\n\tFreespace\x12\x1c\n\x04info\x18\x01 \x01(\x0b\x32\x0e.FreespaceInfo\x12\r\n\x05\x63\x65lls\x18\x02 \x01(\x0c\"1\n\x0b\x43\x61meraImage\x12\x13\n\x0b\x63\x61mera_name\x18\x01 \x01(\t\x12\r\n\x05image\x18\x02 \x01(\x0c\":\n\x05Radar\x12\x12\n\nradar_name\x18\x01 \x01(\t\x12\x1d\n\x0cradar_object\x18\x02 \x03(\x0b\x32\x07.Object\"\xc7\x01\n\tDetection\x12\x17\n\x06header\x18\x01 \x01(\x0b\x32\x07.Header\x12\x17\n\x06object\x18\x02 \x03(\x0b\x32\x07.Object\x12\x11\n\tfreespace\x18\x03 \x01(\x0c\x12\x0e\n\x06points\x18\x04 \x01(\x0c\x12\x1b\n\x05image\x18\x05 \x03(\x0b\x32\x0c.CameraImage\x12\x15\n\x05radar\x18\x06 \x03(\x0b\x32\x06.Radar\x12\x13\n\x04pose\x18\x07 \x01(\x0b\x32\x05.Pose\x12\x1c\n\x05light\x18\x08 \x03(\x0b\x32\r.Trafficlight')
 )
 
 
@@ -54,8 +54,8 @@ _OBJECT_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=833,
-  serialized_end=904,
+  serialized_start=890,
+  serialized_end=961,
 )
 _sym_db.RegisterEnumDescriptor(_OBJECT_TYPE)
 
@@ -84,10 +84,78 @@ _OBJECT_STATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=906,
-  serialized_end=966,
+  serialized_start=963,
+  serialized_end=1023,
 )
 _sym_db.RegisterEnumDescriptor(_OBJECT_STATUS)
+
+_TRAFFICLIGHT_PICTOGRAM = _descriptor.EnumDescriptor(
+  name='Pictogram',
+  full_name='Trafficlight.Pictogram',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='OTHER', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='UP_ARROW', index=1, number=1,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='LEFT_ARROW', index=2, number=2,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='RIGHT_ARROW', index=3, number=3,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DOWN_ARROW', index=4, number=4,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='UTURN', index=5, number=5,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=1168,
+  serialized_end=1264,
+)
+_sym_db.RegisterEnumDescriptor(_TRAFFICLIGHT_PICTOGRAM)
+
+_TRAFFICLIGHT_COLOR = _descriptor.EnumDescriptor(
+  name='Color',
+  full_name='Trafficlight.Color',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='RED', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='GREEN', index=1, number=1,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='YELLOW', index=2, number=2,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='OFF', index=3, number=3,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=1266,
+  serialized_end=1314,
+)
+_sym_db.RegisterEnumDescriptor(_TRAFFICLIGHT_COLOR)
 
 
 _POINT3D = _descriptor.Descriptor(
@@ -319,6 +387,44 @@ _HEADER = _descriptor.Descriptor(
 )
 
 
+_AREA = _descriptor.Descriptor(
+  name='Area',
+  full_name='Area',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='type', full_name='Area.type', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='Area.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=397,
+  serialized_end=431,
+)
+
+
 _POSE = _descriptor.Descriptor(
   name='Pose',
   full_name='Pose',
@@ -403,6 +509,13 @@ _POSE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='area', full_name='Pose.area', index=11,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -415,8 +528,8 @@ _POSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=398,
-  serialized_end=569,
+  serialized_start=434,
+  serialized_end=626,
 )
 
 
@@ -525,8 +638,69 @@ _OBJECT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=572,
-  serialized_end=966,
+  serialized_start=629,
+  serialized_end=1023,
+)
+
+
+_TRAFFICLIGHT = _descriptor.Descriptor(
+  name='Trafficlight',
+  full_name='Trafficlight',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='Trafficlight.id', index=0,
+      number=1, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='pictogram', full_name='Trafficlight.pictogram', index=1,
+      number=2, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='color', full_name='Trafficlight.color', index=2,
+      number=3, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='confidence', full_name='Trafficlight.confidence', index=3,
+      number=4, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='Trafficlight.name', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _TRAFFICLIGHT_PICTOGRAM,
+    _TRAFFICLIGHT_COLOR,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1026,
+  serialized_end=1314,
 )
 
 
@@ -612,8 +786,8 @@ _FREESPACEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=969,
-  serialized_end=1124,
+  serialized_start=1317,
+  serialized_end=1472,
 )
 
 
@@ -650,8 +824,8 @@ _FREESPACE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1126,
-  serialized_end=1182,
+  serialized_start=1474,
+  serialized_end=1530,
 )
 
 
@@ -688,8 +862,8 @@ _CAMERAIMAGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1184,
-  serialized_end=1233,
+  serialized_start=1532,
+  serialized_end=1581,
 )
 
 
@@ -726,8 +900,8 @@ _RADAR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1235,
-  serialized_end=1293,
+  serialized_start=1583,
+  serialized_end=1641,
 )
 
 
@@ -787,6 +961,13 @@ _DETECTION = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='light', full_name='Detection.light', index=7,
+      number=8, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -799,17 +980,22 @@ _DETECTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1296,
-  serialized_end=1465,
+  serialized_start=1644,
+  serialized_end=1843,
 )
 
 _BOX3D.fields_by_name['center'].message_type = _POINT3D
+_POSE.fields_by_name['area'].message_type = _AREA
 _OBJECT.fields_by_name['type'].enum_type = _OBJECT_TYPE
 _OBJECT.fields_by_name['box'].message_type = _BOX3D
 _OBJECT.fields_by_name['status'].enum_type = _OBJECT_STATUS
 _OBJECT.fields_by_name['trajectory'].message_type = _TRAJECTORY
 _OBJECT_TYPE.containing_type = _OBJECT
 _OBJECT_STATUS.containing_type = _OBJECT
+_TRAFFICLIGHT.fields_by_name['pictogram'].enum_type = _TRAFFICLIGHT_PICTOGRAM
+_TRAFFICLIGHT.fields_by_name['color'].enum_type = _TRAFFICLIGHT_COLOR
+_TRAFFICLIGHT_PICTOGRAM.containing_type = _TRAFFICLIGHT
+_TRAFFICLIGHT_COLOR.containing_type = _TRAFFICLIGHT
 _FREESPACE.fields_by_name['info'].message_type = _FREESPACEINFO
 _RADAR.fields_by_name['radar_object'].message_type = _OBJECT
 _DETECTION.fields_by_name['header'].message_type = _HEADER
@@ -817,12 +1003,15 @@ _DETECTION.fields_by_name['object'].message_type = _OBJECT
 _DETECTION.fields_by_name['image'].message_type = _CAMERAIMAGE
 _DETECTION.fields_by_name['radar'].message_type = _RADAR
 _DETECTION.fields_by_name['pose'].message_type = _POSE
+_DETECTION.fields_by_name['light'].message_type = _TRAFFICLIGHT
 DESCRIPTOR.message_types_by_name['Point3D'] = _POINT3D
 DESCRIPTOR.message_types_by_name['Box3D'] = _BOX3D
 DESCRIPTOR.message_types_by_name['Trajectory'] = _TRAJECTORY
 DESCRIPTOR.message_types_by_name['Header'] = _HEADER
+DESCRIPTOR.message_types_by_name['Area'] = _AREA
 DESCRIPTOR.message_types_by_name['Pose'] = _POSE
 DESCRIPTOR.message_types_by_name['Object'] = _OBJECT
+DESCRIPTOR.message_types_by_name['Trafficlight'] = _TRAFFICLIGHT
 DESCRIPTOR.message_types_by_name['FreespaceInfo'] = _FREESPACEINFO
 DESCRIPTOR.message_types_by_name['Freespace'] = _FREESPACE
 DESCRIPTOR.message_types_by_name['CameraImage'] = _CAMERAIMAGE
@@ -858,6 +1047,13 @@ Header = _reflection.GeneratedProtocolMessageType('Header', (_message.Message,),
   })
 _sym_db.RegisterMessage(Header)
 
+Area = _reflection.GeneratedProtocolMessageType('Area', (_message.Message,), {
+  'DESCRIPTOR' : _AREA,
+  '__module__' : 'detection_pb2'
+  # @@protoc_insertion_point(class_scope:Area)
+  })
+_sym_db.RegisterMessage(Area)
+
 Pose = _reflection.GeneratedProtocolMessageType('Pose', (_message.Message,), {
   'DESCRIPTOR' : _POSE,
   '__module__' : 'detection_pb2'
@@ -871,6 +1067,13 @@ Object = _reflection.GeneratedProtocolMessageType('Object', (_message.Message,),
   # @@protoc_insertion_point(class_scope:Object)
   })
 _sym_db.RegisterMessage(Object)
+
+Trafficlight = _reflection.GeneratedProtocolMessageType('Trafficlight', (_message.Message,), {
+  'DESCRIPTOR' : _TRAFFICLIGHT,
+  '__module__' : 'detection_pb2'
+  # @@protoc_insertion_point(class_scope:Trafficlight)
+  })
+_sym_db.RegisterMessage(Trafficlight)
 
 FreespaceInfo = _reflection.GeneratedProtocolMessageType('FreespaceInfo', (_message.Message,), {
   'DESCRIPTOR' : _FREESPACEINFO,

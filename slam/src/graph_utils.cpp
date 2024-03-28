@@ -42,8 +42,8 @@ bool get_mapping_ground_constraint() {
   return get_ground_constaint();
 }
 
-void set_mapping_loop_closure(bool enable) {
-  set_loop_closure(enable);
+void set_mapping_constraint(bool loop_closure, bool gravity_constraint) {
+  set_constraint(loop_closure, gravity_constraint);
 }
 
 extern void set_map_colouration_hdl_localization(bool enable); // hdl_localization_nodelet.cpp

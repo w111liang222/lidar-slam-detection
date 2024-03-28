@@ -5,47 +5,33 @@ from sensor_driver.lidar_driver.lidar_driver import LidarDriver
 from ..export_interface import register_interface
 
 class LidarDataManager(DataManagerTemplate):
-    def __init__(self, cfg, data_cfg, logger=None):
-        super().__init__('Lidar', cfg, data_cfg, logger = logger)
+    def __init__(self, cfg, logger=None):
+        super().__init__('Lidar', cfg, logger = logger)
 
         self.lidar = dict()
         self.lidar_info = dict()
-        for i in range(0, len(cfg.lidar)):
-            lc = cfg.lidar[i]
-            static_ex_param = [0, 0, 0, 0, 0, 0]
-            if 'exclude' not in lc:
-                lc['exclude'] = [-0.5, -0.5, 0, 0.5, 0.5, 0]
-            if 'static_extrinsic_parameters' in lc:
-                static_ex_param = lc.static_extrinsic_parameters
+        for i, lc in enumerate(cfg.lidar):
             if self.mode == "offline" and 'index' not in lc:
                 continue
             idx = i if self.mode == "online" else lc.index
-            self.lidar[str(idx) + '-' + lc.name] = LidarDriver(name=lc.name, token=str(i),
-                                                    ex_param=lc.extrinsic_parameters,
-                                                    static_ex_param=static_ex_param,
-                                                    points_range=lc.range,
-                                                    exclude=lc.exclude,
-                                                    logger=logger,
-                                                    port=lc.port
-                                                 )
-            self.lidar_info[str(i) + '-' + lc.name] = {'timestamp' : 0, 'num' : [0, 4], 'valid' : False}
+            name = str(idx) + '-' + lc.name
+            self.lidar[name] = LidarDriver(name=lc.name, token=str(i),
+                                           ex_param=lc.extrinsic_parameters,
+                                           static_ex_param=lc.static_extrinsic_parameters if 'static_extrinsic_parameters' in lc else [0, 0, 0, 0, 0, 0],
+                                           points_range=lc.range,
+                                           exclude=lc.exclude if 'exclude' in lc else [-0.5, -0.5, 0, 0.5, 0.5, 0],
+                                           logger=logger,
+                                           port=lc.port)
+            self.lidar_info[name] = {'timestamp' : 0, 'num' : [0, 4], 'valid' : False}
+
         for lidar in self.lidar.values():
             lidar.open()
-        register_interface('lidar.get_lidar_status', self.get_lidar_status)
+        register_interface('lidar.get_status', self.get_status)
 
     def setup(self, cfg):
-        self.cfg = cfg
+        super().setup(cfg)
         if cfg.output.point_cloud.use:
             self._start_package_transfer(cfg.output.point_cloud.destination)
-
-    def set_config(self, cfg):
-        old_cfg = self.cfg
-        if old_cfg.output.point_cloud != cfg.output.point_cloud:
-            if cfg.output.point_cloud.use:
-                self._start_package_transfer(cfg.output.point_cloud.destination)
-            else:
-                self._stop_package_transfer()
-        self.cfg = cfg
 
     def loop_run_once(self, sensor, sensor_name):
         valid = True
@@ -73,7 +59,7 @@ class LidarDataManager(DataManagerTemplate):
         for lidar in self.lidar.values():
             lidar.close()
 
-    def get_lidar_status(self):
+    def get_status(self):
         return self.lidar_info
 
     def update_lidar_info(self, points_dict, points_attr):
@@ -85,7 +71,7 @@ class LidarDataManager(DataManagerTemplate):
             else:
                 info['valid'] = False
 
-    def post_process_data(self, data_dict, **kwargs):
+    def post_process_data(self, data_dict):
         points_dict = data_dict['points']
         points_attr = data_dict['points_attr']
         if self.mode == "offline":

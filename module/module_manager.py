@@ -17,12 +17,12 @@ from .export_interface import register_interface
 from util.common_util import run_cmd
 
 __all__ = {
-    'Split': DataSplit,
-    'Merge': DataMerge,
+    'Split' : DataSplit,
+    'Merge' : DataMerge,
     'Source': SourceManager,
     'Detect': DetectManager,
-    'Sink': SinkManager,
-    'SLAM': SLAMManager,
+    'Sink'  : SinkManager,
+    'SLAM'  : SLAMManager,
 }
 
 class ModuleManager():
@@ -32,7 +32,7 @@ class ModuleManager():
         self.system = system
         self.modules_in_setup = ['Source']
 
-        register_interface('system.get_module_status', self.get_status)
+        register_interface('system.get_status', self.get_status)
 
     def _setup_pipeline(self, pipeline):
         for module in pipeline:

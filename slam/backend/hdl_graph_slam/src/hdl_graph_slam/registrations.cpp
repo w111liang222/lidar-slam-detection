@@ -108,6 +108,7 @@ pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_metho
       LOG_INFO("registration: NDT_CUDA {}", ndt_resolution);
       fast_gicp::NDTCuda<PointT, PointT>::Ptr ndt(new fast_gicp::NDTCuda<PointT, PointT>());
       ndt->setTransformationEpsilon(0.01);
+      ndt->setRotationEpsilon(0.1);
       ndt->setMaximumIterations(64);
       ndt->setResolution(ndt_resolution);
       ndt->setDistanceMode(fast_gicp::NDTDistanceMode::P2D);

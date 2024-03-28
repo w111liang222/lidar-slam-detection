@@ -23,6 +23,7 @@ void graph_set_origin(RTKType &rtk);
 bool enqueue_graph(PointCloudAttrImagePose &frame, PointCloudAttrImagePose &keyframe);
 void enqueue_graph_floor(FloorCoeffs& floor_coeffs);
 void enqueue_graph_gps(std::shared_ptr<RTKType>& rtk);
+void enqueue_graph_imu(const uint64_t &timestamp, Eigen::Vector3d &gyro, Eigen::Vector3d &acc);
 
 Eigen::Isometry3d get_odom2map();
 void graph_optimization(bool &is_running);
@@ -31,7 +32,7 @@ void graph_get_status(bool &loop_detected);
 
 void set_ground_constaint(bool enable);
 bool get_ground_constaint();
-void set_loop_closure(bool enable);
+void set_constraint(bool loop_closure, bool gravity_constraint);
 
 inline void init_backend(InitParameter &param) {
     init_floor_node();

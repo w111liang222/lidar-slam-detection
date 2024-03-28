@@ -19,6 +19,11 @@ else()
     set(CUDA_LIBRARIES "")
 endif()
 
+find_package(RKNN)
+if(RKNN_FOUND)
+    add_definitions(-DHAVE_RKNN_ENABLE)
+endif()
+
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem regex)
 

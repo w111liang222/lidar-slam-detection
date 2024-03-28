@@ -1,6 +1,6 @@
 
-from hardware.platform_common import BOARD_NAME, MACHINE, JETPACK
-print("Running on board: {}, machine: {}, jetpack: {}".format(BOARD_NAME, MACHINE, JETPACK))
+from hardware.platform_common import VERSION, BOARD_NAME, MACHINE, JETPACK
+print(f"Running on board: {VERSION}-{BOARD_NAME}-{MACHINE}-{JETPACK}")
 
 from easydict import EasyDict
 
@@ -75,20 +75,13 @@ class Perception:
         )
 
     def get_status(self):
-        disk = dict()
-        status_frame = call('frame.is_recording')
-        disk['status'] = status_frame
-
-        if status_frame is True:
-            disk.update(call('frame.get_status'))
-
         return dict(
-            disk=disk,
-            status=call('system.get_module_status'),
-            lidar=call('lidar.get_lidar_status'),
-            camera=call('camera.get_camera_status'),
-            ins=call('ins.get_ins_status'),
-            radar=call('radar.get_radar_status'),
+            status = call('system.get_status'),
+            disk   = call('frame.get_status'),
+            lidar  = call('lidar.get_status'),
+            camera = call('camera.get_status'),
+            ins    = call('ins.get_status'),
+            radar  = call('radar.get_status'),
         )
 
     def set_runtime_config(self, config):
@@ -102,11 +95,7 @@ class Perception:
     def call(self, interface, args = dict()):
         return call(interface, **args)
 
-    def dump(self, args = dict()):
-        import third_party.pympler.asizeof as asizeof
-        cutoff = args.get('cutoff', 10)
-        detail = args.get('detail', 10)
+    def dump(self):
         return dict(
             stack=dump_threads_stack(),
-            mem=asizeof.asized(self, above=4, cutoff=cutoff, detail=detail).format(),
         )

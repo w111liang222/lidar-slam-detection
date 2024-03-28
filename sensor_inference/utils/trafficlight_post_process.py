@@ -1,28 +1,29 @@
+import os
 import numpy as np
-import cv2
-from sensor_inference.utils.image_ops_utils import xywh2xyxy, nms_2d_box
+from scipy.optimize import linear_sum_assignment
+from sensor_inference.utils.parse_map import parse_xodr, parse_anchor
+from sensor_inference.utils.image_ops_utils import xywh2xyxy, nms_2d_box, cost_matrix
+from sensor_driver.common_lib.cpp_utils import get_global_transform, get_transform_from_cfg
+from util.common_util import has_extension_disk
 
 class PostProcesser():
-    def __init__(self, model_cfg, num_class, class_names):
+    def __init__(self, model_cfg, num_class, class_names, ins_extrinsic, map_path):
         self.model_cfg = model_cfg
         self.num_class = num_class
         self.class_names = class_names
 
-        # traffic light color dict
-        self.color_dict = {
-            'black':  {'min': np.array([0,   0,     0]), 'max': np.array([180, 255,  46])},
-            'red1':   {'min': np.array([0,   66,   66]), 'max': np.array([10,  255, 255])},
-            'red2':   {'min': np.array([156, 66,   66]), 'max': np.array([180, 255, 255])},
-            'green':  {'min': np.array([35,  66,   66]), 'max': np.array([110, 255, 255])},
-            'yellow1':{'min': np.array([20,  66,   66]), 'max': np.array([32,  255, 255])},
-            'yellow2':{'min': np.array([220, 66,   66]), 'max': np.array([255, 255, 255])},
-        }
+        has_disk, disk_name = has_extension_disk()
+        self.light_list, self.light_pos = parse_xodr(os.path.join(disk_name, map_path, 'graph/map.xodr'))
+        self.anchor = parse_anchor(os.path.join(disk_name, map_path, 'graph/map_info.txt'))
+        self.ins_transform = get_transform_from_cfg(ins_extrinsic[0], ins_extrinsic[1], ins_extrinsic[2],
+                                                    ins_extrinsic[3], ins_extrinsic[4], ins_extrinsic[5])
+        self.global_transform = np.linalg.inv(get_global_transform(self.anchor.lat, self.anchor.lon, self.anchor.alt, 0, 0, 0)) if self.anchor else np.eye(4)
 
-    def forward(self, image, preds):
-        pred_dicts = self.post_processing(image, preds)
+    def forward(self, image, preds, ins_data, cam_param):
+        pred_dicts = self.post_processing(image, preds, ins_data, cam_param)
         return pred_dicts
 
-    def post_processing(self, image, preds):
+    def post_processing(self, image, preds, ins_data, cam_param):
         preds = preds.transpose((1, 0))
 
         # confidence filter
@@ -36,57 +37,59 @@ class PostProcesser():
             keep = nms_2d_box(boxes, scores, self.model_cfg.IOU_THRESHOLD)
             boxes, scores, labels = boxes[keep], scores[keep], labels[keep]
 
-        colors = self.detect_colors(image, boxes)
+        colors = labels // 6
+        pictograms = labels % 6
 
         result_dict = {
             'pred_boxes':  boxes,
             'pred_scores': scores,
-            'pred_labels': labels,
+            'pred_pictograms': pictograms,
             'pred_colors': colors,
+            'pred_names': [''] * boxes.shape[0],
+            'pred_ids': ['0'] * boxes.shape[0]      # 0 indicates an invalid map_primitive_id
         }
+
+        if self.anchor and self.light_list.any() and ins_data:
+            result_dict = self.matching_map(image, result_dict, ins_data, cam_param)
+
         return result_dict
 
-    # recognize color in HSV space
-    def detect_colors(self, image, pred_boxes):
-        colors = np.zeros(pred_boxes.shape[0], dtype=np.int8)
-        for i in range(pred_boxes.shape[0]):
-            bbox = pred_boxes[i, :]
-            crop = image[round(bbox[1]):round(bbox[3]), round(bbox[0]):round(bbox[2])]
-            if crop.shape[0] == 0 or crop.shape[1] == 0:
-                colors[i] = -1
-                continue
+    # match traffic light in xodr map
+    def matching_map(self, image, result_dict, ins_data, cam_param):
+        # project xodr lights to image coordinate
+        poseV = np.matmul(np.matmul(self.global_transform, ins_data['pose']), self.ins_transform)
+        lights_front, light_poseV_matrix = self.project2V(poseV)
+        lights_image, lights_image_pos = self.project2C(image, lights_front, light_poseV_matrix, cam_param)
 
-            crop_HSV = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        # matching, Hungarian Algorithm
+        dist_matrix = cost_matrix(lights_image_pos, result_dict['pred_boxes'])
+        row_ind, col_ind = linear_sum_assignment(dist_matrix)
+        for i, j in zip(row_ind, col_ind):
+            if dist_matrix[i][j] < 10:
+                result_dict['pred_names'][j] = lights_image[i].name
+                result_dict['pred_ids'][j] = lights_image[i].id
 
-            mask_red    = cv2.inRange(crop_HSV, self.color_dict['red1']['min'], self.color_dict['red1']['max']) + \
-                          cv2.inRange(crop_HSV, self.color_dict['red2']['min'], self.color_dict['red2']['max'])
-            mask_green  = cv2.inRange(crop_HSV, self.color_dict['green']['min'], self.color_dict['green']['max'])
-            mask_yellow = cv2.inRange(crop_HSV, self.color_dict['yellow1']['min'], self.color_dict['yellow1']['max']) + \
-                          cv2.inRange(crop_HSV, self.color_dict['yellow2']['min'], self.color_dict['yellow2']['max'])
+        return result_dict
 
-            # morphology filter
-            kernel = np.ones([3, 3], np.uint8)
+    # project light pose to vehicle coordinate
+    def project2V(self, pose):
+        light_pose_matrix = np.expand_dims(self.light_pos, axis=2)
+        light_poseV_matrix = np.linalg.inv(pose) @ light_pose_matrix
+        mask = np.reshape(np.logical_and(light_poseV_matrix[:, 0] > 2, np.linalg.norm(light_poseV_matrix, axis=1) < 100), (light_poseV_matrix.shape[0]))
+        lights_forward = self.light_list[mask]
+        light_poseV_matrix = light_poseV_matrix[mask]
+        return lights_forward, light_poseV_matrix
 
-            mask_red = cv2.morphologyEx(mask_red, cv2.MORPH_CLOSE, kernel)
-            mask_red = cv2.morphologyEx(mask_red, cv2.MORPH_OPEN, kernel)
-            red      = sum(sum(mask_red.astype(int)))
-
-            mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
-            mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-            green      = sum(sum(mask_green.astype(int)))
-
-            mask_yellow = cv2.morphologyEx(mask_yellow, cv2.MORPH_CLOSE, kernel)
-            mask_yellow = cv2.morphologyEx(mask_yellow, cv2.MORPH_OPEN, kernel)
-            yellow      = sum(sum(mask_yellow.astype(int)))
-
-            ratio = max([red, green, yellow]) / (255 * crop.shape[0] * crop.shape[1])
-            if ratio < 0.02:
-                colors[i] = 0
-            elif max([red, green, yellow]) == red:
-                colors[i] = 1
-            elif max([red, green, yellow]) == green:
-                colors[i] = 2
-            elif max([red, green, yellow]) == yellow:
-                colors[i] = 3
-
-        return colors
+    # project light pose (vehicle coordinate) to image coordinate
+    def project2C(self, image, light_list, light_poseV_matrix, cam_param):
+        cam_matrix = cam_param['V2C'] @ light_poseV_matrix
+        img_matrix = cam_param['intrinsic'] @ cam_matrix
+        img_matrix = np.reshape(img_matrix, (light_poseV_matrix.shape[0], 3))
+        last_colum = np.expand_dims(img_matrix[:, -1], axis=1)
+        img_matrix = img_matrix / last_colum
+        valid0_ind = np.logical_and(img_matrix[:, 0] > 0, img_matrix[:, 0] < image.shape[1])
+        valid1_ind = np.logical_and(img_matrix[:, 1] > 0, img_matrix[:, 1] < image.shape[0])
+        mask = np.logical_and(valid0_ind, valid1_ind)
+        lights_image = light_list[mask]
+        lights_image_pos = img_matrix[mask]
+        return lights_image, lights_image_pos

@@ -94,8 +94,8 @@ export async function restartMapping() {
   return await axios.get("v1/restart-mapping");
 }
 
-export async function revertFloorConstraint(): Promise<string> {
-  return (await axios.post("v1/revert-floor-constraint", {})).data;
+export async function rotateGroundConstraint(): Promise<string> {
+  return (await axios.post("v1/rotate-ground-constraint", {})).data;
 }
 
 export async function saveMapping(name: string | undefined = undefined): Promise<string> {
@@ -476,6 +476,14 @@ export async function deleteMapPoints(index: any) {
 
 export async function delteMapEdge(id: string): Promise<string> {
   return (await axios.post("v1/map-del-edge", { id: parseInt(id) })).data;
+}
+
+export async function addMapArea(area: any): Promise<string> {
+  return (await axios.post("v1/map-add-area", area)).data;
+}
+
+export async function delMapArea(id: string): Promise<string> {
+  return (await axios.post("v1/map-del-area", { id: id })).data;
 }
 
 export async function setMapVertexFix(id: string, fix: boolean): Promise<string> {

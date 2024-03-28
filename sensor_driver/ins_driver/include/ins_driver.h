@@ -21,21 +21,18 @@ class InsDriver {
   };
 
  public:
-  InsDriver(std::string ins_type);
+  InsDriver(std::string ins_type, std::string mode);
   virtual ~InsDriver();
 
-  void startRun(int portIn, std::string device);
+  void startRun(int port, std::string device);
   void stopRun();
   void startPackageTransfer(std::string dest);
   void stopPackageTransfer();
-  void setExternalParameter(Transform& trans);
-  bool trigger(uint64_t timestamp, bool &motion_valid, std::vector<double> &motionT,
-               double &motionR, InsDataType &ins, std::vector<InsDataType> &imu);
-  bool getMotion(std::vector<double> &motionT, double &motionR, uint64_t t0, uint64_t t1);
-  uint64_t getValidMessageCount();
-  uint64_t getReceiveMessageCount();
-  void setOfflineMode();
-  void setData(InsDataType &data, uint64_t timestamp);
+  void setExtrinsicParameter(Transform& extrinsic);
+  bool trigger(uint64_t timestamp, bool &motion_valid, std::vector<double> &ins_pose, std::vector<double> &motion_t,
+               double &motion_heading, InsDataType &ins, std::vector<InsDataType> &imu);
+  bool getMotion(std::vector<double> &ins_pose, std::vector<double> &motion_t, double &motion_heading, uint64_t t0, uint64_t t1);
+  void setData(InsDataType &data, uint64_t timestamp, bool is_imu);
  protected:
   void onPoseMessage(const zcm::ReceiveBuffer* rbuf, const std::string& chan, const nav_msgs::Odometry *msg);
   void run_udp();
@@ -43,7 +40,9 @@ class InsDriver {
   void run_gps();
   void resetRuntimeVariables();
   bool parseGPCHC(std::string &message, InsDataType &ins);
+  bool parseBDDB0B(std::string &message, InsDataType &ins);
   std::string formatGPCHC(InsDataType &ins);
+  bool parseLivoxImu(char buf[], const int& len, InsDataType &ins);
 
  private:
   Transform mStaticTransform;
@@ -53,8 +52,6 @@ class InsDriver {
 
   bool mUseSeperateIMU;
   bool mUseSeperateGPS;
-  uint64_t mValidMessageCount;
-  uint64_t mReceiveMessageCount;
   uint64_t mLastTriggerTime;
   std::vector<nav_msgs::Odometry> mPoseData;
   std::vector<InsDataType> mTimedData;

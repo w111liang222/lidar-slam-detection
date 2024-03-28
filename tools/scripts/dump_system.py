@@ -7,15 +7,11 @@ perception.connect("tcp://127.0.0.1:37040")
 # set logging level
 perception.set_runtime_config({"log_level": "INFO"})
 
-args = dict(
-    cutoff = 10,
-    detail = 10,
-)
-data = perception.dump(args)
-
-# dump perception memory
-# print(data['mem'])
+# dump system snap
+data = perception.dump()
 
 # dump python thread stack
-# for stack in data['stack']:
-#     print(stack, end='')
+print('\033[92m' + "================= start dump thread =================")
+for stack in data['stack']:
+    print('\033[93m' + stack, end='')
+print('\033[92m' + "================== dump thread ok ==================")

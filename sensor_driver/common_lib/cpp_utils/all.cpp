@@ -100,6 +100,18 @@ Transform getGlobalTransform(double lat, double lon, double alt,
     return getTransformFromRPYT(dataX, dataY, alt, -yaw, pitch, roll);
 }
 
+py::array_t<float> get_global_transform(double lat, double lon, double alt, 
+                                        double yaw, double pitch, double roll) {
+    Transform trans = getGlobalTransform(lat, lon, alt, yaw, pitch, roll);
+
+    Matrix tM = trans.matrix();
+    std::vector<float> data(16, 0);
+    for (int i = 0; i < 16; i++) {
+        data[i] = tM(i / 4, i % 4);
+    }
+    return py::array_t<float>(py::array::ShapeContainer({4, 4}), data.data());
+}
+
 py::array_t<double> getRelativeTransform(double lat0, double lon0, double alt0,
                                          double yaw0, double pitch0, double roll0,
                                          double lat1, double lon1, double alt1,
@@ -369,6 +381,11 @@ PYBIND11_MODULE(cpp_utils_ext, m) {
 
     m.def("get_RPYT_from_transform", &get_RPYT_from_transform, "get_RPYT_from_transform",
           py::arg("transform")
+    );
+
+    m.def("get_global_transform", &get_global_transform, "get_global_transform", 
+          py::arg("lat"), py::arg("lon"), py::arg("alt"), 
+          py::arg("yaw"), py::arg("pitch"), py::arg("roll")
     );
 
     m.def("getRelativeTransform", &getRelativeTransform, "getRelativeTransform",

@@ -4,8 +4,8 @@ SCN_ONNX_FILE: 'sensor_inference/detection_lidar_scn.onnx'
 RPN_ONNX_FILE: 'sensor_inference/detection_lidar_rpn.onnx'
 RPN_TRT_FILE:  'sensor_inference/detection_lidar_rpn.trt'
 DATA_CONFIG:
-    POINT_FRAME_NUM: 4
-    POINT_CLOUD_RANGE: [-76.8, -76.8, -2, 76.8, 76.8, 4]
+    POINT_FRAME_NUM: 2
+    POINT_CLOUD_RANGE: [-64.0, -64.0, -2, 64.0, 64.0, 4]
     VOXELIZATION:
         MAX_POINTS: 500000
         VOXEL_SIZE: [0.1, 0.1, 0.15]
@@ -26,6 +26,10 @@ MODEL:
             'Pedestrian': 0.10,
             'Cyclist': 0.10,
             'Traffic_Cone': 0.10,
+        }
+        MAP_SCORE_THRESH: {
+            'drivable_area': 0.45,
+            'obstacle': 0.45,
         }
         OUTPUT_RAW_SCORE: False
 

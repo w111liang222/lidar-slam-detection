@@ -100,6 +100,19 @@ def calibrate_camera(od_config, pointsCamera, cameraName, config):
     ]
     return {"result": True}, od_config
 
+def get_calibrate_camera(config, do_distort):
+    from util.image_util import undistort_image
+    from proto.proto_serialize import serialize_to_string
+    camera_config = dict()
+    for idx, cfg in enumerate(config['camera']):
+        camera_config[cfg['name']] = cfg
+    data_dict = call('bank.get_frame_data')
+    if do_distort == True:
+        for name, img in data_dict['image'].items():
+            data_dict['image'][name] = undistort_image(img, camera_config[name])
+
+    return serialize_to_string(data_dict, use_raw_image=True)
+
 def restart_lidar_ins_calibration(config):
     from calibration.ins_calibration import InsCalib
     InsCalib.reset(config['ins']['extrinsic_parameters'])
@@ -132,9 +145,9 @@ def restart_lidar_imu_calibration(config):
     from calibration.imu_calibration import ImuCalib
     ImuCalib.reset(config['ins']['extrinsic_parameters'])
 
-def get_imu_position_points():
+def get_imu_position_points(config):
     from calibration.imu_calibration import ImuCalib
-    return ImuCalib.getPositionPoints()
+    return ImuCalib.getPositionPoints(config)
 
 def calibrate_lidar_imu():
     from calibration.imu_calibration import ImuCalib
@@ -187,6 +200,7 @@ register_interface('calibration.calibrate_lidar_camera', calibrate_lidar_camera)
 # camera calibration
 register_interface('calibration.find_corners', find_corners)
 register_interface('calibration.calibrate_camera', calibrate_camera)
+register_interface('calibration.get_calibrate_camera', get_calibrate_camera)
 
 # ins calibration
 register_interface('calibration.restart_lidar_ins_calibration', restart_lidar_ins_calibration)

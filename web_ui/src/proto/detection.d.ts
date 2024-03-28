@@ -762,6 +762,138 @@ export namespace Object {
   }
 }
 
+/** Properties of a Trafficlight. */
+export interface ITrafficlight {
+  /** Trafficlight id */
+  id: number;
+
+  /** Trafficlight pictogram */
+  pictogram: Trafficlight.Pictogram;
+
+  /** Trafficlight color */
+  color: Trafficlight.Color;
+
+  /** Trafficlight confidence */
+  confidence: number;
+
+  /** Trafficlight name */
+  name: string;
+}
+
+/** Represents a Trafficlight. */
+export class Trafficlight implements ITrafficlight {
+  /**
+   * Constructs a new Trafficlight.
+   * @param [properties] Properties to set
+   */
+  constructor(properties?: ITrafficlight);
+
+  /** Trafficlight id. */
+  public id: number;
+
+  /** Trafficlight pictogram. */
+  public pictogram: Trafficlight.Pictogram;
+
+  /** Trafficlight color. */
+  public color: Trafficlight.Color;
+
+  /** Trafficlight confidence. */
+  public confidence: number;
+
+  /** Trafficlight name. */
+  public name: string;
+
+  /**
+   * Creates a new Trafficlight instance using the specified properties.
+   * @param [properties] Properties to set
+   * @returns Trafficlight instance
+   */
+  public static create(properties?: ITrafficlight): Trafficlight;
+
+  /**
+   * Encodes the specified Trafficlight message. Does not implicitly {@link Trafficlight.verify|verify} messages.
+   * @param message Trafficlight message or plain object to encode
+   * @param [writer] Writer to encode to
+   * @returns Writer
+   */
+  public static encode(message: ITrafficlight, writer?: $protobuf.Writer): $protobuf.Writer;
+
+  /**
+   * Encodes the specified Trafficlight message, length delimited. Does not implicitly {@link Trafficlight.verify|verify} messages.
+   * @param message Trafficlight message or plain object to encode
+   * @param [writer] Writer to encode to
+   * @returns Writer
+   */
+  public static encodeDelimited(message: ITrafficlight, writer?: $protobuf.Writer): $protobuf.Writer;
+
+  /**
+   * Decodes a Trafficlight message from the specified reader or buffer.
+   * @param reader Reader or buffer to decode from
+   * @param [length] Message length if known beforehand
+   * @returns Trafficlight
+   * @throws {Error} If the payload is not a reader or valid buffer
+   * @throws {$protobuf.util.ProtocolError} If required fields are missing
+   */
+  public static decode(reader: $protobuf.Reader | Uint8Array, length?: number): Trafficlight;
+
+  /**
+   * Decodes a Trafficlight message from the specified reader or buffer, length delimited.
+   * @param reader Reader or buffer to decode from
+   * @returns Trafficlight
+   * @throws {Error} If the payload is not a reader or valid buffer
+   * @throws {$protobuf.util.ProtocolError} If required fields are missing
+   */
+  public static decodeDelimited(reader: $protobuf.Reader | Uint8Array): Trafficlight;
+
+  /**
+   * Verifies a Trafficlight message.
+   * @param message Plain object to verify
+   * @returns `null` if valid, otherwise the reason why it is not
+   */
+  public static verify(message: { [k: string]: any }): string | null;
+
+  /**
+   * Creates a Trafficlight message from a plain object. Also converts values to their respective internal types.
+   * @param object Plain object
+   * @returns Trafficlight
+   */
+  public static fromObject(object: { [k: string]: any }): Trafficlight;
+
+  /**
+   * Creates a plain object from a Trafficlight message. Also converts values to other types if specified.
+   * @param message Trafficlight
+   * @param [options] Conversion options
+   * @returns Plain object
+   */
+  public static toObject(message: Trafficlight, options?: $protobuf.IConversionOptions): { [k: string]: any };
+
+  /**
+   * Converts this Trafficlight to JSON.
+   * @returns JSON object
+   */
+  public toJSON(): { [k: string]: any };
+}
+
+export namespace Trafficlight {
+  /** Pictogram enum. */
+  enum Pictogram {
+    OTHER = 0,
+    UP_ARROW = 1,
+    LEFT_ARROW = 2,
+    RIGHT_ARROW = 3,
+    DOWN_ARROW = 4,
+    UTURN = 5,
+  }
+
+  /** Color enum. */
+  enum Color {
+    RED = 0,
+    GREEN = 1,
+    YELLOW = 2,
+    OFF = 3,
+  }
+}
+
 /** Properties of a FreespaceInfo. */
 export interface IFreespaceInfo {
   /** FreespaceInfo xMin */
@@ -1202,6 +1334,9 @@ export interface IDetection {
 
   /** Detection pose */
   pose?: IPose | null;
+
+  /** Detection light */
+  light?: ITrafficlight[] | null;
 }
 
 /** Represents a Detection. */
@@ -1232,6 +1367,9 @@ export class Detection implements IDetection {
 
   /** Detection pose. */
   public pose?: IPose | null;
+
+  /** Detection light. */
+  public light: ITrafficlight[];
 
   /**
    * Creates a new Detection instance using the specified properties.

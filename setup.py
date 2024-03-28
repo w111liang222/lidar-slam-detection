@@ -41,7 +41,7 @@ class CMakeBuild(build_ext):
 
         cmake_args += ['-Wno-dev', '-DCMAKE_BUILD_TYPE=' + cfg, '-DBOARD_NAME=' + BOARD_NAME]
 
-        if BOARD_NAME in ["AGX-Orin-32GB"]:
+        if BOARD_NAME in ["AGX-Orin-32GB", "NX-Orin"]:
             build_thread = 8
         else:
             build_thread = 4

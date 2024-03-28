@@ -14,7 +14,7 @@ import {
   restartMapping,
   saveMapping,
   setInitPose,
-  revertFloorConstraint,
+  rotateGroundConstraint,
 } from "@rpc/http";
 
 import Scene, { DEFAULT_CONFIG, Config } from "./Scene";
@@ -169,7 +169,7 @@ export default function Preview({ dev = false, dt = 10 }: Props) {
     if (ev.key === " ") {
       setPause(!pause);
     } else if (ev.key === "f" && mode == "SLAM") {
-      revertFloorConstraint().then((result) => {
+      rotateGroundConstraint().then((result) => {
         if (result == "enable") {
           showMessage(t("ActiveFloorContraint"));
         } else {

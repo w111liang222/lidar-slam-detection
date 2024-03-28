@@ -6,18 +6,7 @@ import produce from "immer";
 import * as React from "react";
 import { useEffect, useImperativeHandle } from "react";
 
-const validationSchema = yup.object({
-  freespace: yup.object({
-    min_height: yup.number().typeError("invalidNumber").required("invalidNumber"),
-    max_height: yup.number().typeError("invalidNumber").required("invalidNumber"),
-    resolution: yup
-      .number()
-      .typeError("invalidNumber")
-      .required("invalidNumber")
-      .min(0.1, "invalidFreespaceResolution")
-      .max(1, "invalidFreespaceResolution"),
-  }),
-});
+const validationSchema = yup.object({});
 
 type Value = LSD.Config["output"];
 type ObjectKey = keyof Value["object"];
@@ -52,19 +41,17 @@ function Detect({ initialValues, t = (x) => x || "" }: Props, ref: React.Ref<Ref
 
   const classCandidateArray = [];
   const classActiveArray = [];
-  for (let key of [...Object.keys(values.object), "freespace"]) {
+  for (let key of [...Object.keys(values.object)]) {
     if (key === "use") continue;
     classCandidateArray.push(key);
-    if (key === "freespace") {
-      if (values.freespace.use) classActiveArray.push(key);
-    } else if (values.object[key as ObjectKey]) {
+    if (values.object[key as ObjectKey]) {
       classActiveArray.push(key);
     }
   }
 
   return (
     <Box flexGrow={1}>
-      <Typography variant="subtitle2" className="subtitle-no-mt">
+      <Typography style={{ marginTop: "1rem" }} variant="subtitle2" className="subtitle-no-mt">
         {t("objects")}
       </Typography>
       <Box mb="1rem">
@@ -72,13 +59,11 @@ function Detect({ initialValues, t = (x) => x || "" }: Props, ref: React.Ref<Ref
           options={classCandidateArray}
           value={classActiveArray}
           onChange={(e, items) => {
-            console.log(e, items);
             setValues(
               produce((output) => {
                 for (let key in values.object) {
                   if (key !== "use") output.object[key as ObjectKey] = items.includes(key);
                 }
-                output.freespace.use = items.includes("freespace");
               })
             );
           }}
@@ -97,55 +82,6 @@ function Detect({ initialValues, t = (x) => x || "" }: Props, ref: React.Ref<Ref
           )}
         />
       </Box>
-
-      {values.freespace.use && (
-        <>
-          <Typography variant="subtitle2" className="subtitle">
-            {t("freespace")}
-          </Typography>
-          <Grid container>
-            <Grid item md>
-              <TextField
-                label={t("minHeight")}
-                value={values.freespace.min_height}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">m</InputAdornment>,
-                }}
-                onChange={handleChange}
-                name="freespace.min_height"
-                error={Boolean(errors?.freespace?.min_height)}
-                helperText={t(errors?.freespace?.min_height)}
-              />
-            </Grid>
-            <Grid item md>
-              <TextField
-                label={t("maxHeight")}
-                value={values.freespace.max_height}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">m</InputAdornment>,
-                }}
-                onChange={handleChange}
-                name="freespace.max_height"
-                error={Boolean(errors?.freespace?.max_height)}
-                helperText={t(errors?.freespace?.max_height)}
-              />
-            </Grid>
-            <Grid item md>
-              <TextField
-                label={t("resolution")}
-                value={values.freespace.resolution}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">m</InputAdornment>,
-                }}
-                onChange={handleChange}
-                name="freespace.resolution"
-                error={Boolean(errors?.freespace?.resolution)}
-                helperText={t(errors?.freespace?.resolution)}
-              />
-            </Grid>
-          </Grid>
-        </>
-      )}
     </Box>
   );
 }

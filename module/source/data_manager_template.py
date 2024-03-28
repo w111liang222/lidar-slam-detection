@@ -15,11 +15,10 @@ class DummyLogger():
         pass
 
 class DataManagerTemplate():
-    def __init__(self, name , cfg, data_cfg, logger=None):
+    def __init__(self, name, cfg, logger=None):
         self.name = name
         self.cfg = cfg
-        self.data_cfg = data_cfg
-        self.mode = data_cfg.mode
+        self.mode = cfg.input.mode
         self.logger = logger if logger is not None else DummyLogger()
         if self.mode == "offline":
             self.offline_init()
@@ -33,9 +32,6 @@ class DataManagerTemplate():
         pass
 
     def setup(self, cfg):
-        self.cfg = cfg
-
-    def set_config(self, cfg):
         self.cfg = cfg
 
     def start_loop(self, sensors):
@@ -54,16 +50,16 @@ class DataManagerTemplate():
             acquire_thread.join()
 
     def acquire_loop(self, sensor, sensor_name, sensor_event):
-        self.logger.info('%s: %s: acquire_loop start' % (self.name, sensor_name))
+        self.logger.info(f'{self.name}: {sensor_name}: acquire_loop start')
         util.set_thread_priority("Py-" + self.name[0] + sensor_name, 30)
         acquire_period = PeriodCalculator()
         while self.start:
             acquire_dict, valid = self.loop_run_once(sensor, sensor_name)
             acquire_fps = acquire_period.hit()
             if acquire_fps > 8.0:
-                self.logger.debug('%s: %s, acquire FPS: %.1f' % (self.name, sensor_name, acquire_fps))
+                self.logger.debug(f'{self.name}: {sensor_name}, acquire FPS: {acquire_fps:.1f}')
             else:
-                self.logger.warn('%s: %s, acquire FPS: %.1f' % (self.name, sensor_name, acquire_fps))
+                self.logger.warn (f'{self.name}: {sensor_name}, acquire FPS: {acquire_fps:.1f}')
             if not valid:
                 continue
             self.data_lock.acquire()
@@ -71,7 +67,7 @@ class DataManagerTemplate():
             self.data_lock.release()
             sensor_event.set()
         sensor_event.set()
-        self.logger.info('%s: %s: acquire_loop exit' % (self.name, sensor_name))
+        self.logger.info(f'{self.name}: {sensor_name}: acquire_loop exit')
 
     def get_loop_data(self, timeout = 1.0):
         main_sensor_active, skip_sensor_wait = False, False
@@ -115,7 +111,7 @@ class DataManagerTemplate():
             data = self.get_data_offline(data_dict)
         return data
 
-    def post_process_data(self, data_dict, **kwargs):
+    def post_process_data(self, data_dict):
         return data_dict
 
     def get_data_online(self, data_dict):

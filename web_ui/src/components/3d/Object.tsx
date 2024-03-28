@@ -1,8 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import * as THREE from "three";
 
-const COLORS = [0x4e91f0, 0xffc6b1, 0x967fcb, 0xffffff];
-const SensorCOLORS = [0x6699ff, 0xff3399, 0xcccc00, 0x00ff00, 0xcc00cc, 0x5200cc];
+const COLORS = [0x967fcb, 0x4e91f0, 0xffc6b1, 0x967fcb, 0xffffff];
 const meshMatrials: THREE.MeshBasicMaterial[] = [];
 for (let color of COLORS) {
   meshMatrials.push(
@@ -17,27 +16,6 @@ for (let color of COLORS) {
 const lineMatrials: THREE.LineBasicMaterial[] = [];
 for (let color of COLORS) {
   lineMatrials.push(
-    new THREE.LineBasicMaterial({
-      color: color,
-      linewidth: 2,
-    })
-  );
-}
-
-const sensorMeshMatrials: THREE.MeshBasicMaterial[] = [];
-for (let color of SensorCOLORS) {
-  sensorMeshMatrials.push(
-    new THREE.MeshBasicMaterial({
-      color: color,
-      wireframe: false,
-      transparent: true,
-      opacity: 0.4,
-    })
-  );
-}
-const sensorLineMatrials: THREE.LineBasicMaterial[] = [];
-for (let color of SensorCOLORS) {
-  sensorLineMatrials.push(
     new THREE.LineBasicMaterial({
       color: color,
       linewidth: 2,
@@ -99,32 +77,14 @@ export default function ObjectDetected({
       const arrow = arrowRef.current;
       const group = groupRef.current;
       if (box && edge && arrow && group) {
-        if (object.type) {
-          const classId = object.type - 1;
-          if (colorType == "objectType") {
-            box.material = meshMatrials[classId];
-            edge.material = lineMatrials[classId];
-          }
-          box.visible = planeVisible;
+        const classId = object.type;
+        box.material = meshMatrials[classId];
+        edge.material = lineMatrials[classId];
+        box.visible = planeVisible;
 
-          const { width, height, length } = object.box!;
-          // group.scale.set(length, width, height)
-          box.scale.set(length, width, height);
-          edge.scale.set(length, width, height);
-        } else {
-          const classId = 0;
-          if (colorType == "objectType") {
-            box.material = meshMatrials[classId];
-            edge.material = lineMatrials[classId];
-          }
-          box.visible = planeVisible;
-
-          const length = 0.2,
-            width = 0.2,
-            height = 0.2;
-          box.scale.set(length, width, height);
-          edge.scale.set(length, width, height);
-        }
+        const { width, height, length } = object.box!;
+        box.scale.set(length, width, height);
+        edge.scale.set(length, width, height);
 
         arrow.setLength(Math.max(object.box.length / 2, 1));
 
@@ -152,7 +112,12 @@ export function ExcludeBox({ excludeConfig = [0, 0, 0, 0, 0, 0] }: { excludeConf
     if (excludeConfig) {
       const box = boxRef.current;
       if (box) {
-        box.material = sensorMeshMatrials[0];
+        box.material = new THREE.MeshBasicMaterial({
+          color: 0x6699ff,
+          wireframe: false,
+          transparent: true,
+          opacity: 0.4,
+        });
         let lwhBox = [
           excludeConfig[3] - excludeConfig[0],
           excludeConfig[4] - excludeConfig[1],

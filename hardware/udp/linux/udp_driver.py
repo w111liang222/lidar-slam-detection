@@ -23,7 +23,7 @@ class LinuxUdpDriver(UDPInterface):
         try:
             self.client.sendto(data, self.dest)
         except Exception as e:
-            self.logger.warn(e)
+            self.logger.warn(f'{str(e)}, data size: {len(data)}')
 
     def recv(self):
         raise NotImplementedError

@@ -60,9 +60,9 @@ class SLAMTemplate():
             output_dict = self.process(input_dict)
             process_time = (time.monotonic() - start_time) * 1000
             if process_time < 100:
-                self.logger.debug('%s process time is: %.1f ms' % (self.name, process_time))
+                self.logger.debug(f'{self.name} process time is: {process_time:.1f} ms')
             else:
-                self.logger.warn('%s process time is: %.1f ms' % (self.name, process_time))
+                self.logger.warn(f'{self.name} process time is: {process_time:.1f} ms')
             if not output_dict:
                 continue
             self.output_queue.put(output_dict)
@@ -70,8 +70,4 @@ class SLAMTemplate():
         self.logger.info('%s stopped' % self.name)
 
     def get_output(self, block=True, timeout=None):
-        try:
-            output_dict = self.output_queue.get(block=block, timeout=timeout)
-        except queue.Empty:
-            return dict()
-        return output_dict
+        return self.output_queue.get(block=block, timeout=timeout)

@@ -106,7 +106,7 @@ bool Localization::init(InitParameter &param) {
 
   std::vector<EdgeType> connections;
   mMap->getGraphEdges(connections);
-  mGlobalLocator->setGraphMap(mMap->mKeyFrames, mMap->mGraphKDTree, connections);
+  mGlobalLocator->setGraphMap(mMap->mKeyFrames, connections);
 
   // start map update loop
   startMapUpdateThread();
@@ -295,8 +295,8 @@ void Localization::runUpdateLocalMap() {
       searchPoint.x = pose(0, 3);
       searchPoint.y = pose(1, 3);
       searchPoint.z = pose(2, 3);
-      std::vector<int> pointIdx;
-      std::vector<float> pointDistance;
+      std::vector<int> pointIdx(1);
+      std::vector<float> pointDistance(1);
       if (mGraphKDTree->radiusSearch (searchPoint, radius_distance_threshold, pointIdx, pointDistance) > 0) {
         lastPose = pose;
         mLocalMap = PointCloud::Ptr(new PointCloud());
@@ -319,7 +319,8 @@ void Localization::runUpdateLocalMap() {
         }
       } else {
         mLocalMap = nullptr;
-        LOG_ERROR("Localization: out-of map (graph kdtree radius search error)");
+        mGraphKDTree->nearestKSearch(searchPoint, 1, pointIdx, pointDistance);
+        LOG_ERROR("Localization: out of map, pose ({:.2f}, {:.2f}, {:.2f}), min dist to map {}", pose(0, 3), pose(1, 3), pose(2, 3), std::sqrt(pointDistance[0]));
       }
 
       // notify localization module of updated local map

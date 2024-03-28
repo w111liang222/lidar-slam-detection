@@ -1,5 +1,0 @@
-*.so
-build/*
-slam_wrapper.egg-info/
-dist/
-__pycache__/

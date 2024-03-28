@@ -91,6 +91,13 @@ type MapMeta = {
       vertex_num: number;
     };
   };
+  area: {
+    [id: string]: {
+      type: string;
+      name: string;
+      polygon: number[][];
+    };
+  };
 };
 type MapKeyframe = {
   points: Float32Array;

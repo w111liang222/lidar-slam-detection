@@ -1,5 +1,6 @@
+import * as THREE from "three";
 import Controls from "@components/3d/Controls";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, ThreeEvent } from "@react-three/fiber";
 import {
   getConfig,
   getMapEdge,
@@ -17,6 +18,7 @@ import { PanelGui } from "./panel";
 import { VertexView, VertexImageView } from "./common/VertexView";
 import ROIDrawer from "./common/ROIDrawer";
 import { EdgeView } from "./common/EdgeView";
+import { AreaView } from "./common/AreaView";
 import MapMenu from "./menu";
 import { useCtrlKey } from "@hooks/keyboard";
 import VertexInfo from "./VertexInfo";
@@ -26,8 +28,12 @@ import { CustomePointView } from "./common/CustomePointView";
 import ColorMapViewer from "@components/3d/ColorMapViewer";
 import useTipsShow from "./common/TipsShow";
 import { goodBinarySearch } from "@utils/index";
+import { getPoseClient, pointToLineDistance } from "@utils/transform";
 
 export const DEFAULT_PANEL_CONFIG = {
+  camera: {
+    height: 0,
+  },
   map: {
     visible: true,
     frustumCulled: false,
@@ -72,11 +78,12 @@ function MapEditor({}, ref: any) {
 
   const [vertex, setVertex] = useState<LSD.MapVertex>({});
   const [edge, setEdge] = useState<LSD.MapEdge>({});
-  const [meta, setMeta] = useState<LSD.MapMeta>({ vertex: {}, edge: {} });
+  const [meta, setMeta] = useState<LSD.MapMeta>({ vertex: {}, edge: {}, area: {} });
   const [mapFrame, setMapFrame] = useState<MapFrame>({});
   const [selectVertex, setSelectVertex] = useState<string[]>([]);
   const [selectColor, setSelectColor] = useState<number[]>([]);
   const [selectEdge, setSelectEdge] = useState<string | undefined>(undefined);
+  const [selectArea, setSelectArea] = useState<string | undefined>(undefined);
   const [selectPoint, setSelectPoint] = useState<Float32Array>();
   const [selectPointIndex, setSelectPointIndex] = useState<MapFrameIndex>({});
   const [roiState, setRoiState] = useState("idle");
@@ -125,13 +132,21 @@ function MapEditor({}, ref: any) {
     const showLoading = loadIds.length >= 10 ? true : false;
     showLoading && setIsLoading(true);
     showLoading && showMessage(t("loadingMaps"), "info", 10000);
+    let promise = [];
     for (let i = 0; i < loadIds.length; i++) {
-      const kf = await getVertexData(loadIds[i], "pi");
-      mapFrame[loadIds[i]] = {
-        points: kf.points,
-        images: kf.images,
-      };
+      promise.push(getVertexData(loadIds[i], "pi"));
+      if (i % 128 == 0 || i == loadIds.length - 1) {
+        const frames = await Promise.all(promise);
+        for (let j = 0; j < frames.length; j++) {
+          mapFrame[loadIds[j + i + 1 - frames.length]] = {
+            points: frames[j].points,
+            images: frames[j].images,
+          };
+        }
+        promise = [];
+      }
     }
+
     showLoading && setIsLoading(false);
     showLoading && showMessage(t("finishLoadingMaps"), "success", 2000);
     setMapFrame({ ...mapFrame });
@@ -142,7 +157,7 @@ function MapEditor({}, ref: any) {
   const onHandleClearMap = usePersistFn(() => {
     setVertex({});
     setEdge({});
-    setMeta({ vertex: {}, edge: {} });
+    setMeta({ vertex: {}, edge: {}, area: {} });
     onHandleClearSelection();
   });
 
@@ -150,6 +165,7 @@ function MapEditor({}, ref: any) {
     onHandleVertexSelection([], []);
     onHanlePointSelection(undefined, {});
     setSelectEdge(undefined);
+    setSelectArea(undefined);
     setRoiState("idle");
     setControlEnable(true);
     menuRef.current?.onClear();
@@ -193,7 +209,7 @@ function MapEditor({}, ref: any) {
         refreshMap(data);
       });
     } else if (event == "StartROI") {
-      setRoiState("drawing");
+      setRoiState(data ? data : "drawing");
       setControlEnable(false);
     } else if (event == "ShowMessage") {
       data != undefined ? showMessage(data.message, data.severity, data.duration) : closeMessage();
@@ -211,6 +227,8 @@ function MapEditor({}, ref: any) {
   });
 
   const onVertexClick = usePersistFn((index: number, button: number, event: any) => {
+    setSelectEdge(undefined);
+    setSelectArea(undefined);
     const selectVertexId = Object.keys(vertex)[index];
     // reset loop begin/end vertex
     if (selectColor[0] == 0 || selectColor[1] == 0) {
@@ -229,8 +247,15 @@ function MapEditor({}, ref: any) {
   });
 
   const onEdgeClick = usePersistFn((id: string, event: any) => {
+    onHandleClearSelection();
     setSelectEdge(id);
     edgeInfoRef.current?.onShow(id, event);
+  });
+
+  const onAreaClick = usePersistFn((id: string, event: any) => {
+    onHandleClearSelection();
+    setSelectArea(id);
+    menuRef.current?.onSelectArea(id);
   });
 
   const onHanleRoi = usePersistFn((roi: THREE.Vector3[] | undefined, camera: THREE.Camera) => {
@@ -251,6 +276,12 @@ function MapEditor({}, ref: any) {
   const onConextMenu = usePersistFn((ev) => {
     roiRef.current?.onContextClick();
   });
+
+  window.onkeyup = (ev: KeyboardEvent) => {
+    if (ev.key === "Escape") {
+      onHandleClearSelection();
+    }
+  };
 
   useEffect(() => {
     refreshMap(false);
@@ -292,14 +323,41 @@ function MapEditor({}, ref: any) {
     menuBar: () => <MapMenu onEvent={onEvent} ref={menuRef} />,
   }));
 
+  const onCheckClickElement = usePersistFn((e: ThreeEvent<MouseEvent>, camera: THREE.Camera) => {
+    let vertexDist = 100;
+    if (e.type == "contextmenu") {
+      let vertexId = "";
+      const edgeIds = Object.keys(edge);
+      for (let i = 0; i < edgeIds.length; i++) {
+        const prev = edge[edgeIds[i]][0].toString();
+        const next = edge[edgeIds[i]][1].toString();
+        const A = new THREE.Vector3(e.clientX, e.clientY, 0);
+        if (vertex[prev] == undefined || vertex[next] == undefined) {
+          continue;
+        }
+        const B = getPoseClient(new THREE.Vector3(vertex[prev][3], vertex[prev][7], vertex[prev][11]), e, camera);
+        const C = getPoseClient(new THREE.Vector3(vertex[next][3], vertex[next][7], vertex[next][11]), e, camera);
+        const dist = pointToLineDistance(A.x, A.y, B.x, B.y, C.x, C.y);
+        if (dist < vertexDist) {
+          vertexDist = dist;
+          vertexId = edgeIds[i];
+        }
+      }
+      vertexId != "" && onEdgeClick(vertexId, e);
+    }
+  });
+
   return (
     <div style={{ position: "relative" }}>
       {isLoading && <Loading />}
       {tips}
       <div className="scene">
-        <Canvas linear={true} raycaster={{ params: { Points: { threshold: 1.0 }, Line: undefined } }}>
-          <gridHelper args={[5000, 500, 0x111111, 0x111111]} visible={true} rotation-x={Math.PI / 2} />
-          <Controls position={[0, 0, 0]} enable={controlEnable} />
+        <Canvas
+          linear={true}
+          camera={{ near: 0.1, far: 10000 }}
+          raycaster={{ params: { Points: { threshold: 1.0 }, Line: undefined } }}>
+          <gridHelper args={[10000, 1000, 0x222222, 0x222222]} visible={true} rotation-x={Math.PI / 2} />
+          <Controls position={[0, 0, 0]} target={[0, 0, config.camera.height]} enable={controlEnable} />
           <ROIDrawer state={roiState} setState={setRoiState} onFinish={onHanleRoi} ref={roiRef} />
           <>
             {config.map.pose && (
@@ -309,7 +367,7 @@ function MapEditor({}, ref: any) {
                 enable={ctrlKeyPressed && roiState == "idle"}
                 selectEdge={selectEdge}
                 onVertexClick={onVertexClick}
-                onEdgeClick={onEdgeClick}
+                onCheckClickElement={onCheckClickElement}
               />
             )}
             <VertexView
@@ -319,6 +377,13 @@ function MapEditor({}, ref: any) {
               mapFrame={mapFrame}
               selectedVertex={selectVertex}
               selectedVertexColor={selectColor}
+            />
+            <AreaView
+              meta={meta}
+              enable={ctrlKeyPressed && roiState == "idle"}
+              selectArea={selectArea}
+              onAreaClick={onAreaClick}
+              onCheckClickElement={onCheckClickElement}
             />
             {config.map.color == "rgb" && <ColorMapViewer config={config.map} mannual={true} />}
             <CustomePointView points={selectPoint} color={0xff0000} />

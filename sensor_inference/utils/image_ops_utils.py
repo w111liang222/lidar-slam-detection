@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 def xywh2xyxy(x):
     """
@@ -16,7 +17,6 @@ def xywh2xyxy(x):
     y[..., 2] = x[..., 0] + x[..., 2] / 2  # bottom right x
     y[..., 3] = x[..., 1] + x[..., 3] / 2  # bottom right y
     return y
-
 # numpy nms
 def box_area(boxes :np.ndarray):
     return (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
@@ -47,3 +47,14 @@ def nms_2d_box(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float):
         idxs = idxs[ious[0] <= iou_threshold]
     keep = np.array(keep)
     return keep
+
+def cost_matrix(lights_map, lights_det):
+    cost_matrix = np.zeros([lights_map.shape[0], lights_det.shape[0]], dtype=float)
+    for i in range(lights_map.shape[0]):
+        for j in range(lights_det.shape[0]):
+            center_det_x = (lights_det[j][0] + lights_det[j][2]) / 2
+            center_det_y = (lights_det[j][1] + lights_det[j][3]) / 2
+            dist = pow(center_det_x - lights_map[i, 0], 2) + pow(center_det_y - lights_map[i, 1], 2)
+            area = (lights_det[j][2] - lights_det[j][0]) * (lights_det[j][3] - lights_det[j][1])
+            cost_matrix[i][j] = dist/area if dist/area < 10 else 1e8
+    return cost_matrix

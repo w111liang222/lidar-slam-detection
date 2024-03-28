@@ -1,6 +1,5 @@
 import os
 import time
-from threading import Thread, Event
 
 import cv2
 import numpy as np
@@ -9,7 +8,7 @@ from hardware.platform_common import is_jetson
 from .data_manager_template import DataManagerTemplate
 import hardware.gstreamer as driver
 from sensor_driver.common_lib import cpp_utils
-from util.image_util import get_image_size, undistort_image
+from util.image_util import get_image_size
 from util.common_util import run_cmd
 from ..export_interface import register_interface
 
@@ -26,28 +25,19 @@ def warmup_camera(logger, camera):
     run_cmd('touch ' + global_flag)
 
 class CameraDataManager(DataManagerTemplate):
-    def __init__(self, cfgs, data_cfg, logger=None):
+    def __init__(self, cfgs, logger=None):
         self.clean_up()
-        self.camera = dict()
-        self.camera_config = dict()
+        self.camera, self.capture = dict(), dict()
         self.camera_info = dict()
-        self.cap = dict()
 
-        for idx, cfg in enumerate(cfgs.camera):
-            self.camera_config[cfg.name] = cfg
-
-        for idx, cfg in enumerate(cfgs.camera):
-            w = cfg.output_width  if 'output_width'  in cfg else 640
-            h = cfg.output_height if 'output_height' in cfg else 480
-            self.camera_info[cfg.name] = {'w' : w, 'h' : h, 'in_w' : -1, 'in_h' : -1, 'valid' : False}
-            self.cap[cfg.name] = self._generate_cap_string(idx, cfg, data_cfg.mode)
-
+        self.camera_jpeg = CameraJpegDataManager(self, cfgs, logger)
         self.image_param = self.get_image_param(cfgs.camera)
+        for idx, cfg in enumerate(cfgs.camera):
+            self.camera_info[cfg.name] = {'w' : cfg.get('output_width', 640), 'h' : cfg.get('output_height', 480), 'in_w' : -1, 'in_h' : -1, 'valid' : False}
+            self.capture[cfg.name] = self._generate_cap_string(idx, cfg, cfgs.input.mode)
 
-        super().__init__('Camera', cfgs, data_cfg, logger)
-        self.camera_jpeg = CameraJpegDataManager(cfgs, data_cfg, logger)
-        self.camera_jpeg.set_parent(self)
-        register_interface('camera.get_camera_status', self.get_camera_status)
+        super().__init__('Camera', cfgs, logger)
+        register_interface('camera.get_status', self.get_status)
 
     def clean_up(self):
         run_cmd("rm -rf /tmp/camera_*")
@@ -63,20 +53,15 @@ class CameraDataManager(DataManagerTemplate):
             fy = cfg.intrinsic_parameters[1]
             cx = cfg.intrinsic_parameters[2]
             cy = cfg.intrinsic_parameters[3]
-
-            ex_param = cfg.extrinsic_parameters
-            V2C = cpp_utils.get_transform_from_RPYT(ex_param[0], ex_param[1], ex_param[2],
-                                                    ex_param[5], ex_param[4], ex_param[3])
-
             intrinsic = np.array([[fx, 0, cx, 0],
                                   [0, fy, cy, 0],
                                   [0, 0,   1, 0]], dtype=np.float)
-            meta = dict()
-            meta['w'] = w
-            meta['h'] = h
-            meta['intrinsic'] = intrinsic
-            meta['V2C'] = V2C
-            image_param[cfg.name] = meta
+
+            extrinsic_parameters = cfg.extrinsic_parameters
+            V2C = cpp_utils.get_transform_from_RPYT(extrinsic_parameters[0], extrinsic_parameters[1], extrinsic_parameters[2],
+                                                    extrinsic_parameters[5], extrinsic_parameters[4], extrinsic_parameters[3])
+
+            image_param[cfg.name] = dict(w=w, h=h, intrinsic=intrinsic, V2C=V2C)
         return image_param
 
     def _generate_cap_string(self, idx, cfg, mode):
@@ -136,7 +121,7 @@ class CameraDataManager(DataManagerTemplate):
             # usb camera
             if cfg.name.startswith("usb:"):
                 video_num = int(cfg.name[-1])
-                if not os.path.exists('/dev/v4l/by-id'): 
+                if not os.path.exists('/dev/v4l/by-id'):
                     return {'cap': '', 'dameon': ''}
                 usbcam_info = os.popen('ls -l /dev/v4l/by-id', 'r').readlines()
                 device_list = []
@@ -205,19 +190,19 @@ class CameraDataManager(DataManagerTemplate):
             warmup_camera(self.logger, str(idx))
 
         for idx, cfg in enumerate(self.cfg.camera):
-            if 'nvivafilter' in self.cap[cfg.name]["cap"] or 'opencvremap' in self.cap[cfg.name]["cap"]:
+            if 'nvivafilter' in self.capture[cfg.name]["cap"] or 'opencvremap' in self.capture[cfg.name]["cap"]:
                 self.send_camera_config(cfg)
-            self.logger.info('camera %s, try cap: %s' % (cfg.name, self.cap[cfg.name]["cap"]))
-            video_cap = cv2.VideoCapture(self.cap[cfg.name]["cap"], cv2.CAP_GSTREAMER)
+            self.logger.info('Camera: %s, try cap: %s' % (cfg.name, self.capture[cfg.name]["cap"]))
+            video_cap = cv2.VideoCapture(self.capture[cfg.name]["cap"], cv2.CAP_GSTREAMER)
             if not video_cap.isOpened():
-                self.logger.warn('camera %s, can not open' % (cfg.name))
+                self.logger.warn('Camera: %s, can not open' % (cfg.name))
                 continue
 
             self.camera[cfg.name] = video_cap
-            if self.cap[cfg.name]["daemon"] != '':
-                self.logger.info('camera %s, run service: %s' % (cfg.name, self.cap[cfg.name]["daemon"]))
-                run_cmd(self.cap[cfg.name]["daemon"])
-            self.logger.info('camera %s open success' % (cfg.name))
+            if self.capture[cfg.name]["daemon"] != '':
+                self.logger.info('Camera: %s, run service: %s' % (cfg.name, self.capture[cfg.name]["daemon"]))
+                run_cmd(self.capture[cfg.name]["daemon"])
+            self.logger.info('Camera: %s open success' % (cfg.name))
 
     def online_init(self):
         self.init()
@@ -228,7 +213,7 @@ class CameraDataManager(DataManagerTemplate):
     def loop_run_once(self, sensor, sensor_name):
         valid, frame = sensor.read()
         if not valid:
-            self.logger.warn('camera %s, get invalid data' % (sensor_name))
+            self.logger.warn('Camera: %s, get invalid data' % (sensor_name))
             time.sleep(1.0)
 
         ret = dict()
@@ -253,7 +238,7 @@ class CameraDataManager(DataManagerTemplate):
         self.stop_loop()
         self.clean_up()
 
-    def get_camera_status(self):
+    def get_status(self):
         return self.camera_info
 
     def update_cam_info(self, image_dict):
@@ -263,14 +248,7 @@ class CameraDataManager(DataManagerTemplate):
             self.camera_info[name]['valid'] = True
             self.camera_info[name]['in_w'], self.camera_info[name]['in_h'] = get_image_size(img)
 
-    def process_image(self, image_dict, do_distort = None):
-        if do_distort == True:
-            for name, img in image_dict.items():
-                image_dict[name] = undistort_image(image_dict[name], self.camera_config[name])
-        return image_dict
-
-    def post_process_data(self, data_dict, **kwargs):
-        do_distort = kwargs['do_distort'] if 'do_distort' in kwargs else None
+    def post_process_data(self, data_dict):
         if self.mode == "offline" and data_dict['image_valid']:
             data_dict['image'] = self.get_loop_data()
             for name, frame in data_dict['image'].items():
@@ -283,7 +261,6 @@ class CameraDataManager(DataManagerTemplate):
                 data_dict['image_jpeg'] = {}
                 data_dict['image_valid'] = False
 
-        data_dict['image'] = self.process_image(data_dict['image'], do_distort)
         self.update_cam_info(data_dict['image'])
         return data_dict
 
@@ -293,7 +270,8 @@ class CameraDataManager(DataManagerTemplate):
 
         timeout = 0 if 'frame_start_timestamp' in data_dict else 1.0
         frame_dict = self.get_loop_data(timeout)
-        if not bool(frame_dict):
+        jpeg_dict  = self.camera_jpeg.get_loop_data(timeout)
+        if not bool(frame_dict) or not bool(jpeg_dict) or frame_dict.keys() != jpeg_dict.keys():
             return {'image_valid' : False, 'image' : dict(), 'image_param' : dict()}
 
         if 'frame_start_timestamp' not in data_dict:
@@ -305,66 +283,49 @@ class CameraDataManager(DataManagerTemplate):
             image_param[name]['timestamp'] = frame['timestamp']
             frame_dict[name] = frame['image']
 
-        data = {'image_valid' : True, 'image' : frame_dict, 'image_jpeg' : self.camera_jpeg.get_loop_data(), 'image_param' : image_param}
+        data = {'image_valid' : True, 'image' : frame_dict, 'image_jpeg' : jpeg_dict, 'image_param' : image_param}
         return data
 
     def get_data_offline(self, data_dict):
         return {'image_valid' : False, 'image' : dict(), 'image_param' : dict()}
 
 class CameraJpegDataManager(DataManagerTemplate):
-    def __init__(self, cfgs, data_cfg, logger=None):
-        self.initial = False
-        self.camera = dict()
-        self.cap = dict()
+    def __init__(self, root, cfgs, logger=None):
+        super().__init__('JPEG', cfgs, logger)
+        self.root = root
+        self.camera, self.capture = dict(), dict()
         for idx, cfg in enumerate(cfgs.camera):
-            self.cap[cfg.name] = self._generate_cap_string(idx, cfg)
-
-        super().__init__('Jpeg', cfgs, data_cfg)
+            self.capture[cfg.name] = self._generate_cap_string(idx, cfg)
 
     def _generate_cap_string(self, idx, cfg):
-        cap_command = '''shmsrc is-live=true socket-path=/tmp/camera_jpeg_{} do-timestamp=1 ! queue ! image/jpeg,width=1920,height=1080,framerate=(fraction)0 '''.format(idx)
-        cap_command = cap_command + "! appsink sync=false"
-        return cap_command
-
-    def set_parent(self, parent):
-        self.parent = parent
+        return '''shmsrc is-live=true socket-path=/tmp/camera_jpeg_{} do-timestamp=1 ! queue ! image/jpeg,width=1920,height=1080,framerate=(fraction)0 ! appsink sync=false'''.format(idx)
 
     def init(self):
         for idx, cfg in enumerate(self.cfg.camera):
-            if cfg.name not in self.parent.camera:
+            if cfg.name not in self.root.camera:
                 continue
-            self.logger.info('camera jpeg %s, try cap: %s' % (cfg.name, self.cap[cfg.name]))
-            thread_event = Event()
-            def start_video_capture():
-                video_cap = cv2.VideoCapture(self.cap[cfg.name], cv2.CAP_GSTREAMER)
-                if not video_cap.isOpened():
-                    self.logger.warn('camera jpeg %s, can not open' % (cfg.name))
-                    return
+            self.logger.info('JPEG: %s, try cap: %s' % (cfg.name, self.capture[cfg.name]))
+            video_cap = cv2.VideoCapture(self.capture[cfg.name], cv2.CAP_GSTREAMER)
+            if not video_cap.isOpened():
+                self.logger.warn('JPEG: %s, can not open' % (cfg.name))
+                continue
 
-                self.camera[cfg.name] = video_cap
-                self.logger.info('camera jpeg %s open success' % (cfg.name))
-                thread_event.set()
-
-            thread = Thread(target=start_video_capture, args=(), daemon=True)
-            thread.start()
-            thread_event.wait(5.0)
-            if not thread_event.is_set():
-                self.logger.warn('camera jpeg %s, event is not set' % (cfg.name))
-                self.parent.camera[cfg.name].release()
-            thread.join()
-
-        self.init = True
+            self.camera[cfg.name] = video_cap
+            self.logger.info('JPEG: %s open success' % (cfg.name))
 
     def loop_run_once(self, sensor, sensor_name):
         valid, frame = sensor.read()
+        if not valid:
+            self.logger.warn('JPEG: %s, get invalid data' % (sensor_name))
+            time.sleep(1.0)
+
         ret = dict()
         ret[sensor_name] = frame
         return ret, valid
 
     def start_capture(self):
-        if not self.initial:
-            self.init()
         super().start_capture()
+        self.init()
         self.start_loop(self.camera)
 
     def stop_capture(self):

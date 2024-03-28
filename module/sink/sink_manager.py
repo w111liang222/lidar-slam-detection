@@ -1,4 +1,5 @@
 from ..manager_template import ManagerTemplate
+from ..common.data_bank import DataBank
 
 from .can_sink import CanSink
 from .udp_sink import UdpSink
@@ -17,6 +18,7 @@ __all__ = {
 class SinkManager(ManagerTemplate):
     def __init__(self, cfg, logger, system):
         super().__init__('Sink', cfg, logger, system)
+        self.data_bank = DataBank(cfg, logger, system)
 
         self.register = ['UdpSink', 'CanSink', 'HttpSink', 'FrameSink']
 
@@ -49,7 +51,6 @@ class SinkManager(ManagerTemplate):
         return True
 
     def enqueue(self, data_dict, module_name):
-        if not data_dict:
-            return
+        self.data_bank.set_frame_data(data_dict)
         for name, sink in self.sink_dict.items():
             sink.enqueue(data_dict.copy())

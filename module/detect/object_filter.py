@@ -3,14 +3,11 @@ import numpy as np
 
 class ObjectFilter():
     def __init__(self, logger = None):
-        cls_name = ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
-        self.cls_dict = dict()
-        for i in range(0, len(cls_name)):
-            self.cls_dict[cls_name[i].lower()] = i+1
-        self.class_num = len(cls_name)
-        if logger is None:
-            raise Exception('Invalid logger')
         self.logger = logger
+        self.cls_dict = dict()
+        for idx, cls_name in enumerate(['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']):
+            self.cls_dict[cls_name.lower()] = idx + 1
+
         self.filter_roi = False
         self.include_poly = []
         self.exclude_poly = []
@@ -26,7 +23,7 @@ class ObjectFilter():
         self.cfg = cfg
         self.output_cls = dict()
         for key, val in cfg.object.items():
-            if key == 'use':
+            if key == 'use' or key=='freespace':
                 continue
             self.output_cls[key] = val
         self.logger.info("class mapping: {}".format(self.cls_dict))
@@ -47,7 +44,7 @@ class ObjectFilter():
         self.exclude_poly = []
 
     def filter(self, result_dict):
-        if not self.cfg.freespace.use:
+        if not self.cfg.object.freespace:
             result_dict.pop('freespace', None)
 
         if not result_dict['lidar_valid'] and not result_dict['image_valid']:

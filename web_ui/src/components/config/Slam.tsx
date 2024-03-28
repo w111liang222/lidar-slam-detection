@@ -46,6 +46,7 @@ const validationSchema = yup.object({
       .max(1000, "invalidKeyFrameRange"),
     sensor_input: yup.array().of(yup.string()).min(0, "emptySensorInput"),
     ground_constraint: yup.boolean(),
+    gravity_constraint: yup.boolean(),
     loop_closure: yup.boolean(),
   }),
   localization: yup.object({
@@ -325,7 +326,19 @@ export default React.memo(
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item md />
+            <Grid item md>
+              <FormControl>
+                <InputLabel>{t("gravityConstraint")}</InputLabel>
+                <Select
+                  label={t("gravityConstraint")}
+                  name={`mapping.gravity_constraint`}
+                  value={values.mapping.gravity_constraint}
+                  onChange={handleChange}>
+                  <MenuItem value={"true"}>{t("True")}</MenuItem>
+                  <MenuItem value={"false"}>{t("False")}</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
         </div>
         {/* Localization */}

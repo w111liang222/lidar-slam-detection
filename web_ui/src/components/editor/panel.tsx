@@ -28,6 +28,13 @@ export const PanelGui = React.memo(
       });
 
       let folder;
+      folder = pane.addFolder({ title: t("camera"), expanded: false });
+      folder.addInput(config.camera, "height", {
+        min: -200,
+        max: 200,
+        step: 1.0,
+        label: t("targetHeight"),
+      });
       folder = pane.addFolder({ title: t("map"), expanded: false });
       folder.addInput(config.map, "visible", { label: t("visible") });
       folder.addInput(config.map, "frustumCulled", { label: t("frustumCulled") });
@@ -41,6 +48,7 @@ export const PanelGui = React.memo(
         max: 10.0,
         step: 0.05,
         label: t("maxIntensity"),
+        hidden: config.map.color == "intensity" ? false : true,
       });
       folder.addInput(config.map, "size", {
         min: 1.0,
@@ -55,8 +63,8 @@ export const PanelGui = React.memo(
         label: t("step"),
       });
       folder.addInput(config.map, "zRange", {
-        min: -200.0,
-        max: 200.0,
+        min: -5000.0,
+        max: 5000.0,
         step: 0.1,
         label: t("zRange"),
       });

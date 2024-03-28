@@ -16,10 +16,11 @@ export interface Props {
   selectColor: number[];
   selectPoints?: Float32Array;
   selectPointIndex: MapFrameIndex;
+  selectArea?: string;
 }
 
 function MenuGraph(
-  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex }: Props,
+  { onEvent, config, vertex, edge, meta, selectVertex, selectColor, selectPoints, selectPointIndex, selectArea }: Props,
   ref: any
 ) {
   const { t } = useTranslation();
@@ -65,6 +66,7 @@ function MenuGraph(
             onFinish={handleClose}
             selectVertex={selectVertex}
             selectPointIndex={selectPointIndex}
+            selectArea={selectArea}
           />
         </MenuList>
       </Popover>

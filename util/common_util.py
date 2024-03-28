@@ -32,7 +32,7 @@ def has_extension_disk():
         for v in f:
             v = v.split()
             mount_name = v[1]
-            if '/media' in mount_name:
+            if '/media' in mount_name and mount_name != '/media':
                 has_disk = True
                 disk_name = mount_name
                 break

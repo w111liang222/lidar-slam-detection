@@ -31,17 +31,17 @@ def get_image_size(img):
     return width, height
 
 def undistort_image(img, cfg):
-    w  = cfg.output_width  if 'output_width'  in cfg else 640
-    h  = cfg.output_height if 'output_height' in cfg else 480
+    w  = cfg['output_width']  if 'output_width'  in cfg else 640
+    h  = cfg['output_height'] if 'output_height' in cfg else 480
     fisheye = cfg.get("fisheye", False)
-    fx = cfg.intrinsic_parameters[0]
-    fy = cfg.intrinsic_parameters[1]
-    cx = cfg.intrinsic_parameters[2]
-    cy = cfg.intrinsic_parameters[3]
-    k1 = cfg.intrinsic_parameters[4]
-    k2 = cfg.intrinsic_parameters[5]
-    p1 = cfg.intrinsic_parameters[6]
-    p2 = cfg.intrinsic_parameters[7]
+    fx = cfg['intrinsic_parameters'][0]
+    fy = cfg['intrinsic_parameters'][1]
+    cx = cfg['intrinsic_parameters'][2]
+    cy = cfg['intrinsic_parameters'][3]
+    k1 = cfg['intrinsic_parameters'][4]
+    k2 = cfg['intrinsic_parameters'][5]
+    p1 = cfg['intrinsic_parameters'][6]
+    p2 = cfg['intrinsic_parameters'][7]
     mtx = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     dist = np.array([k1, k2, p1, p2])
 

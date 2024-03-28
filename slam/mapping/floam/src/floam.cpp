@@ -154,6 +154,8 @@ void HDL_FLOAM::feedPointData(const uint64_t &timestamp, std::map<std::string, P
   // undistortion pointcloud based on IMU rotation integration
   if (use_imu) {
     gyr_mean = Eigen::Quaterniond(mImuInsStaticTrans.topLeftCorner<3, 3>()).normalized().inverse() * gyr_mean;
+    acc_mean = Eigen::Quaterniond(mImuInsStaticTrans.topLeftCorner<3, 3>()).normalized().inverse() * acc_mean;
+    enqueue_graph_imu(mFrame->header.stamp, gyr_mean, acc_mean);
     Eigen::Matrix4d delta_odom = Eigen::Matrix4d::Identity();
     delta_odom.block<3, 3>(0, 0) = Eigen::Quaterniond(1, gyr_mean[0] * mConfig.scan_period / 2, gyr_mean[1] * mConfig.scan_period / 2, gyr_mean[2] * mConfig.scan_period / 2).normalized().toRotationMatrix();
     undistortPoints(Eigen::Matrix4f::Identity(), delta_odom.cast<float>(), mFrameAttr, mConfig.scan_period);

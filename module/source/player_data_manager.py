@@ -11,13 +11,14 @@ import sensor_driver.common_lib.cpp_utils as util
 from ..export_interface import register_interface
 
 class PlayerDataManager(DataManagerTemplate):
-    def __init__(self, cfg, data_cfg, system, logger=None):
+    def __init__(self, cfg, system, logger=None):
         self.system = system
+        self.data_list = []
         self.start_time, self.stop_time = 0, 0
         self.current_time = 0
         self.current_idx = 0
         self.rate = 1.0
-        super().__init__('Player', cfg, data_cfg, logger = logger)
+        super().__init__('Player', cfg, logger = logger)
 
         register_interface('playback.get_player_status', self.get_status)
         register_interface('playback.player_seek', self.seek_to)
@@ -108,7 +109,7 @@ class PlayerDataManager(DataManagerTemplate):
             return 0
 
     def get_duration(self):
-        root_path = Path(self.data_cfg.data_path).expanduser().absolute()
+        root_path = Path(self.cfg.input.data_path).expanduser().absolute()
         if not root_path.exists():
             self.logger.warn("{} does not exist!".format(str(root_path)))
         self.data_list = list(map(str, root_path.glob('*.pkl')))
@@ -169,6 +170,21 @@ class PlayerDataManager(DataManagerTemplate):
         for name, param in data_dict['image_param'].items():
             if 'timestamp' not in param:
                 param['timestamp'] = data_dict['frame_start_timestamp'] + 100000
+
+        if 'pose' in data_dict and 'area' not in data_dict['pose']:
+            data_dict['pose']['area'] = None
+
+        if data_dict['ins_valid'] and 'imu_data' not in data_dict:
+            data_dict['imu_data'] = np.asarray([[data_dict['ins_data']['timestamp'],
+                                                 data_dict['ins_data']['gyro_x'],
+                                                 data_dict['ins_data']['gyro_y'],
+                                                 data_dict['ins_data']['gyro_z'],
+                                                 data_dict['ins_data']['acc_x'],
+                                                 data_dict['ins_data']['acc_y'],
+                                                 data_dict['ins_data']['acc_z']]], dtype=np.float64)
+
+        if 'motion_valid' not in data_dict:
+            data_dict['motion_valid'] = data_dict['ins_valid']
 
         return data_dict
 
@@ -234,7 +250,11 @@ class PlayerDataManager(DataManagerTemplate):
     def get_data_offline(self, data_dict):
         start_time = time.monotonic()
         data = self.loop_run_once()
+        if bool(data):
+            data_dict['frame_timestamp_monotonic'] = data['frame_timestamp_monotonic']
         parse_time = (time.monotonic() - start_time) * 1000
-        if parse_time >= 1000:
+        if parse_time < 1000:
+            self.logger.debug('player parse pickle cost: %.1f ms' % (parse_time))
+        else:
             self.logger.warn('player parse pickle cost: %.1f ms' % (parse_time))
         return data

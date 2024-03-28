@@ -253,6 +253,55 @@
         }
       }
     },
+    "Trafficlight": {
+      "fields": {
+        "id": {
+          "rule": "required",
+          "type": "uint32",
+          "id": 1
+        },
+        "pictogram": {
+          "rule": "required",
+          "type": "Pictogram",
+          "id": 2
+        },
+        "color": {
+          "rule": "required",
+          "type": "Color",
+          "id": 3
+        },
+        "confidence": {
+          "rule": "required",
+          "type": "float",
+          "id": 4
+        },
+        "name": {
+          "rule": "required",
+          "type": "string",
+          "id": 5
+        }
+      },
+      "nested": {
+        "Pictogram": {
+          "values": {
+            "OTHER": 0,
+            "UP_ARROW": 1,
+            "LEFT_ARROW": 2,
+            "RIGHT_ARROW": 3,
+            "DOWN_ARROW": 4,
+            "UTURN": 5
+          }
+        },
+        "Color": {
+          "values": {
+            "RED": 0,
+            "GREEN": 1,
+            "YELLOW": 2,
+            "OFF": 3
+          }
+        }
+      }
+    },
     "FreespaceInfo": {
       "fields": {
         "xMin": {
@@ -373,6 +422,11 @@
         "pose": {
           "type": "Pose",
           "id": 7
+        },
+        "light": {
+          "rule": "repeated",
+          "type": "Trafficlight",
+          "id": 8
         }
       }
     },

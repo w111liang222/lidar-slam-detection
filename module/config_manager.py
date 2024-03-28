@@ -35,7 +35,10 @@ class ConfigManager():
     def check_config(self, config):
         old_cfg = self.config
 
-        if old_cfg.board != config.board or old_cfg.pipeline != config.pipeline:
+        if old_cfg.board != config.board or \
+           old_cfg.pipeline != config.pipeline or \
+           old_cfg.detection.freespace != config.detection.freespace or \
+           old_cfg.system != config.system:
             return 'Reboot', config
 
         if old_cfg != config:
@@ -91,13 +94,13 @@ class ConfigManager():
 
         return config
 
-    def update_config(self, config, hostname="", restart_service=True):
+    def update_config(self, config, hostname="", restart_service=False):
         old_cfg = self.config
         self.config = config
         self.dump_config(self.config_path)
         self.dump_config('/home/znqc/work/cfg/board_cfg_all.yaml')
 
-        if restart_service and (old_cfg.board != config.board or old_cfg.pipeline != config.pipeline):
+        if restart_service:
             self.timed_task = Thread(target=self.timed_restart, daemon=True)
             self.timed_task.start()
 

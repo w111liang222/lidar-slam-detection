@@ -285,7 +285,7 @@ __device__ inline float box_union(const float *box_a, const float *box_b){
     // }
 
     int pos = 1;
-    int hull[9];
+    int hull[9] = {0};
     int used[8] = {0};
 
     for (int k = 1; k < 8; k++){

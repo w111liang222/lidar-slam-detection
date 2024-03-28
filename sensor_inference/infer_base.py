@@ -1,4 +1,5 @@
 import time
+import queue
 from multiprocessing import Process, Queue, Value
 import sensor_driver.common_lib.cpp_utils as util
 
@@ -32,14 +33,17 @@ class InferBase():
     def create_queue(self):
         self.input_queue = Queue(maxsize=self.max_size)
 
-    def build_engine(self, calib):
+    def build_engine(self):
         raise NotImplementedError
 
-    def prepare(self, calib = None):
+    def reset_engine(self):
+        raise NotImplementedError
+
+    def prepare(self):
         if self.is_prepared.value:
             return
 
-        self.build_engine(calib)
+        self.build_engine()
         self.is_prepared.value = True
 
     def is_prepared_done(self):
@@ -54,10 +58,6 @@ class InferBase():
             self.thread.start()
 
     def stop(self):
-        try:
-            self.input_queue.put_nowait(dict())
-        except:
-            pass
         while not self.is_stopped.value:
             time.sleep(1e-2)
         clear_queue(self.input_queue)
@@ -67,10 +67,8 @@ class InferBase():
         return (self.input_queue.full() or not self.is_prepared_done())
 
     def enqueue(self, data_dict):
-        start_time = time.monotonic()
-        data = self.prepare_data(data_dict)
-        self.logger.debug('%s, prepare_data time is: %.1f ms' % (self.name, (time.monotonic() - start_time)*1000))
-        self.input_queue.put_nowait(data)
+        data_dict = self.prepare_data(data_dict)
+        self.input_queue.put_nowait(data_dict)
 
     def prepare_data(self, data_dict):
         raise NotImplementedError
@@ -83,21 +81,26 @@ class InferBase():
                 self.is_stopped.value = True
                 time.sleep(1e-2)
 
+            self.reset_engine()
             while self.engine_start.value:
-                data_dict = self.input_queue.get()
+                try:
+                    input_dict = self.input_queue.get(block=True, timeout=0.1)
+                except queue.Empty:
+                    continue
+
                 if self.engine_start.value is False:
                     break
                 start_time = time.monotonic()
-                result = self.process(data_dict)
-                infer_time = (time.monotonic() - start_time) * 1000
-                if infer_time < 100:
-                    self.logger.debug('%s inference time is: %.1f ms' % (self.name, infer_time))
+                output_dict = self.process(input_dict)
+                process_time = (time.monotonic() - start_time) * 1000
+                if process_time < 100:
+                    self.logger.debug(f'{self.name} inference time is: {process_time:.1f} ms')
                 else:
-                    self.logger.warn('%s inference time is: %.1f ms' % (self.name, infer_time))
+                    self.logger.warn(f'{self.name} inference time is: {process_time:.1f} ms')
 
-                if result is None:
+                if output_dict is None:
                     continue
-                self.output_queue.put(result)
+                self.output_queue.put(output_dict)
 
     def process(self, data_dict):
         raise NotImplementedError

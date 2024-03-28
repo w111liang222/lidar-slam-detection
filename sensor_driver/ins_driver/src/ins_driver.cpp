@@ -10,13 +10,11 @@
 #include "SerialDriver.h"
 #include "UTMProjector.h"
 
-const double PI = 3.1415926535897932384626433832795;
-
 double getYawAngle(Transform &trans) {
     Translation unit_vector(0, 1.0, 0);
     unit_vector = trans.rotation_ * unit_vector;
     double yaw = atan2(unit_vector(1), unit_vector(0));
-    return (yaw - PI / 2.0);
+    return (yaw - M_PI / 2.0);
 }
 
 int hex2dec(char ch) {
@@ -38,13 +36,11 @@ Transform computeRTKTransform(InsDataType &data) {
     return getTransformFromRPYT(dataX, dataY, data.altitude, -data.heading, data.pitch, data.roll);
 }
 
-InsDriver::InsDriver(std::string ins_type) : mInsType(ins_type) {
-    mMode = modeType::online;
+InsDriver::InsDriver(std::string ins_type, std::string mode) : mInsType(ins_type) {
+    mMode = (mode.compare("online") == 0) ? modeType::online : modeType::offline;
     mUseSeperateIMU = false;
     mUseSeperateGPS = false;
     mStaticTransform = Transform();
-    mValidMessageCount = 0;
-    mReceiveMessageCount = 0;
     mStartTransfer = false;
     resetRuntimeVariables();
 }
@@ -53,8 +49,8 @@ InsDriver::~InsDriver() {
     stopRun();
 }
 
-void InsDriver::startRun(int portIn, std::string device) {
-    mPort = portIn;
+void InsDriver::startRun(int port, std::string device) {
+    mPort = port;
     mDevice = device;
     mThreadStopFlag = false;
 
@@ -125,23 +121,11 @@ void InsDriver::resetRuntimeVariables() {
     mQueuedData.clear();
 }
 
-void InsDriver::setExternalParameter(Transform& trans) {
-    mStaticTransform = trans;
+void InsDriver::setExtrinsicParameter(Transform& extrinsic) {
+    mStaticTransform = extrinsic;
 }
 
-uint64_t InsDriver::getValidMessageCount() {
-    return mValidMessageCount;
-}
-
-uint64_t InsDriver::getReceiveMessageCount() {
-    return mReceiveMessageCount;
-}
-
-void InsDriver::setOfflineMode() {
-    mMode = modeType::offline;
-}
-
-void InsDriver::setData(InsDataType &data, uint64_t timestamp) {
+void InsDriver::setData(InsDataType &data, uint64_t timestamp, bool is_imu) {
     // send to unix socket
     std::string msg = formatGPCHC(data);
     mUnixClient->Sendto(msg, msg.length());
@@ -162,6 +146,11 @@ void InsDriver::setData(InsDataType &data, uint64_t timestamp) {
     if (mStartTransfer) {
         static std::unique_ptr<UDPServer> UDPSender(new UDPServer(0));
         UDPSender->UDPSendto(mDestination, mPort, msg, msg.length());
+    }
+
+    // do not push imu-only data to queue
+    if (is_imu) {
+        return;
     }
 
     std::lock_guard<std::mutex> lck(mMutex);
@@ -196,7 +185,6 @@ uint64_t getStamp(nav_msgs::Odometry &data) {
 Transform getTransform(InsDataType &data) {
     return computeRTKTransform(data);
 }
-
 Transform getTransform(nav_msgs::Odometry &data) {
     Eigen::Matrix4d odometry = Eigen::Matrix4d::Identity();
     Eigen::Quaterniond q;
@@ -244,7 +232,7 @@ Transform getInterplatedPosition(T &data, uint64_t t) {
     return out;
 }
 
-bool InsDriver::getMotion(std::vector<double> &motionT, double &motionR, uint64_t t0, uint64_t t1) {
+bool InsDriver::getMotion(std::vector<double> &ins_pose, std::vector<double> &motion_t, double &motion_heading, uint64_t t0, uint64_t t1) {
     Transform lastTransform, currentTransform;
     if (mPoseData.size() >= 2 && t0 > getStamp(mPoseData.front()) && t1 < getStamp(mPoseData.back())) {
         lastTransform    = getInterplatedPosition(mPoseData, t0);
@@ -256,18 +244,18 @@ bool InsDriver::getMotion(std::vector<double> &motionT, double &motionR, uint64_
         return false;
     }
 
-    Transform motion_TR = mStaticTransform.inverse() * (currentTransform.inverse() * lastTransform) * mStaticTransform;
-    Matrix m = motion_TR.matrix();
-    motionT[0]  = m(0, 0); motionT[1]  = m(0, 1); motionT[2]  = m(0, 2);  motionT[3] = m(0, 3);
-    motionT[4]  = m(1, 0); motionT[5]  = m(1, 1); motionT[6]  = m(1, 2);  motionT[7] = m(1, 3);
-    motionT[8]  = m(2, 0); motionT[9]  = m(2, 1); motionT[10] = m(2, 2); motionT[11] = m(2, 3);
-    motionT[12] = m(3, 0); motionT[13] = m(3, 1); motionT[14] = m(3, 2); motionT[15] = m(3, 3);
-    motionR = getYawAngle(motion_TR);
+    Transform motion = mStaticTransform.inverse() * (currentTransform.inverse() * lastTransform) * mStaticTransform;
+    Matrix p = currentTransform.matrix().transpose();
+    Matrix m = motion.matrix().transpose();
+
+    ins_pose       = std::vector<double>(p.data(), p.data() + p.rows() * p.cols());
+    motion_t       = std::vector<double>(m.data(), m.data() + m.rows() * m.cols());
+    motion_heading = getYawAngle(motion);
     return true;
 }
 
-bool InsDriver::trigger(uint64_t timestamp, bool &motion_valid, std::vector<double> &motionT,
-                        double &motionR, InsDataType &ins, std::vector<InsDataType> &imu) {
+bool InsDriver::trigger(uint64_t timestamp, bool &motion_valid, std::vector<double> &ins_pose, std::vector<double> &motion_t,
+                        double &motion_heading, InsDataType &ins, std::vector<InsDataType> &imu) {
     std::lock_guard<std::mutex> lck(mMutex);
     if (mTimedData.size() < 2) {
         return false;
@@ -307,10 +295,12 @@ bool InsDriver::trigger(uint64_t timestamp, bool &motion_valid, std::vector<doub
     if (mUseSeperateGPS && ins.Status == 0) {
         for (auto &data : imu) {
             if (data.Status != 0) {
-                ins.latitude  = data.latitude;
-                ins.longitude = data.longitude;
-                ins.altitude  = data.altitude;
-                ins.Status    = data.Status;
+                ins.gps_timestamp = data.gps_timestamp;
+                ins.latitude      = data.latitude;
+                ins.longitude     = data.longitude;
+                ins.altitude      = data.altitude;
+                ins.Status        = data.Status;
+                ins.Ve            = data.Ve;
                 break;
             }
         }
@@ -318,7 +308,7 @@ bool InsDriver::trigger(uint64_t timestamp, bool &motion_valid, std::vector<doub
 
     // estimate the realtive motion
     if (!mFirstTrigger) {
-        motion_valid = getMotion(motionT, motionR, mLastTriggerTime, timestamp);
+        motion_valid = getMotion(ins_pose, motion_t, motion_heading, mLastTriggerTime, timestamp);
     }
 
     mFirstTrigger = false;
@@ -362,10 +352,16 @@ void InsDriver::run_udp() {
         }
 
         InsDataType ins;
-        mReceiveMessageCount++;
-        bool found = parseGPCHC(message, ins);
+        bool found = (parseLivoxImu(buf, receveSize, ins) || parseGPCHC(message, ins));
         if (found) {
-            mValidMessageCount++;
+            if (mUseSeperateGPS) {
+                std::lock_guard<std::mutex> lck(mGPSMutex);
+                ins.Status      = mGPSData.Status;
+                ins.latitude    = mGPSData.latitude;
+                ins.longitude   = mGPSData.longitude;
+                mGPSData.Status = 0; //reset the GPS status
+            }
+
             uint64_t hostTime = getCurrentTime();
             uint64_t gpsTime = gps2Utc(ins.gps_week, ins.gps_time);
             double diffMSec = fabs(gpsTime / 1000.0 - hostTime / 1000.0);
@@ -375,7 +371,7 @@ void InsDriver::run_udp() {
             } else {
                 ins.gps_timestamp = gpsTime;
             }
-            setData(ins, ins.gps_timestamp);
+            setData(ins, ins.gps_timestamp, false);
         } else {
             LOG_WARN("Ins parse udp source error, {}", message);
         }
@@ -385,61 +381,60 @@ void InsDriver::run_udp() {
 void InsDriver::run_com() {
     prctl(PR_SET_NAME, "Ins Com Recev", 0, 0, 0);
     LOG_INFO("start ins com receving, device {}", mDevice);
-    std::unique_ptr<SerialDriver> InsSerial(new SerialDriver(mDevice, 230400));
-    char buf[64] = "";
-    int buf_len = 0;
+    serial::Serial serial(mDevice, 230400, serial::Timeout::simpleTimeout(100));
+    serial.open();
+
     std::string message = "";
     while (!mThreadStopFlag) {
+        if (!serial.isOpen()) {
+            usleep(100000);
+            serial.open();
+            continue;
+        }
+
         auto clock = std::chrono::steady_clock::now();
-        int receveSize = InsSerial->readBuf(buf + buf_len, 64 - buf_len, 100000);
-        if (0 == receveSize) {
-            continue;
-        }
-        buf_len += receveSize;
-        if (buf_len < 64) {
-            continue;
-        }
-        auto elapseMs = since(clock).count();
-        if (elapseMs >= 50) {
-            LOG_WARN("Ins com receive buffer wait for {} ms", elapseMs);
-        }
-        message = message + std::string(buf, buf_len);
-        buf_len = 0;
-
-        InsDataType ins;
-        mReceiveMessageCount++;
-        bool found = parseGPCHC(message, ins);
-        if (found) {
-            mValidMessageCount++;
-            if (mUseSeperateIMU) {
-                ins.gps_week = getGPSweek(getCurrentTime());
-                ins.gps_time = getGPSsecond(getCurrentTime());
-            }
-            if (mUseSeperateGPS) {
-                std::lock_guard<std::mutex> lck(mGPSMutex);
-                ins.latitude  = mGPSData.latitude;
-                ins.longitude = mGPSData.longitude;
-                ins.altitude  = mGPSData.altitude;
+        if (serial.waitReadable()) {
+            message += serial.read(serial.available());
+            auto elapseMs = since(clock).count();
+            if (elapseMs >= 50) {
+                LOG_WARN("Ins com receive buffer wait for {} ms", elapseMs);
             }
 
-            uint64_t hostTime = getCurrentTime();
-            uint64_t gpsTime = gps2Utc(ins.gps_week, ins.gps_time);
-            double diffMSec = gpsTime / 1000.0 - hostTime / 1000.0;
-            if (diffMSec > 60000) {
-                setSystemTime(gpsTime);
-                hostTime = gpsTime;
-                LOG_WARN("COM: gps/host time diff {} ms, adjust system clock", diffMSec);
+            InsDataType ins;
+            bool found = parseBDDB0B(message, ins) || parseGPCHC(message, ins);
+            if (found) {
+                if (mUseSeperateIMU) {
+                    ins.gps_week = getGPSweek(getCurrentTime());
+                    ins.gps_time = getGPSsecond(getCurrentTime());
+                }
+                if (mUseSeperateGPS) {
+                    std::lock_guard<std::mutex> lck(mGPSMutex);
+                    ins.Status      = mGPSData.Status;
+                    ins.latitude    = mGPSData.latitude;
+                    ins.longitude   = mGPSData.longitude;
+                    mGPSData.Status = 0; //reset the GPS status
+                }
+
+                uint64_t hostTime = getCurrentTime();
+                uint64_t gpsTime = gps2Utc(ins.gps_week, ins.gps_time);
+                double diffMSec = gpsTime / 1000.0 - hostTime / 1000.0;
+                if (diffMSec > 60000) {
+                    setSystemTime(gpsTime);
+                    hostTime = gpsTime;
+                    LOG_WARN("COM: gps/host time diff {} ms, adjust system clock", diffMSec);
+                }
+
+                ins.gps_timestamp = hostTime;
+                setData(ins, ins.gps_timestamp, false);
             }
 
-            ins.gps_timestamp = hostTime;
-            setData(ins, ins.gps_timestamp);
-        }
-
-        if (message.size() > 512) {
-            LOG_WARN("Ins unparsed data is too much, {}", message);
-            message = message.substr(256);
+            if (message.size() > 512) {
+                LOG_WARN("Ins unparsed data is too much, size: {}", message.size());
+                message = message.substr(256);
+            }
         }
     }
+    serial.close();
 }
 
 void InsDriver::run_gps() {
@@ -453,33 +448,29 @@ void InsDriver::run_gps() {
 
     InsDataType ins;
     while (!mThreadStopFlag) {
-        if (!gps_rec.waiting(20000)) {
-            ins.gps_timestamp = getCurrentTime();
-            // setData(ins, ins.gps_timestamp);
+        if (!gps_rec.waiting(100000)) {
             continue;
         }
 
-        struct gps_data_t* gpsd_data;
-        if ((gps_rec.read()) == nullptr) {
-            LOG_ERROR("GPSD read error");
-            return;
+        struct gps_data_t* gpsd_data = nullptr;
+        while (!mThreadStopFlag && (gpsd_data = gps_rec.read()) == nullptr) {
+            usleep(10000);
         }
 
-        while (((gpsd_data = gps_rec.read()) == nullptr) || (gpsd_data->fix.mode < MODE_2D)) {
-            usleep(20000);
-            ins.gps_timestamp = getCurrentTime();
-            // setData(ins, ins.gps_timestamp);
-            if (mThreadStopFlag) {
-                return;
-            }
+        if (gpsd_data == nullptr) {
+            continue;
         }
 
-        ins.latitude = gpsd_data->fix.latitude;
-        ins.longitude = gpsd_data->fix.longitude;
-        ins.altitude = gpsd_data->fix.altitude;
-        ins.Ve = gpsd_data->fix.speed;
+        if (gpsd_data->fix.mode < MODE_2D) {
+            LOG_WARN("GPSD is not fix, {}", gpsd_data->fix.mode);
+            continue;
+        }
+
         ins.gps_timestamp = getCurrentTime();
-        // setData(ins, ins.gps_timestamp);
+        ins.Status        = 1;
+        ins.latitude      = gpsd_data->fix.latitude;
+        ins.longitude     = gpsd_data->fix.longitude;
+        ins.Ve            = gpsd_data->fix.speed;
 
         {
             std::lock_guard<std::mutex> lck(mGPSMutex);
@@ -489,7 +480,6 @@ void InsDriver::run_gps() {
 }
 
 bool InsDriver::parseGPCHC(std::string &message, InsDataType &ins) {
-    auto clock = std::chrono::steady_clock::now();
     std::size_t head = message.find("$GPCHC");
     std::size_t tail = message.find("*");
     if (head == std::string::npos || tail == std::string::npos) {
@@ -532,21 +522,80 @@ bool InsDriver::parseGPCHC(std::string &message, InsDataType &ins) {
             LOG_WARN("INS checksum is not match {}, {}", checksum, datasum);
             found = false;
         }
+    } else {
+        LOG_WARN("$GPCHC data parse error {}", msg);
     }
 
     if (found) {
         ins.header   = "$GPCHC";
         ins.Cs = std::string(Cs);
-        // std::cout << msg << std::endl;
-        // printf("gps_week: %d\n", ins.gps_week);
-        // printf("gps_time: %lf\n", ins.gps_time);
-        // printf("heading: %lf\n", ins.heading);
-        // printf("latitude: %lf\n", ins.latitude);
-        // printf("longitude: %lf\n", ins.longitude);
     }
-    auto elapseMs = since(clock).count();
-    if (elapseMs >= 20) {
-        LOG_WARN("Ins parse costs {} ms", elapseMs);
+    return found;
+}
+
+bool InsDriver::parseBDDB0B(std::string &message, InsDataType &ins) {
+    if (message.size() < 3) {
+        return false;
+    }
+
+    int header_pos = -1;
+    for (size_t i = 0; i < message.size() - 2; ++i) {
+        if (((message[i] & 0xff) == 0xbd) && ((message[i + 1] & 0xff) == 0xdb) && ((message[i + 2] & 0xff) == 0x0b)) { // find header
+            header_pos = i;
+            break;
+        }
+    }
+    if (header_pos < 0) {
+        return false;
+    }
+
+    if (header_pos > 0) {
+        message.erase(0, header_pos);
+    }
+
+    if (message.size() < 63) {
+        return false;
+    }
+
+    bool found = false;
+    char checksum = 0;
+    for(int i = 0; i < 57; i++) {
+        checksum = checksum ^ message[i];
+    }
+    if (message[57] == checksum) {
+        found = true;
+        static int position_type = 0;
+        DY5711Pkt pkt_struct;
+        std::memcpy(&pkt_struct, message.data(), sizeof(pkt_struct));
+        ins.header   = "$GPCHC";
+        ins.gps_week = getGPSweek(getCurrentTime());
+        ins.gps_time = getGPSsecond(getCurrentTime());
+
+        ins.latitude = pkt_struct.latitude * 1e-7L;
+        ins.longitude = pkt_struct.longitude *1e-7L;
+        ins.altitude = pkt_struct.altitude * 1e-3L;
+
+        ins.heading = pkt_struct.yaw * 360.0 / 32768;
+        ins.pitch = pkt_struct.pitch * 360.0 / 32768;
+        ins.roll = pkt_struct.roll * 360.0 / 32768;
+
+        ins.gyro_x = pkt_struct.gyro_x * 300.0 / 32768;
+        ins.gyro_y = pkt_struct.gyro_y * 300.0 / 32768;
+        ins.gyro_z = pkt_struct.gyro_z * 300.0 / 32768;
+
+        ins.acc_x = pkt_struct.acc_x * 12.0 / 32768;
+        ins.acc_y = pkt_struct.acc_y * 12.0 / 32768;
+        ins.acc_z = pkt_struct.acc_z * 12.0 / 32768;
+
+        ins.Ve = pkt_struct.e_vel * 100.0 / 32768;
+        ins.Vn = pkt_struct.n_vel * 100.0 / 32768;
+        ins.Vu = pkt_struct.d_vel * 100.0 / 32768;
+        short int pdata_type = pkt_struct.polling_type;
+        if (pdata_type == 32) {
+            position_type = int(pkt_struct.polling_data[0]);
+        }
+        ins.Status = position_type;
+        message.erase(0, 58);
     }
     return found;
 }
@@ -573,4 +622,32 @@ std::string InsDriver::formatGPCHC(InsDataType &ins) {
 
     msg = msg + std::string(Cs);
     return msg;
+}
+
+bool InsDriver::parseLivoxImu(char buf[], const int& len, InsDataType &ins) {
+  if (len == 60) {
+    uint64_t hostTime = getCurrentTime();
+    LivoxLidarEthernetImuPacket* packet = reinterpret_cast<LivoxLidarEthernetImuPacket*>(buf);
+    if (packet->data_type == kLivoxLidarImuData) {
+      ins.gyro_x = packet->gyro_x / M_PI * 180.0; // rad/s to deg/s
+      ins.gyro_y = packet->gyro_y / M_PI * 180.0; // rad/s to deg/s
+      ins.gyro_z = packet->gyro_z / M_PI * 180.0; // rad/s to deg/s
+      ins.acc_x = packet->acc_x;
+      ins.acc_y = packet->acc_y;
+      ins.acc_z = packet->acc_z;
+
+      ins.heading = 0;
+      ins.pitch = 0;
+      ins.roll = 0;
+      ins.latitude = 0;
+      ins.longitude = 0;
+      ins.altitude = 0;
+      ins.Status = 0;
+      ins.gps_week = getGPSweek(hostTime);
+      ins.gps_time = getGPSsecond(hostTime);
+      return true;
+    }
+  }
+
+  return false;
 }

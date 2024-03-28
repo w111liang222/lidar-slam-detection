@@ -10,12 +10,17 @@ if(CUDA_FOUND)
     set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
     project(inference LANGUAGES CXX CUDA)
     add_definitions(-DHAVE_CUDA_ENABLE)
-    set(SRC_FILES "tensorRT/tensorrt.cpp")
-    set(LIB_FILES ${CMAKE_CURRENT_SOURCE_DIR}/libspconv/lib/${ARCHITECTURE}/libspconv.so libnvinfer.so)
+    set(SRC_NV_FILES "tensorRT/tensorrt.cpp")
+    set(NV_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/libspconv/lib/${ARCHITECTURE}/libspconv.so libnvinfer.so)
 else()
     project(inference LANGUAGES CXX)
     set(CUDA_INCLUDE_DIRS "")
     set(CUDA_LIBRARIES "")
+endif()
+
+find_package(RKNN)
+if(RKNN_FOUND)
+    add_definitions(-DHAVE_RKNN_ENABLE)
 endif()
 
 set(CMAKE_C_FLAGS "-Wall")
@@ -33,12 +38,14 @@ link_directories(/usr/local/lib)
 
 include_directories(
     SYSTEM ${CUDA_INCLUDE_DIRS}
+    SYSTEM ${RKNN_INCLUDE_DIRS}
     libspconv/include
 )
 
 add_library(inference SHARED
     tensorRT/lidar_inference.cpp
-    ${SRC_FILES}
+    rknn/lidar_inference.cpp
+    ${SRC_NV_FILES}
 )
 
 target_include_directories(inference
@@ -49,7 +56,8 @@ target_include_directories(inference
 
 target_link_libraries(inference
     ${CUDA_LIBRARIES}
-    ${LIB_FILES}
+    ${RKNN_LIBRARIES}
+    ${NV_LIBRARIES}
     voxelization
     cpp_utils
 )

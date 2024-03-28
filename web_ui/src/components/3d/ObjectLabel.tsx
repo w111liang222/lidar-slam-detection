@@ -107,7 +107,7 @@ export default function ObjectLabel({ object, showInfo = false, scale = 1 }: Pro
       sprite.visible = true;
       sprite.position.z = object.box.height / 2;
 
-      ctx.drawImage(icons[object.type - 1].canvas!, 0, FONT_SIZE * LINE_NUM);
+      object.type > 0 && ctx.drawImage(icons[object.type - 1].canvas!, 0, FONT_SIZE * LINE_NUM);
       const info = [
         `(${object.id},` +
           `${object.confidence.toFixed(2)},` +

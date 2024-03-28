@@ -40,17 +40,13 @@ class DataMerge(ManagerTemplate):
             while self.system.is_initialized:
                 try:
                     data = data_queue.get(block=True, timeout=1.0)
-                    if 'frame_start_timestamp' in data_dict and data_dict['frame_start_timestamp'] != data['frame_start_timestamp']:
-                        self.logger.warn('%s output timestamp is wrong!' % (name))
-                    else:
-                        data_dict.update(data)
-                        break
+                    data_dict.update(data)
+                    break
                 except queue.Empty:
                     self.logger.warn('%s has no output' % (name))
-                    data = dict()
                     continue
 
         return data_dict
 
     def notify_connect(self, peer):
-        self.data_queues[peer.name] = queue.Queue(maxsize=30)
+        self.data_queues[peer.name] = queue.Queue(maxsize=10)

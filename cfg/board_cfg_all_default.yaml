@@ -11,6 +11,12 @@ pipeline: [['Source', 'SLAM', 'Sink']]
 
 detection:
     sensor_input: ["0-Ouster-OS1", "1-Ouster-OS1", "2-Ouster-OS1", "0"]
+    freespace:
+        mode: learning  # rule
+        resolution: 0.4
+        min_height: 0.2
+        max_height: 2.5
+        range: [-40.0, 40.0, -40.0, 40.0]
 
 slam:
     mode: 'mapping'
@@ -25,6 +31,7 @@ slam:
     mapping:
         sensor_input: ["1-Ouster-OS1", "IMU"]
         ground_constraint: true
+        gravity_constraint: false
         loop_closure: true
         key_frames_interval: [4.0, 20.0]  # distance and degree threshold
         key_frames_range: 1000
@@ -176,6 +183,14 @@ lidar_all:
       }
 
     - {
+          name: "Livox-Mid-360",
+          port: 5630,
+          extrinsic_parameters: [0, 0, 0, 0, 0, 0],
+          range: [-72.0, -72.0, -2, 72.0, 72.0, 4],
+          exclude: [-0.5, -0.5, 0, 0.5, 0.5, 0],
+      }
+
+    - {
           name: "Custom",
           port: 2688,
           extrinsic_parameters: [0, 0, 0, 0, 0, 0],
@@ -206,13 +221,7 @@ output:
         pedestrian: true
         cyclist: true
         traffic_cone: true
-
-    freespace:
-        use: true
-        resolution: 0.25
-        min_height: 0.2
-        max_height: 2.5
-        range: [-20, 20, -6, 6]
+        freespace: true
 
     protocol:
         UDP:

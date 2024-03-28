@@ -1,7 +1,7 @@
 import numpy as np
 
 import slam_wrapper as slam
-from .map_manager import MapManager
+from .map_manager import MapManager, load_map_meta
 
 from module.slam.slam_template import SLAMTemplate
 from module.export_interface import register_interface
@@ -21,6 +21,7 @@ class SLAM(SLAMTemplate):
         self.imu_ext_params = config.ins.imu_extrinsic_parameters
 
         self.last_timestamp = 0
+        self.image_data = {'image': {}, 'image_jpeg': {}, 'image_param': {}}
         self.is_inited = False
         self.map_manager = MapManager(config, logger)
 
@@ -34,6 +35,8 @@ class SLAM(SLAMTemplate):
         register_interface('slam.del_points', self.del_points)
         register_interface('slam.add_edge', self.add_edge)
         register_interface('slam.del_edge', self.del_edge)
+        register_interface('slam.add_area', self.add_area)
+        register_interface('slam.del_area', self.del_area)
         register_interface('slam.set_vertex_fix', self.set_vertex_fix)
         register_interface('slam.graph_optimize', self.graph_optimize)
         register_interface('slam.keyframe_align', self.keyframe_align)
@@ -42,7 +45,7 @@ class SLAM(SLAMTemplate):
         register_interface('slam.export_map', self.export_map)
         register_interface('slam.set_init_pose', self.set_init_pose)
         register_interface('slam.get_estimate_pose', self.get_estimate_pose)
-        register_interface('slam.revert_floor_constraint', self.revert_floor_constraint)
+        register_interface('slam.rotate_ground_constraint', self.rotate_ground_constraint)
 
     def start(self):
         self.sensor_input = slam.init_slam(self.config.input.mode,
@@ -75,11 +78,12 @@ class SLAM(SLAMTemplate):
                                 0, 0, 0)
         # set function switch
         slam.set_mapping_ground_constraint(self.config.slam.mapping.ground_constraint)
-        slam.set_mapping_loop_closure(self.config.slam.mapping.loop_closure)
+        slam.set_mapping_constraint(self.config.slam.mapping.loop_closure, self.config.slam.mapping.gravity_constraint)
         slam.set_map_colouration(self.config.slam.localization.colouration)
 
-        # load map at initilzation
-        self.map_manager.update(slam.get_graph_map(), True)
+        # load map at initilzation for localization mode
+        if self.mode == "localization":
+            self.map_manager.update(slam.get_graph_map(), load_map_meta(self.map_path + '/graph/map_meta.json'), True)
 
         self.is_inited = True
 
@@ -178,6 +182,12 @@ class SLAM(SLAMTemplate):
     def del_edge(self, id):
         self.map_manager.del_edge(id)
 
+    def add_area(self, area):
+        self.map_manager.add_area(area)
+
+    def del_area(self, id):
+        self.map_manager.del_area(id)
+
     def set_vertex_fix(self, id, fix):
         self.map_manager.set_vertex_fix(id, fix)
 
@@ -188,7 +198,7 @@ class SLAM(SLAMTemplate):
         return self.map_manager.keyframe_align(source, target, guess)
 
     def merge_map(self, map_file):
-        self.map_manager.update(slam.merge_map(map_file), False)
+        self.map_manager.update(slam.merge_map(map_file), load_map_meta(map_file + '/graph/map_meta.json'), False)
 
     def set_export_map_config(self, z_min, z_max, color):
         self.map_manager.set_export_map_config(z_min, z_max, color)
@@ -202,7 +212,7 @@ class SLAM(SLAMTemplate):
     def get_estimate_pose(self, pose_range):
         return slam.get_estimate_pose(pose_range[0][0], pose_range[0][1], pose_range[1][0], pose_range[1][1])
 
-    def revert_floor_constraint(self):
+    def rotate_ground_constraint(self):
         is_enable = not slam.get_mapping_ground_constraint()
         slam.set_mapping_ground_constraint(is_enable)
         return "enable" if is_enable else "disable"
@@ -217,10 +227,14 @@ class SLAM(SLAMTemplate):
     def process(self, input_dict):
         result = slam.process(input_dict['points'],
                               input_dict['points_attr'],
-                              input_dict['image'],
-                              input_dict['image_jpeg'],
-                              input_dict['image_param'],
+                              self.image_data['image'],
+                              self.image_data['image_jpeg'],
+                              self.image_data['image_param'],
                               input_dict['ins_data'],
                               input_dict['imu_data'],
                               input_dict['frame_start_timestamp'])
+        self.image_data['image'] = input_dict['image']
+        self.image_data['image_jpeg'] = input_dict['image_jpeg']
+        self.image_data['image_param'] = input_dict['image_param']
+        result['pose']['area'] = self.map_manager.is_in_area(result['pose']['odom_matrix'])
         return result

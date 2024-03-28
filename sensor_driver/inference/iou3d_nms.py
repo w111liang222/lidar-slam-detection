@@ -68,12 +68,12 @@ def nms_gpu(boxes, scores, thresh, pre_maxsize=None, **kwargs):
     :param thresh:
     :return:
     """
-    assert boxes.shape[1] == 7
 
-    boxes = np.ascontiguousarray(boxes, dtype=np.float32)
+    order = np.argsort(-scores)
+    boxes = np.ascontiguousarray(boxes[order], dtype=np.float32)
     keep = np.zeros((boxes.shape[0]), dtype=np.int_)
     num_out = iou3d_nms_ext.nms_gpu(boxes, keep, thresh)
-    return keep[:num_out], None
+    return order[keep[:num_out]]
 
 def nms_cpu(boxes, scores, thresh):
     """
@@ -126,4 +126,4 @@ def nms_cpu(boxes, scores, thresh):
         sorted_inds = np.delete(res_inds, delete_se_inds)
 
     keep = np.array(keep, dtype=np.int_)
-    return keep, None
+    return keep

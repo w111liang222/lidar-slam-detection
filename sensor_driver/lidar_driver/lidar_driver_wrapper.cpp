@@ -167,6 +167,7 @@ py::dict get_points_online(const std::string token_name, const std::string lidar
     } else {
       data["points_attr"] = py::array_t<float>(py::array::ShapeContainer({(long) points_attr->size() / points_attr_dim, points_attr_dim}), points_attr->data());
     }
+    LOG_DEBUG("lidar {}:{} output {} points, stamp {}", token_name, lidar_name, points->size() / 4, scan->getTimeStamp());
   }
   return data;
 }

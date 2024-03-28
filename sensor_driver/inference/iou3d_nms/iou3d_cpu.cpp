@@ -18,29 +18,6 @@ inline float max(float a, float b){
 }
 
 const float EPS = 1e-8;
-#ifdef HAVE_CUDA_ENABLE
-
-struct Point {
-    float x, y;
-    __device__ Point() {}
-    __device__ Point(double _x, double _y){
-        x = _x, y = _y;
-    }
-
-    __device__ void set(float _x, float _y){
-        x = _x; y = _y;
-    }
-
-    __device__ Point operator +(const Point &b)const{
-        return Point(x + b.x, y + b.y);
-    }
-
-    __device__ Point operator -(const Point &b)const{
-        return Point(x - b.x, y - b.y);
-    }
-};
-
-#else
 
 struct Point {
     float x, y;
@@ -60,9 +37,14 @@ struct Point {
     Point operator -(const Point &b)const{
         return Point(x - b.x, y - b.y);
     }
-};
 
-#endif
+    int operator <(const Point &b)const{
+        if (x == b.x){
+            return y >= b.y;
+        }
+        return x >= b.x;
+    }
+};
 
 inline float cross(const Point &a, const Point &b){
     return a.x * b.y - a.y * b.x;
@@ -227,6 +209,99 @@ inline float box_overlap(const float *box_a, const float *box_b){
     return fabs(area) / 2.0;
 }
 
+inline float box_union(const float *box_a, const float *box_b){
+
+    float a_angle = box_a[6], b_angle = box_b[6];
+    float a_dx_half = box_a[3] / 2, b_dx_half = box_b[3] / 2, a_dy_half = box_a[4] / 2, b_dy_half = box_b[4] / 2;
+    float a_x1 = box_a[0] - a_dx_half, a_y1 = box_a[1] - a_dy_half;
+    float a_x2 = box_a[0] + a_dx_half, a_y2 = box_a[1] + a_dy_half;
+    float b_x1 = box_b[0] - b_dx_half, b_y1 = box_b[1] - b_dy_half;
+    float b_x2 = box_b[0] + b_dx_half, b_y2 = box_b[1] + b_dy_half;
+
+    Point center_a(box_a[0], box_a[1]);
+    Point center_b(box_b[0], box_b[1]);
+
+    Point box_a_corners[4];
+    box_a_corners[0].set(a_x1, a_y1);
+    box_a_corners[1].set(a_x2, a_y1);
+    box_a_corners[2].set(a_x2, a_y2);
+    box_a_corners[3].set(a_x1, a_y2);
+
+    Point box_b_corners[4];
+    box_b_corners[0].set(b_x1, b_y1);
+    box_b_corners[1].set(b_x2, b_y1);
+    box_b_corners[2].set(b_x2, b_y2);
+    box_b_corners[3].set(b_x1, b_y2);
+
+    // get oriented corners
+    float a_angle_cos = cos(a_angle), a_angle_sin = sin(a_angle);
+    float b_angle_cos = cos(b_angle), b_angle_sin = sin(b_angle);
+
+    for (int k = 0; k < 4; k++){
+        rotate_around_center(center_a, a_angle_cos, a_angle_sin, box_a_corners[k]);
+        rotate_around_center(center_b, b_angle_cos, b_angle_sin, box_b_corners[k]);
+    }
+
+    Point total_corners[8];
+    for (int k = 0; k < 4; k++){
+        total_corners[k] = box_a_corners[k];
+        total_corners[k + 4] = box_b_corners[k];
+    }
+
+    Point temp;
+    for (int k = 0; k < 8; k++){
+        for (int i = 0; i < 8 - k - 1; i++){
+            if (total_corners[i] < total_corners[i+1]){
+                temp = total_corners[i];
+                total_corners[i] = total_corners[i + 1];
+                total_corners[i + 1] = temp;
+            }
+        }
+    }
+    // for (int k = 0; k < 8; k++){
+    //     printf("All point %d: (%.3f, %.3f)\n", k, total_corners[k].x, total_corners[k].y);
+    // }
+
+    int pos = 1;
+    int hull[9] = {0};
+    int used[8] = {0};
+
+    for (int k = 1; k < 8; k++){
+        while(pos > 1 && cross(total_corners[hull[pos - 1]], total_corners[k], total_corners[hull[pos - 2]]) <= 0){
+            used[hull[pos -1]] = 0;
+            pos--;
+        }
+        used[k] = 1;
+        hull[pos++] = k;
+    }
+
+    int m = pos;
+    for (int k = 8 - 2; k >= 0; k--){
+        if (!used[k]){
+            while(pos > m && cross(total_corners[hull[pos - 1]], total_corners[k], total_corners[hull[pos - 2]]) <= 0){
+                used[hull[pos -1]] = 0;
+                pos--;
+            }
+            used[k] = 1;
+            hull[pos++] = k;
+        }
+    }
+
+    pos--;
+    Point hull_pts[8];
+    for (int k = 0; k < pos; k++){
+        hull_pts[k] = total_corners[hull[k]];
+        // printf("convex hull toto:%d %d %d: (%.3f, %.3f)\n", k, used[k], hull[k], hull_pts[k].x, hull_pts[k].y);
+    }
+
+    float area = 0;
+    for (int k = 0; k < pos - 1; k++){
+        area += cross(hull_pts[k] - hull_pts[0], hull_pts[k + 1] - hull_pts[0]);
+    }
+
+    return fabs(area) / 2.0;
+}
+
 float iou_bev(const float *box_a, const float *box_b){
     // params: box_a (7) [x, y, z, dx, dy, dz, heading]
     // params: box_b (7) [x, y, z, dx, dy, dz, heading]
@@ -234,4 +309,12 @@ float iou_bev(const float *box_a, const float *box_b){
     float sb = box_b[3] * box_b[4];
     float s_overlap = box_overlap(box_a, box_b);
     return s_overlap / fmaxf(sa + sb - s_overlap, EPS);
+}
+
+float overlap_bev(const float *box_a, const float *box_b){
+    return box_overlap(box_a, box_b);
+}
+
+float union_bev(const float *box_a, const float *box_b){
+    return box_union(box_a, box_b);
 }

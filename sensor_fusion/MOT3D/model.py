@@ -23,6 +23,7 @@ class MOT3D(object):
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
+        self.motion_streak = 0
         self.Tracklet = BoxTracker if self.config['movable'] else StaticBoxTracker
         self.trackers = np.array([])
 
@@ -31,6 +32,7 @@ class MOT3D(object):
         IDTable.reset()
 
     def update(self, dets_all, motion_t, motion_heading, motion_valid, timestep):
+        self.motion_streak = self.motion_streak + 1 if motion_valid else 0
         detections = dets_all['detections']
 
         # get predicted locations from existing trackers
@@ -66,7 +68,7 @@ class MOT3D(object):
         trks_valid_mask = np.ones(len(self.trackers), dtype=np.bool)
         ret, trajectorys = [], []
         for t, trk in enumerate(self.trackers):
-            trajectory = trk.motion_prediction(motion_valid)
+            trajectory = trk.motion_prediction((motion_valid and self.motion_streak > 10))
 
             if trk.is_valid():
                 ret.append(np.concatenate((trk.get_state(), [trk.id, trk.score, trk.label, trk.age, trk.valid, trk.status.value])).reshape(1, -1)) # +1 as MOT benchmark requires positive

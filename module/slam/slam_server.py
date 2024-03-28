@@ -15,7 +15,7 @@ class SlamServer:
         self.perception = perception
 
         self.app.add_url_rule("/v1/restart-mapping", view_func=self.restart_mapping)
-        self.app.add_url_rule("/v1/revert-floor-constraint", view_func=self.revert_floor_constraint, methods=["POST"])
+        self.app.add_url_rule("/v1/rotate-ground-constraint", view_func=self.rotate_ground_constraint, methods=["POST"])
         self.app.add_url_rule("/v1/save-map", view_func=self.save_map, methods=["POST"])
         self.app.add_url_rule("/v1/get-save-progress", view_func=self.get_save_progress)
         self.app.add_url_rule("/v1/map-vertex", view_func=self.get_map_vertex, methods=["GET"])
@@ -35,6 +35,8 @@ class SlamServer:
         self.app.add_url_rule("/v1/map-del-vertex", view_func=self.map_del_vertex, methods=["POST"])
         add_method(self.map_del_points, name='map-del-points')
         self.app.add_url_rule("/v1/map-del-edge", view_func=self.map_del_edge, methods=["POST"])
+        self.app.add_url_rule("/v1/map-add-area", view_func=self.map_add_area, methods=["POST"])
+        self.app.add_url_rule("/v1/map-del-area", view_func=self.map_del_area, methods=["POST"])
         self.app.add_url_rule("/v1/map-set-vertex-fix", view_func=self.map_set_vertex_fix, methods=["POST"])
         self.app.add_url_rule("/v1/map-optimize", view_func=self.map_optimize)
         self.app.add_url_rule("/v1/set-export-map-config", view_func=self.set_export_map_config, methods=["POST"])
@@ -47,8 +49,8 @@ class SlamServer:
         self.perception.start()
         return ""
 
-    def revert_floor_constraint(self):
-        return self.perception.call('slam.revert_floor_constraint')
+    def rotate_ground_constraint(self):
+        return self.perception.call('slam.rotate_ground_constraint')
 
     def save_map(self):
         return self.perception.call('slam.save_mapping', request.get_json())
@@ -152,6 +154,14 @@ class SlamServer:
 
     def map_del_edge(self):
         self.perception.call("slam.del_edge", request.get_json())
+        return ""
+
+    def map_add_area(self):
+        self.perception.call("slam.add_area", dict(area=request.get_json()))
+        return ""
+
+    def map_del_area(self):
+        self.perception.call("slam.del_area", request.get_json())
         return ""
 
     def map_set_vertex_fix(self):

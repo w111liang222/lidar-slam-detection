@@ -1,6 +1,5 @@
-from multiprocessing import Process, Event, Queue, Value
+from multiprocessing import Process, Queue, Value
 import queue
-import time
 import sensor_driver.common_lib.cpp_utils as util
 
 class SinkTemplate():
@@ -13,25 +12,18 @@ class SinkTemplate():
 
     def start(self):
         if not self.is_start.value:
-            self.input_queue = Queue(maxsize = self.queue_max_size)
-            self.process_event = Event()
             self.is_start.value = True
+            self.input_queue = Queue(maxsize = self.queue_max_size)
             self.run_process = Process(target=self._run, name=self.name)
             self.run_process.daemon = True
             self.run_process.start()
 
     def stop(self):
         if self.is_start.value:
-            while self.input_queue.qsize() > 0:
-                self.logger.warn('%s, queue size %d' % (self.name, self.input_queue.qsize()))
-                time.sleep(0.1)
-
             self.is_start.value = False
-            self.process_event.wait(1.0)
-            if not self.process_event.is_set():
-                self.logger.warn('%s process is still running' % self.name)
-            self.run_process.terminate()
+            self.logger.info('wait for %s process join' % self.name)
             self.run_process.join()
+            self.logger.info('%s process join ok' % self.name)
 
     def set_config(self, cfg):
         self.cfg = cfg
@@ -66,5 +58,5 @@ class SinkTemplate():
             if not data_dict:
                 continue
             self.sink(data_dict)
+
         self.logger.info('deamon %s stops' % self.name)
-        self.process_event.set()

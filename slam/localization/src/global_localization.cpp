@@ -261,9 +261,9 @@ int GlobalLocalization::getEstimatePose(Eigen::Matrix4d &t) {
     return result;
 }
 
-void GlobalLocalization::setGraphMap(std::vector<std::shared_ptr<KeyFrame>> &map, pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr &graphKDTree, std::vector<EdgeType> &connections) {
+void GlobalLocalization::setGraphMap(std::vector<std::shared_ptr<KeyFrame>> &map, std::vector<EdgeType> &connections) {
     mKeyFrames = map;
-    mGraphKDTree = graphKDTree;
+    buildGraphKDTree();
     mMapConnections = connections;
     PoseRange r(-10000, 10000, -10000, 10000);
     setInitPoseRange(r);
@@ -355,7 +355,7 @@ std::pair<int, float> GlobalLocalization::localSearch(PointCloud::Ptr &cloud, st
     pcl::PointXYZ searchPoint;
     searchPoint.x = ins->T(0, 3);
     searchPoint.y = ins->T(1, 3);
-    searchPoint.z = ins->T(2, 3);
+    searchPoint.z = 0; // ins->T(2, 3);
 
     if (mGraphKDTree->nearestKSearch(searchPoint, 10, pointIdx, pointDistance) <= 0) {
         LOG_ERROR("global localization kdtree search error");
@@ -365,11 +365,11 @@ std::pair<int, float> GlobalLocalization::localSearch(PointCloud::Ptr &cloud, st
     Eigen::MatrixXd sc = mScManager.makeScancontext(*cloud);
     double min_dist = 1.0;
     for (size_t i = 0; i < pointIdx.size(); ++i) {
-        if (best_match.first == -1 && pointDistance[i] > 100 * (ins->precision * ins->precision)) {
+        if (best_match.first == -1 && pointDistance[i] > (ins->precision * ins->precision)) {
             LOG_WARN("Localization: current position for initial search is far away from the map, distance {} ", std::sqrt(pointDistance[i]));
             return best_match;
         }
-        if (best_match.first != -1 && pointDistance[i] > (ins->precision * ins->precision)) {
+        if (best_match.first != -1 && pointDistance[i] > (ins->precision * ins->precision) / 10.0) {
             break;
         }
         std::pair<double, int> sc_dist_result = mScManager.distanceBtnScanContext(sc, mKeyFrames[pointIdx[i]]->mSc);
@@ -465,16 +465,34 @@ bool GlobalLocalization::registrationAlign(const std::string &sensor, std::pair<
     }
 
     double score = mRegistration->getFitnessScore(fitness_score_max_range);
-    if (score < 1.5) {
-        LOG_INFO("global registration, {} match success, score {}", sensor, score);
-        Eigen::Matrix4f delta = mRegistration->getFinalTransformation();
+    Eigen::Matrix4f delta = mRegistration->getFinalTransformation();
+    Eigen::Matrix4f deltadelta = init_guess.inverse() * delta;
+    float dx = Eigen::Isometry3f(deltadelta).translation().norm();
+    float da = Eigen::AngleAxisf(Eigen::Isometry3f(deltadelta).linear()).angle() / M_PI * 180;
+
+    if (score < 1.5 && dx < 10.0 && da < 30.0) {
+        LOG_INFO("global registration, {} match success, score {}, dx {}, da {}", sensor, score, dx, da);
         pose = mKeyFrames[init_match.first]->mOdom * delta.cast<double>();
         mRegistration->setInputTarget(cloud);
         return true;
     } else {
-        LOG_WARN("global registration, {} not match, score {}", sensor, score);
+        LOG_WARN("global registration, {} not match, score {}, dx {}, da {}", sensor, score, dx, da);
         return false;
     }
+}
+
+void GlobalLocalization::buildGraphKDTree() {
+    auto cloud = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>());
+    cloud->width = static_cast<int>(mKeyFrames.size());
+    cloud->height = 1;
+    cloud->points.resize(cloud->width * cloud->height);
+    for (size_t i = 0; i < mKeyFrames.size(); i++) {
+        cloud->points[i].x = mKeyFrames[i]->mOdom(0, 3);
+        cloud->points[i].y = mKeyFrames[i]->mOdom(1, 3);
+        cloud->points[i].z = 0;
+    }
+    mGraphKDTree = pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr(new pcl::KdTreeFLANN<pcl::PointXYZ>());
+    mGraphKDTree->setInputCloud(cloud);
 }
 
 PointCloud::Ptr GlobalLocalization::downsample(PointCloud::Ptr& cloud) {
