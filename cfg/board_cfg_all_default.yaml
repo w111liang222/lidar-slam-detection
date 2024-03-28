@@ -2,7 +2,7 @@ board:
     inference_engine:
         detection_capability:
             object: true
-            trafficlight: true
+            trafficlight: false
         detection_config:
             object: sensor_inference/cfgs/detection_object.yaml
             trafficlight: sensor_inference/cfgs/detection_trafficlight.yaml

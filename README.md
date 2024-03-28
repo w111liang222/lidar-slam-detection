@@ -28,6 +28,11 @@ LSD currently supports many features:
 
 # Changelog
 
+**[2024-03-28]** Update to v2.1.0
+- Detection: support Int8 (SCN) inference, YOLO3D for RK3588.
+- SLAM: gravity constraint in pose graph, area edit and localization.
+- Other: more sensors (Livox-Mid-360, INS570D), platforms(Orin NX, RK3588) and several bugs fix.
+
 **[2023-10-08]** Better 3DMOT (GIOU, Two-stage association).
 | Performance (WOD val) | AMOTA ↑ | AMOTP ↓ |  IDs(%) ↓ |
 |-----------------------|:-------:|:-------:|:---------:|
@@ -47,7 +52,7 @@ LSD currently supports many features:
 
 # Prerequisites
 
-LSD can be worked both on x86 PC(with GPU, **SM 80+**) and nvidia Orin ([old version](https://github.com/w111liang222/lidar-slam-detection/tree/v1.3.0) can be worked on Xavier NX/AGX).
+LSD can be worked both on x86 PC(with GPU, **SM 80+**), nvidia Orin AGX/NX and RK3588 ([old version](https://github.com/w111liang222/lidar-slam-detection/tree/v1.3.0) can be worked on Xavier AGX/NX).
 
 ### Basic Enviroment
 
