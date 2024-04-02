@@ -2,6 +2,11 @@
 
 LSD is an open source perception architecture for autonomous vehicle and robotics.
 
+<div align="left">
+<img src="docs/NCLT.jpg" width = 33% />
+<img src="docs/ULHK.jpg" width = 33% />
+<img src="docs/home.gif" width = 30% >
+
 LSD currently supports many features:
 
 - [x] support multiple LiDAR, camera, radar and INS/IMU sensors.
