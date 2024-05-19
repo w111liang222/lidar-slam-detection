@@ -98,7 +98,6 @@ class ConfigManager():
         old_cfg = self.config
         self.config = config
         self.dump_config(self.config_path)
-        self.dump_config('/home/znqc/work/cfg/board_cfg_all.yaml')
 
         if restart_service:
             self.timed_task = Thread(target=self.timed_restart, daemon=True)
