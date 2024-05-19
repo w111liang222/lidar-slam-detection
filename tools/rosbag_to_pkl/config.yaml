@@ -1,0 +1,40 @@
+%YAML:1.0
+
+rosbag_path: PATH_TO_ROSBAG
+pickle_path: PATH_TO_PICKLE
+
+pointcloud_topic: /velodyne_points
+imu_topic: /imu_raw
+gps_topic: /gps
+
+#transform from lidar frame to vehicle frame, Tl,v
+extrinsic_lidar: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [1.0, 0.0, 0.0, 0.0,
+          0.0, 1.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0]
+
+#transform from imu frame to vehicle frame, Ti,v
+extrinsic_imu: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [1.0, 0.0, 0.0, 0.0,
+          0.0, 1.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0]
+
+#transform from imu frame to vehicle frame, Tg,v
+extrinsic_gps: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [1.0, 0.0, 0.0, 0.0,
+          0.0, 1.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0]
+
+gps_mode: 2 # mode 2: lat+lon, mode 3: lat+lon+alt

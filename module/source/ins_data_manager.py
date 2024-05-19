@@ -46,12 +46,12 @@ class InsDataManager(DataManagerTemplate):
             if data_dict['ins_valid'] and not data_dict['lidar_valid'] and \
                not data_dict['image_valid'] and not data_dict['radar_valid']:
                time.sleep(0.1)
-        else:
-            data = self.ins.trigger(data_dict['frame_start_timestamp'])
-            data_dict['motion_valid']   = data['motion_valid']
-            data_dict['motion_t']       = data['motion_t']
-            data_dict['motion_heading'] = data['motion_heading']
-            data_dict['ins_data']       = data['ins_data']
+        # else:
+        #     data = self.ins.trigger(data_dict['frame_start_timestamp'])
+        #     data_dict['motion_valid']   = data['motion_valid']
+        #     data_dict['motion_t']       = data['motion_t']
+        #     data_dict['motion_heading'] = data['motion_heading']
+        #     data_dict['ins_data']       = data['ins_data']
 
         return data_dict
 
@@ -63,8 +63,8 @@ class InsDataManager(DataManagerTemplate):
     def get_data_offline(self, data_dict):
         if 'frame_start_timestamp' not in data_dict:
             data_dict['frame_start_timestamp'] = int(time.time() * 1000000)
-        if 'ins_valid' in data_dict and data_dict['ins_valid']:
-            self.ins.set_offline_data(data_dict['ins_data'], data_dict['imu_data'])
+        # if 'ins_valid' in data_dict and data_dict['ins_valid']:
+        #     self.ins.set_offline_data(data_dict['ins_data'], data_dict['imu_data'])
         return {'ins_valid': False, 'ins_data': {'latitude': 0, 'longitude': 0, 'heading': 0, 'Ve': 0, 'Vn': 0}}
 
     def get_status(self):
