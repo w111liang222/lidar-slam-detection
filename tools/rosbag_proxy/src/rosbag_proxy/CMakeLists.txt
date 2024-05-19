@@ -3,8 +3,8 @@ project(rosbag_proxy)
 
 add_subdirectory(async_web_server_cpp)
 
-add_definitions(-std=c++11)
-set(CMAKE_CXX_FLAGS "-std=c++11")
+add_definitions(-std=c++14)
+set(CMAKE_CXX_FLAGS "-std=c++14")
 set(CMAKE_BUILD_TYPE "Release")
 
 find_package(catkin REQUIRED COMPONENTS roscpp pcl_ros cv_bridge image_transport sensor_msgs)

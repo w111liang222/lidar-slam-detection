@@ -10,7 +10,11 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#if ROS_VERSION_MINIMUM(1, 16, 0)
+#include <pcl/conversions.h>
+#else
 #include <pcl/ros/conversions.h>
+#endif
 #include "UDPServer.h"
 
 #pragma pack(1)
