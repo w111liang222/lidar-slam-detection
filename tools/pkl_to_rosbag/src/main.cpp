@@ -133,8 +133,11 @@ int main(int argc, char *argv[])
         imagename.erase(pos, 1);
       }
       // wbag.writeCompressedImage(imagename, "base_link", timestamp, image_compressed);
-
+#if (CV_VERSION_MAJOR >= 4)
+      cv::Mat image_bgr = cv::imdecode(image_compressed, cv::IMREAD_UNCHANGED);
+#else
       cv::Mat image_bgr = cv::imdecode(image_compressed, CV_LOAD_IMAGE_UNCHANGED);
+#endif
       wbag.writeImage(imagename, "base_link", timestamp, image_bgr);
     }
 
