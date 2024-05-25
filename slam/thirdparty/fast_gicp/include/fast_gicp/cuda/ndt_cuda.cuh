@@ -5,20 +5,22 @@
 #include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <thrust/pair.h>
+#include <thrust/device_vector.h>
 
 #include <fast_gicp/ndt/ndt_settings.hpp>
 #include <fast_gicp/gicp/gicp_settings.hpp>
 
-namespace thrust {
-template <typename T1, typename T2>
-class pair;
+// namespace thrust {
+// template <typename T1, typename T2>
+// class pair;
 
-template <typename T>
-class device_allocator;
+// template <typename T>
+// class device_allocator;
 
-template <typename T, typename Alloc>
-class device_vector;
-}  // namespace thrust
+// template <typename T, typename Alloc>
+// class device_vector;
+// }  // namespace thrust
 
 namespace fast_gicp {
 namespace cuda {
@@ -64,7 +66,7 @@ public:
   std::unique_ptr<GaussianVoxelMap> target_voxelmap;
 
   Eigen::Isometry3f linearized_x;
-  std::unique_ptr<Correspondences> correspondences;
+  std::shared_ptr<Correspondences> correspondences;
 };
 
 }  // namespace cuda
