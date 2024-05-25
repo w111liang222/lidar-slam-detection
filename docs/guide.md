@@ -9,7 +9,7 @@ We can switch the running mode easily by clicking the switch buttom at the home 
 
 Currently, there are four processing modes are supported by LSD, all modes can be running at online or offline.
 - Data Acquisition        --- preview the sensor data, sensor calibration or data recording.
-- Object Detection        --- cnn based network detection of pointcloud, object tracking, prediction. (<span style="color:red">high cpu load in x86_64 docker</span>)
+- Object Detection        --- cnn based network detection of pointcloud, object tracking, prediction.
 - SLAM                    --- pointcloud mapping or localization with LiDAR, camera and IMU.
 - Object Detection & SLAM --- running object detetcion and SLAM simultaneously.
 

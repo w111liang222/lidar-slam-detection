@@ -17,13 +17,6 @@ LSD currently supports many features:
 - [x] support Web based interactive map correction tool(editor).
 - [x] support communication with [ROS](#ros).
 
-# TODO
-
-- [x] Support traffic light detection.
-- [x] Support GIOU, Two-stage association of object tracking.
-- [ ] Support voxel 3D-CNN based freespace detection.
-- [ ] Support Transformer based motion prediction.
-
 # Overview
 
 - [Quick Demo](docs/demo/README.md)
@@ -32,11 +25,6 @@ LSD currently supports many features:
 - [Object Detection & Tracking](docs/detect.md)
 
 # Changelog
-
-**[2024-03-28]** Update to v2.1.0
-- Detection: support Int8 (SCN) inference, YOLO3D for RK3588.
-- SLAM: gravity constraint in pose graph, area edit and localization.
-- Other: more sensors (Livox-Mid-360, INS570D), platforms(Orin NX, RK3588) and several bugs fix.
 
 **[2023-10-08]** Better 3DMOT (GIOU, Two-stage association).
 | Performance (WOD val) | AMOTA ↑ | AMOTP ↓ |  IDs(%) ↓ |
@@ -55,22 +43,18 @@ LSD currently supports many features:
 
 **[2023-06-01]** [Web UI](web_ui/README.md)(JS code of preview, tviz and map editor) is uploaded.
 
-# Prerequisites
-
-LSD can be worked both on x86 PC(with GPU, **SM 80+**), nvidia Orin AGX/NX and RK3588 ([old version](https://github.com/w111liang222/lidar-slam-detection/tree/v1.3.0) can be worked on Xavier AGX/NX).
-
 ### Basic Enviroment
 
 Ubuntu20.04, Python3.8, Eigen 3.3.7, Ceres 1.14.0, Protobuf 3.8.0, NLOPT 2.4.2, G2O, OpenCV 4.5.5, PCL 1.9.1, GTSAM 4.0
 
 # Getting Started
 
-nvidia-docker2 is needed to install firstly [Installation](docs/docker.md).
+NVIDIA Container Toolkit is needed to install firstly [Installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
 A x86_64 docker image is provided to test.
 ```bash
-sudo docker pull 15liangwang/lsd-cuda # sudo docker pull 15liangwang/auto-ipu, if you don't have GPU
-sudo docker run --gpus all -it -d --net=host --privileged --shm-size=4g --name="LSD" -v /media:/root/exchange 15liangwang/lsd-cuda
+sudo docker pull 15liangwang/lsd-cuda12 # sudo docker pull 15liangwang/auto-ipu, if you don't have GPU
+sudo docker run --gpus all -it -d --net=host --privileged --shm-size=4g --name="LSD" -v /media:/root/exchange 15liangwang/lsd-cuda12
 sudo docker exec -it LSD /bin/bash
 ```
 
@@ -111,10 +95,6 @@ LSD is NOT built on the Robot Operating System (ROS), but we provides some tools
 - [rosbag to pickle](tools/rosbag_to_pkl/README.md): convert rosbag to pickle files, then LSD can read and run.
 - [pickle to rosbag](tools/pkl_to_rosbag/README.md): a convenient tool to convert the pickle files which are recorded by LSD to rosbag.
 - [rosbag proxy](tools/rosbag_proxy/README.md): a tool which send the ros topic data to LSD.
-
-## Embedded Platform
-
-The LSD is tested on Orin with JetPack5.0.2, [Installation](docs/nvidia/README.md)
 
 # License
 
