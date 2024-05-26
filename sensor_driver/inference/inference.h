@@ -58,45 +58,6 @@ int inference_reset() {
   return 0;
 }
 
-#elif defined(HAVE_RKNN_ENABLE)
-#include "rknn/lidar_inference.h"
-
-static std::shared_ptr<LidarInference> s_lidar_engine(nullptr);
-
-void inference_init(std::string scn_file, std::string rpn_file,
-                    std::vector<float> voxel_size,
-                    std::vector<float> coors_range, int max_points,
-                    int max_voxels, int max_points_use, int frame_num) {
-  LidarEngineParameter parameter;
-  parameter.rknn_file = rpn_file;
-  parameter.pointcloud_range = coors_range;
-  parameter.voxel_size = voxel_size;
-
-  parameter.grid_size.resize(3);
-  parameter.grid_size[0] = static_cast<int>(std::round((coors_range[3] - coors_range[0]) / voxel_size[0]));
-  parameter.grid_size[1] = static_cast<int>(std::round((coors_range[4] - coors_range[1]) / voxel_size[1]));
-  parameter.grid_size[2] = 3;
-  parameter.num_feature  = 5;
-  parameter.num_proposal = 2048;
-
-  s_lidar_engine = create_engine(parameter);
-}
-
-void inference_forward(py::array_t<float> points, py::array_t<float> motion, bool runtime,
-                       py::array_t<float> cls_preds, py::array_t<float> box_preds, py::array_t<int> label_preds, py::array_t<float> freespace) {
-  if (s_lidar_engine == nullptr) {
-    LOG_ERROR("Lidar engine is not initialzied");
-    return;
-  }
-
-  s_lidar_engine->forward(points.data(), int(points.unchecked<2>().shape(0)), motion.data(), runtime);
-  s_lidar_engine->get_output(cls_preds.mutable_data(), box_preds.mutable_data(), label_preds.mutable_data(), freespace.mutable_data());
-}
-
-int inference_reset() {
-  return 0;
-}
-
 #else
 
 void inference_init(std::string scn_file, std::string rpn_file,

@@ -16,11 +16,4 @@ if [ ! -f "/usr/local/lib/libzcm.so" ]; then
     cd -
 fi
 
-# RKNN SDK
-if [ -f "/usr/lib/librknnrt.so" ]; then
-    echo "Update RKNN SDK..."
-    cp tools/build/resources/rknn/librknnrt.so /usr/lib/librknnrt.so
-    cp tools/build/resources/rknn/librknn_api.so /usr/lib/librknn_api.so
-fi
-
 ldconfig

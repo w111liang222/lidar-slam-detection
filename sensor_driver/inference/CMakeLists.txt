@@ -18,11 +18,6 @@ else()
     set(CUDA_LIBRARIES "")
 endif()
 
-find_package(RKNN)
-if(RKNN_FOUND)
-    add_definitions(-DHAVE_RKNN_ENABLE)
-endif()
-
 set(CMAKE_C_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS "-std=c++17 -Wno-deprecated-declarations")
 set(CMAKE_BUILD_TYPE "Release")
@@ -38,13 +33,11 @@ link_directories(/usr/local/lib)
 
 include_directories(
     SYSTEM ${CUDA_INCLUDE_DIRS}
-    SYSTEM ${RKNN_INCLUDE_DIRS}
     libspconv/include
 )
 
 add_library(inference SHARED
     tensorRT/lidar_inference.cpp
-    rknn/lidar_inference.cpp
     ${SRC_NV_FILES}
 )
 
@@ -56,7 +49,6 @@ target_include_directories(inference
 
 target_link_libraries(inference
     ${CUDA_LIBRARIES}
-    ${RKNN_LIBRARIES}
     ${NV_LIBRARIES}
     voxelization
     cpp_utils

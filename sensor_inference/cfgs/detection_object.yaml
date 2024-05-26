@@ -45,7 +45,7 @@ MODEL:
 
         DETECTION:
             FEATURE_MAP_STRIDE: 8
-            ENGINE: "TensorRT" # TensorRT, RKNN
+            ENGINE: "TensorRT" # TensorRT
 
             CLASS_NAMES_EACH_HEAD: [
                 ['Vehicle', 'Pedestrian', 'Cyclist', 'Traffic_Cone']
