@@ -103,5 +103,6 @@ uint64_t RosbagReader::readScan(PointCloud::Ptr &scan)
   sensor_msgs::PointCloud2 cloudMsg = *(g_iter++->instantiate<sensor_msgs::PointCloud2>());
   pcl::fromROSMsg(cloudMsg, *scan);
   uint64_t timestamp = cloudMsg.header.stamp.sec * 1000000ULL + cloudMsg.header.stamp.nsec / 1000ULL;
+  scan->header.stamp = timestamp;
   return timestamp;
 }

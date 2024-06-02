@@ -39,6 +39,11 @@ int main(int argc, char *argv[])
   std::string imu_topic        = config["imu_topic"];
   std::string gps_topic        = config["gps_topic"];
 
+  cv::Mat cv_Tvl;
+  Eigen::Matrix4d Tvl;
+  config["extrinsic_lidar"] >> cv_Tvl;
+  cv::cv2eigen(cv_Tvl, Tvl);
+
   printf("create directory \"%s\" to store pkl", pickle_path.c_str());
   create_directory(pickle_path);
 
@@ -59,10 +64,32 @@ int main(int argc, char *argv[])
   rosbag.startScanIter(pointcloud_topic);
   for (uint32_t i = 0; i < frame_size; i++)
   {
+    // parse pointcloud
+    PointCloud::Ptr scan(new PointCloud());
+    curr_scan_stamp = rosbag.readScan(scan);
+    transformPointCloud(scan, Tvl);
+
     if (i > 0) // write synced data to disk
     {
+      // sync imu
+      std::vector<Imu_t> sync_imus = sync_data(curr_scan_stamp, imus);
+      if (sync_imus.size() > 0)
+      {
+        data["ins_valid"] = true;
+        data["imu_data"]  = imu_to_numpy(sync_imus);
+      }
+      // sync gps
+      std::vector<Ins_t> sync_gpss = sync_data(curr_scan_stamp, gpss);
+      if (sync_gpss.size() > 0)
+      {
+        data["ins_data"] = ins_to_dict(sync_gpss.back());
+      }
+
       write_pickle(pickle_path, i - 1, data);
       data = py::dict();
+    } else {
+      std::vector<Imu_t> sync_imus = sync_data(curr_scan_stamp, imus);
+      std::vector<Ins_t> sync_gpss = sync_data(curr_scan_stamp, gpss);
     }
 
     // initialize the data dict
@@ -81,32 +108,18 @@ int main(int argc, char *argv[])
     data["motion_heading"] = 0;
     data["motion_valid"]   = false;
 
-    // parse pointcloud
-    PointCloud::Ptr scan(new PointCloud());
-    curr_scan_stamp = rosbag.readScan(scan);
-    data["points"]["0-Custom"]                     = scan_to_numpy_points(scan);
-    data["points_attr"]["0-Custom"]                = py::dict();
-    data["points_attr"]["0-Custom"]["timestamp"]   = curr_scan_stamp;
-    data["points_attr"]["0-Custom"]["points_attr"] = scan_to_numpy_stamp (scan);
     // timestamp
     uint64_t timestep = prev_scan_stamp == 0 ? 100000 : (curr_scan_stamp - prev_scan_stamp);
     prev_scan_stamp = curr_scan_stamp;
     data["frame_start_timestamp"]                  = curr_scan_stamp;
     data["frame_timestamp_monotonic"]              = curr_scan_stamp;
     data["timestep"]                               = timestep;
-    // sync imu
-    std::vector<Imu_t> sync_imus = sync_data(curr_scan_stamp, imus);
-    if (sync_imus.size() > 0)
-    {
-      data["ins_valid"] = true;
-      data["imu_data"]  = imu_to_numpy(sync_imus);
-    }
-    // sync gps
-    std::vector<Ins_t> sync_gpss = sync_data(curr_scan_stamp, gpss);
-    if (sync_gpss.size() > 0)
-    {
-      data["ins_data"] = ins_to_dict(sync_gpss.back());
-    }
+
+    // convert LiDAR
+    data["points"]["0-Custom"]                     = scan_to_numpy_points(scan);
+    data["points_attr"]["0-Custom"]                = py::dict();
+    data["points_attr"]["0-Custom"]["timestamp"]   = curr_scan_stamp;
+    data["points_attr"]["0-Custom"]["points_attr"] = scan_to_numpy_stamp (scan);
 
     printProgress(double(i) / frame_size);
   }

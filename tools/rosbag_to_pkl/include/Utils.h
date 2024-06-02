@@ -53,12 +53,15 @@ void write_config(std::string filename, py::dict config);
 py::dict generate_sensor_config(cv::FileStorage &config);
 py::array_t<float> generate_identy_matrix();
 
+void transformPointCloud(PointCloud::Ptr &points, Eigen::Matrix4d T);
 py::array_t<float> scan_to_numpy_points(PointCloud::Ptr &p);
 py::array_t<float> scan_to_numpy_stamp (PointCloud::Ptr &p);
 py::array_t<double> imu_to_numpy(std::vector<Imu_t> imus);
 py::dict ins_to_dict(Ins_t ins);
 
 void create_directory(std::string path);
+int getGPSweek(const uint64_t &stamp);
+double getGPSsecond(const uint64_t &stamp);
 
 
 #endif //__UTILS___H

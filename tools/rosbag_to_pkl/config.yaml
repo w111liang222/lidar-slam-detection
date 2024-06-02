@@ -7,7 +7,7 @@ pointcloud_topic: /velodyne_points
 imu_topic: /imu_raw
 gps_topic: /gps
 
-#transform from lidar frame to vehicle frame, Tl,v
+#transform from lidar frame to vehicle frame, Tv,l
 extrinsic_lidar: !!opencv-matrix
    rows: 4
    cols: 4
@@ -17,7 +17,7 @@ extrinsic_lidar: !!opencv-matrix
           0.0, 0.0, 1.0, 0.0,
           0.0, 0.0, 0.0, 1.0]
 
-#transform from imu frame to vehicle frame, Ti,v
+#transform from imu frame to vehicle frame, Tv,i
 extrinsic_imu: !!opencv-matrix
    rows: 4
    cols: 4
@@ -27,7 +27,7 @@ extrinsic_imu: !!opencv-matrix
           0.0, 0.0, 1.0, 0.0,
           0.0, 0.0, 0.0, 1.0]
 
-#transform from imu frame to vehicle frame, Tg,v
+#transform from GPS frame to vehicle frame, Tv,g
 extrinsic_gps: !!opencv-matrix
    rows: 4
    cols: 4
