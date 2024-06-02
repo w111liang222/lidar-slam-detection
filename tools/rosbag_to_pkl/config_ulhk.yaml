@@ -1,16 +1,16 @@
 %YAML:1.0
 
-rosbag_path: PATH_TO_ROSBAG
-pickle_path: PATH_TO_PICKLE
+rosbag_path: "/mnt/d/lsd_data/sad/ulhk/test2.bag"
+pickle_path: "/mnt/d/lsd_data/sad/ulhk/test2"
 
-pointcloud_topic: /velodyne_points
-imu_topic: /imu_raw
-gps_topic: /gps
+pointcloud_topic: /velodyne_points_0
+imu_topic: /imu/data
+gps_topic: /navsat/fix
 
-lidar_type: 4                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for other
-scan_line: -1
-time_scale: 0                # only valid for Velodyne LiDAR(lidar_type=2)
-have_gravity: 1              # gravity is included in accelerate
+lidar_type: 2                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for other
+scan_line: 32
+time_scale: 1e3              # only valid for Velodyne LiDAR(lidar_type=2)
+have_gravity: 0              # gravity is excluded in accelerate
 acc_unit: 0                  # unit of IMU accelerate, 0 for m/s^2, 1 for g
 
 #transform from lidar frame to vehicle frame, Tv,l
@@ -20,7 +20,7 @@ extrinsic_lidar: !!opencv-matrix
    dt: d
    data: [1.0, 0.0, 0.0, 0.0,
           0.0, 1.0, 0.0, 0.0,
-          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 1.0, 1.7,
           0.0, 0.0, 0.0, 1.0]
 
 #transform from imu frame to vehicle frame, Tv,i
@@ -28,9 +28,9 @@ extrinsic_imu: !!opencv-matrix
    rows: 4
    cols: 4
    dt: d
-   data: [1.0, 0.0, 0.0, 0.0,
-          0.0, 1.0, 0.0, 0.0,
-          0.0, 0.0, 1.0, 0.0,
+   data: [0.0, 1.0, 0.0, 0.0,
+         -1.0, 0.0, 0.0, 0.0,
+          0.0, 0.0, 1.0, 1.98,
           0.0, 0.0, 0.0, 1.0]
 
 #transform from GPS frame to vehicle frame, Tv,g

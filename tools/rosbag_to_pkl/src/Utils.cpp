@@ -60,7 +60,7 @@ py::dict generate_sensor_config(cv::FileStorage &config)
   lidar_config["port"]                 = 2688;
   lidar_config["extrinsic_parameters"] = to_list(mat2vector(Tvl));
   lidar_config["range"]                = to_list(std::vector<float>{-1000.0, -1000.0, -10, 1000.0, 1000.0, 10});
-  lidar_config["exclude"]              = to_list(std::vector<float>{-2.0, -2.0, -2.0, 2.0, 2.0, 2.0});
+  lidar_config["exclude"]              = to_list(std::vector<float>{-2.0, -2.0, -2.0, 2.0, 2.0, 4.0});
 
   py::dict sensor_config;
   sensor_config["lidar"]             = to_list(std::vector<py::dict>{lidar_config});
@@ -124,7 +124,7 @@ py::array_t<float> scan_to_numpy_stamp (PointCloud::Ptr &p)
   int size = p->points.size();
   std::vector<float> f(size * 2);
   for (int i = 0; i < size; i++) {
-    f[2 * i + 0] = std::max(i * 100000.0f / size, 0.0f);
+    f[2 * i + 0] = std::max(p->points[i].time, 0.0f) * 1000.0f;
     f[2 * i + 1] = 0;
   }
   return py::array_t<float>(py::array::ShapeContainer({(long) f.size() / 2, 2}), f.data());

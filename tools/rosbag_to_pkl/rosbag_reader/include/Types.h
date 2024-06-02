@@ -9,6 +9,25 @@
 #include <pcl/point_cloud.h>
 #include <pcl/common/transforms.h>
 
+struct FullPointType {
+    PCL_ADD_POINT4D;
+    float range = 0;
+    float radius = 0;
+    uint8_t intensity = 0;
+    uint8_t ring = 0;
+    uint8_t angle = 0;
+    float time = 0;
+    float height = 0;
+
+    inline FullPointType() {}
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(FullPointType,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, range, range)(float, radius, radius)(
+                                  std::uint8_t, intensity, intensity)(std::uint16_t, angle, angle)(
+                                  std::uint8_t, ring, ring)(double, time, time)(float, height, height))
+
 namespace velodyne_ros {
 struct EIGEN_ALIGN16 Point {
     PCL_ADD_POINT4D;
@@ -48,7 +67,7 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(ouster_ros::Point,
                                   (std::uint16_t, ambient, ambient)
                                   (std::uint32_t, range, range))
 
-typedef pcl::PointXYZI Point;
+typedef FullPointType Point;
 typedef pcl::PointCloud<Point> PointCloud;
 
 struct Imu_t {

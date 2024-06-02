@@ -27,7 +27,7 @@ void printProgress(double percentage)
 class RosbagReader
 {
 public:
-  RosbagReader(std::string file);
+  RosbagReader(std::string file, std::string config_path);
   virtual ~RosbagReader();
   uint32_t getFrameSize(std::string topic);
   std::vector<Imu_t> readImu(std::string topic);
@@ -37,6 +37,7 @@ public:
   uint64_t readScan(PointCloud::Ptr &scan);
 
 private:
+  cv::FileStorage mConfig;
   void *mBag;
   void *mScanView;
 };

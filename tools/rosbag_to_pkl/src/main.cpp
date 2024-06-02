@@ -31,8 +31,16 @@ int main(int argc, char *argv[])
   sig_handler.sa_flags = 0;
   sigaction(SIGINT, &sig_handler, NULL);
 
+  std::string config_path;
+  if (argc == 1) {
+    config_path = "../config.yaml";
+  } else {
+    config_path = argv[1];
+  }
+  printf("use config: %s\n", config_path.c_str());
+
   // parse config yaml
-  cv::FileStorage config("../config.yaml", cv::FileStorage::READ);
+  cv::FileStorage config(config_path, cv::FileStorage::READ);
   std::string rosbag_path      = config["rosbag_path"];
   std::string pickle_path      = config["pickle_path"];
   std::string pointcloud_topic = config["pointcloud_topic"];
@@ -52,7 +60,7 @@ int main(int argc, char *argv[])
   write_config(pickle_path + "/" + "cfg.yaml", sensor_config);
 
   // parse rosbag
-  RosbagReader rosbag(rosbag_path);
+  RosbagReader rosbag(rosbag_path, config_path);
   std::vector<Imu_t> imus = rosbag.readImu(imu_topic);
   std::vector<Ins_t> gpss = rosbag.readGps(gps_topic);
 
