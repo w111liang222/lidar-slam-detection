@@ -20,9 +20,9 @@ make
 
 ## Convert rosbag
 
-You should modify the items in **tools/rosbag_to_pkl/config.yaml** to match your bags.
+You should modify the items in **tools/rosbag_to_pkl/config_xxx.yaml** to match your bags.
 ```shell
-./rosbag_to_pkl
+./rosbag_to_pkl ../config_xxx.yaml
 ```
 the converted data will be found in **pickle_path**
 
