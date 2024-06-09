@@ -1,5 +1,6 @@
 %YAML:1.0
 
+dataset: "ULHK"
 rosbag_path: "/mnt/d/lsd_data/sad/ulhk/test2.bag"
 pickle_path: "/mnt/d/lsd_data/sad/ulhk/test2"
 

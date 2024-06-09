@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   pcl_ros
   nav_msgs
+  nmea_msgs
   sensor_msgs
   cv_bridge
   )
@@ -28,6 +29,7 @@ include_directories(include
 
 add_library(rosbag_reader SHARED
     src/cloud_convert.cpp
+    src/nmea_converter_core.cpp
     src/RosbagReader.cpp
     )
 

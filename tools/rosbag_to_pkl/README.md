@@ -2,6 +2,12 @@
 
 This tool convert the rosbag to pickle files
 
+## Requirements
+
+```shell
+sudo apt install ros-noetic-nmea-msgs
+```
+
 ## Build and Run
 
 This tool should be built on a ROS installed PC (NOT inside the provided test docker)

@@ -11,6 +11,7 @@
 #include <rosbag/view.h>
 
 #include "cloud_convert.h"
+#include "nmea_converter.hpp"
 
 static CloudConvert g_cloud_convert;
 static rosbag::View::iterator g_iter;
@@ -19,6 +20,7 @@ RosbagReader::RosbagReader(std::string file, std::string config_path)
 {
   pcl::console::setVerbosityLevel(pcl::console::VERBOSITY_LEVEL::L_ERROR);
   mConfig.open(config_path, cv::FileStorage::READ);
+  mConfig["dataset"] >> mDataSet;
   g_cloud_convert.init(mConfig["lidar_type"], mConfig["scan_line"], mConfig["time_scale"]);
 
   mBag = new rosbag::Bag();
@@ -50,8 +52,11 @@ std::vector<Imu_t> RosbagReader::readImu(std::string topic)
   int have_gravity = mConfig["have_gravity"];
   int acc_unit     = mConfig["acc_unit"];
   std::vector<Imu_t> imus;
+  size_t message_counter = 0;
   for (const rosbag::MessageInstance& m : view)
   {
+    printProgress(double(++message_counter) / view.size());
+    // parse & convert
     sensor_msgs::Imu imuMsg = *(m.instantiate<sensor_msgs::Imu>());
     Imu_t imu;
     imu.timestamp = imuMsg.header.stamp.sec * 1000000ULL + imuMsg.header.stamp.nsec / 1000ULL;
@@ -62,8 +67,6 @@ std::vector<Imu_t> RosbagReader::readImu(std::string topic)
     imu.acc_y     = imuMsg.linear_acceleration.y * (acc_unit == 0 ? 1.0 : 9.81);
     imu.acc_z     = imuMsg.linear_acceleration.z * (acc_unit == 0 ? 1.0 : 9.81) + (have_gravity == 0 ? 9.81 : 0.0);
     imus.push_back(imu);
-
-    printProgress(double(imus.size()) / view.size());
   }
   return imus;
 }
@@ -76,18 +79,35 @@ std::vector<Ins_t> RosbagReader::readGps(std::string topic)
   printf("\nstart to convert GPS topics, total num: %u\n", view.size());
 
   std::vector<Ins_t> gpss;
+  size_t message_counter = 0;
   for (const rosbag::MessageInstance& m : view)
   {
-    sensor_msgs::NavSatFix gpsMsg = *(m.instantiate<sensor_msgs::NavSatFix>());
+    printProgress(double(++message_counter) / view.size());
+    // convert
+    sensor_msgs::NavSatFix gpsMsg;
+    if (mDataSet.compare("UTBM") == 0) {
+      static nmea_msgs::Sentence sentence;
+      nmea_msgs::Gpgga gga;
+      nmea_msgs::Gprmc rmc;
+      auto msg = m.instantiate<nmea_msgs::Sentence>();
+      sentence.header = msg->header;
+      sentence.sentence = msg->sentence;
+      nmea_converter(sentence, &gpsMsg, &gga, &rmc);
+      if (gpsMsg.header.stamp.toSec() == 0) {
+        continue;
+      }
+    } else {
+      gpsMsg = *(m.instantiate<sensor_msgs::NavSatFix>());
+      gpsMsg.status.status = 0; // Fix
+    }
+
     Ins_t gps;
     gps.timestamp = gpsMsg.header.stamp.sec * 1000000ULL + gpsMsg.header.stamp.nsec / 1000ULL;
     gps.latitude  = gpsMsg.latitude;
     gps.longitude = gpsMsg.longitude;
     gps.altitude  = gpsMsg.altitude;
-    gps.status    = 1; // gpsMsg.status.status;
+    gps.status    = (gpsMsg.status.status == 0) ? 1 : 0;
     gpss.push_back(gps);
-
-    printProgress(double(gpss.size()) / view.size());
   }
   return gpss;
 }

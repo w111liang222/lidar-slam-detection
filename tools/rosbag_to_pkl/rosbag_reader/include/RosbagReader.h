@@ -38,6 +38,7 @@ public:
 
 private:
   cv::FileStorage mConfig;
+  std::string mDataSet;
   void *mBag;
   void *mScanView;
 };
