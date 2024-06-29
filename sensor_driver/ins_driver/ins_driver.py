@@ -18,10 +18,12 @@ class InsDriver():
         driver.destory_ins()
 
     def start(self):
-        driver.start_capture(int(self.port), self.device)
+        if self.mode == "online":
+            driver.start_capture(int(self.port), self.device)
 
     def stop(self):
-        driver.stop_capture()
+        if self.mode == "online":
+            driver.stop_capture()
 
     def start_relay(self, dest_ip):
         driver.start_transfer(dest_ip)
