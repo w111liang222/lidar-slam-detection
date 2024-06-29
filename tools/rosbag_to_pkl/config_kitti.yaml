@@ -1,0 +1,49 @@
+%YAML:1.0
+
+dataset: "KITTI"
+rosbag_path: "/mnt/d/opendataset/kitti/kitti_2011_09_30_drive_0028_synced.bag"
+pickle_path: "/mnt/d/opendataset/kitti/kitti_2011_09_30_drive_0028_synced"
+
+pointcloud_topic: /kitti/velo/pointcloud
+imu_topic: /kitti/oxts/imu
+gps_topic: /kitti/oxts/gps/fix
+
+lidar_type: 2                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 4 for other
+scan_line: 32
+time_scale: 1e-3             # only valid for Velodyne LiDAR(lidar_type=2)
+have_gravity: 1              # gravity is included in accelerate
+acc_unit: 0                  # unit of IMU accelerate, 0 for m/s^2, 1 for g
+
+
+#transform from lidar frame to vehicle frame, Tv,l
+extrinsic_lidar: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [0.9999976, -0.0007854026999999998, 0.002024405999999999, -0.592821356284,
+          0.0007553070999999999, 0.9998898000000001, 0.01482454, 0.02563599272450003,
+          -0.002035826, -0.01482298, 0.9998880999999999, 1.73073697293,
+          0, 0, 0, 1]
+
+
+#transform from imu frame to vehicle frame, Tv,i
+extrinsic_imu: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [1.0, 0.0, 0.0, -1.405,
+          0.0, 1.0, 0.0,  0.32,
+          0.0, 0.0, 1.0,  0.93,
+          0.0, 0.0, 0.0,  1.0]
+
+#transform from GPS frame to vehicle frame, Tv,g
+extrinsic_gps: !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: d
+   data: [1.0, 0.0, 0.0, -1.405,
+          0.0, 1.0, 0.0,  0.32,
+          0.0, 0.0, 1.0,  0.93,
+          0.0, 0.0, 0.0,  1.0]
+
+gps_mode: 3 # mode 2: lat+lon, mode 3: lat+lon+alt
