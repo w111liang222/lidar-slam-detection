@@ -201,6 +201,57 @@ void undistortPoints(const Eigen::Matrix4f &preT, const Eigen::Matrix4f &nextT, 
     }
 }
 
+void undistortPoints(std::vector<PoseType> &poses, PointCloudAttrPtr &points) {
+    int idx = 0;
+    int num = points->cloud->points.size();
+    for (int i = 1; i < poses.size(); i++) {
+        double scan_period    = (poses[i].timestamp - poses[0].timestamp) / 1000000.0;
+        Eigen::Matrix4f preT  = poses[0].T.cast<float>();
+        Eigen::Matrix4f nextT = poses[i].T.cast<float>();
+
+        Eigen::Matrix3f rotation_matrix = preT.block<3, 3>(0, 0);
+        Eigen::Quaternionf rotation(rotation_matrix);
+        Eigen::Quaternionf rotation_inverted(rotation.w(), -rotation.x(), -rotation.y(), -rotation.z());
+        Eigen::Vector3f translation = preT.block<3, 1>(0, 3);
+        Eigen::Vector3f trans_inverted = -(rotation_inverted * translation);
+
+        Eigen::Quaternionf next_rotation(nextT.block<3, 3>(0, 0));
+        Eigen::Vector3f next_translation = nextT.block<3, 1>(0, 3);
+
+        Eigen::Vector3f delta_translation = trans_inverted + rotation_inverted * next_translation;
+        Eigen::Quaternionf delta_rotation = rotation_inverted * next_rotation;
+        Eigen::AngleAxisf angle_axis(delta_rotation);
+
+        for(; idx < num; idx++) {
+            if (points->attr[idx].stamp > (poses[i].timestamp - points->cloud->header.stamp)) {
+                break;
+            }
+            float t_diff_ratio = (points->attr[idx].stamp / 1000000.0) / scan_period;
+            Eigen::Matrix<float, 6, 1> log_vector = t_diff_ratio * (Eigen::Matrix<float, 6, 1>() << delta_translation, angle_axis.angle() * angle_axis.axis()).finished();
+
+            Eigen::Affine3f pcl_transform = Eigen::Affine3f::Identity();
+            constexpr double kEpsilon = 1e-8;
+            const float norm = log_vector.tail<3>().norm();
+            if (norm < kEpsilon) {
+                Eigen::Vector3f tmp_translation = log_vector.head<3>();
+                Eigen::Quaternionf tmp_rotation(Eigen::Quaternionf::Identity());
+                Eigen::Vector3f new_translation = translation + rotation * tmp_translation;
+                Eigen::Quaternionf new_rotation = rotation * tmp_rotation;
+                pcl_transform.matrix().block<3, 1>(0, 3) = new_translation;
+                pcl_transform.matrix().block<3, 3>(0, 0) = new_rotation.toRotationMatrix();
+            } else {
+                Eigen::Vector3f tmp_translation = log_vector.head<3>();
+                Eigen::Quaternionf tmp_rotation(Eigen::AngleAxisf(norm,  log_vector.tail<3>() / norm));
+                Eigen::Vector3f new_translation = translation + rotation * tmp_translation;
+                Eigen::Quaternionf new_rotation = rotation * tmp_rotation;
+                pcl_transform.matrix().block<3, 1>(0, 3) = new_translation;
+                pcl_transform.matrix().block<3, 3>(0, 0) = new_rotation.toRotationMatrix();
+            }
+            points->cloud->points[idx] = pcl::transformPoint(points->cloud->points[idx], pcl_transform);
+        }
+    }
+}
+
 void imageCvtColor(cv::Mat &image) {
     // convert colorspace from YUV I420 to BGR
     if (image.type() == CV_8UC1) {

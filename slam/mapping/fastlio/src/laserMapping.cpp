@@ -648,6 +648,24 @@ std::vector<double> get_fastlio_odom()
     return state;
 }
 
+std::vector<double> get_fastlio_state()
+{
+    std::vector<double> state = get_fastlio_odom();
+    state.push_back(state_point.vel(0));
+    state.push_back(state_point.vel(1));
+    state.push_back(state_point.vel(2));
+    state.push_back(state_point.ba(0));
+    state.push_back(state_point.ba(1));
+    state.push_back(state_point.ba(2));
+    state.push_back(state_point.bg(0));
+    state.push_back(state_point.bg(1));
+    state.push_back(state_point.bg(2));
+    state.push_back(state_point.grav[0]);
+    state.push_back(state_point.grav[1]);
+    state.push_back(state_point.grav[2]);
+    return state;
+}
+
 // void publish_odometry(const ros::Publisher & pubOdomAftMapped)
 // {
 //     odomAftMapped.header.frame_id = "camera_init";

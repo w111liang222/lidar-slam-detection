@@ -326,7 +326,7 @@ bool SLAM::run(const uint64_t &timestamp,
 
   // mSlam->getTimedPose(rtk_ptr->timestamp, odom);
   pose.T         = odom;
-  pose.timestamp = frame.points->cloud->header.stamp;
+  pose.timestamp = timestamp;
 
   // localization mode
   if (mMappingMode == modeType::Localization) {

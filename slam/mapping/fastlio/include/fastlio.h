@@ -49,7 +49,9 @@ class HDL_FastLIO : public SlamBase {
 
   RWQueue<PointCloudType*> mFloorQueue;
   RWQueue<Eigen::Isometry3d> mOdomQueue;
+  uint64_t mLastStamp;
   Eigen::Matrix4d mLastOdom;
+  PointCloudAttrImagePose mLastFrame;
 
   bool mThreadStart;
   std::unique_ptr<std::thread> mLioThread;

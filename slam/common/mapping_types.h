@@ -171,7 +171,15 @@ struct PointCloudType {
 
 struct PointCloudAttrImagePose {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  PointCloudAttrImagePose() {}
+  PointCloudAttrImagePose() {
+    points = PointCloudAttrPtr(new PointCloudAttr());
+  }
+  PointCloudAttrImagePose(const PointCloudAttrImagePose &in) {
+    points = in.points;
+    images = in.images;
+    images_stream = in.images_stream;
+    T = in.T;
+  }
   PointCloudAttrImagePose(const PointCloudAttrPtr &in) {
     points = in;
     T = Eigen::Isometry3d::Identity();

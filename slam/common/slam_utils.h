@@ -23,6 +23,7 @@ void getRPYTfromTransformFrom(Eigen::Matrix4d tran, double &x, double &y, double
 Eigen::Matrix4d computeRTKTransform(UTMProjector &projector, std::shared_ptr<RTKType> &data, Eigen::Vector3d &zero_utm);
 Eigen::Matrix4d interpolateTransform(Eigen::Matrix4d &preT, Eigen::Matrix4d &nextT, double &t_diff_ratio);
 void undistortPoints(const Eigen::Matrix4f &preT, const Eigen::Matrix4f &nextT, PointCloudAttrPtr &points, double scan_period);
+void undistortPoints(std::vector<PoseType> &poses, PointCloudAttrPtr &points);
 void pointsDistanceFilter(PointCloud::Ptr& cloud, PointCloud::Ptr& filtered, double min_range, double max_range);
 PointCloudAttrPtr mergePoints(const std::string &base, std::map<std::string, PointCloudAttrPtr> &points, const uint64_t &scan_period);
 void imageCvtColor(cv::Mat &image);

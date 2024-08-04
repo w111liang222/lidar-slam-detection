@@ -11,6 +11,69 @@ void fastlio_imu_enqueue(ImuType imu);
 void fastlio_pcl_enqueue(PointCloudAttrPtr &points, bool sync);
 bool fastlio_main();
 std::vector<double> get_fastlio_odom();
+std::vector<double> get_fastlio_state();
+
+void undistortion(uint64_t last_stamp, PointCloudAttrPtr &frame, std::vector<ImuType> &imus, Eigen::Matrix4d &staticTrans) {
+  // prediction from last frame start stamp
+  std::vector<double> state = get_fastlio_state();
+  PoseType last_pose;
+  last_pose.timestamp = last_stamp;
+  last_pose.T = Eigen::Matrix4d::Identity();
+  last_pose.T.topRightCorner<3, 1>() = Eigen::Vector3d(state[0], state[1], state[2]);
+  last_pose.T.topLeftCorner<3, 3>()  = Eigen::Quaterniond(state[6], state[3], state[4], state[5]).normalized().toRotationMatrix();
+
+  std::vector<PoseType> imu_poses;
+  imu_poses.push_back(last_pose);
+
+  Eigen::Vector3d last_vec = Eigen::Vector3d(state[7], state[8], state[9]);
+  Eigen::Vector3d last_acc = imus[0].acc;
+  Eigen::Vector3d last_gyr = imus[0].gyr;
+  for (int i = 0; i < imus.size(); i++) {
+    Eigen::Vector3d acc_mean = 0.5 * (last_acc + imus[i].acc);
+    Eigen::Vector3d gyr_mean = 0.5 * (last_gyr + imus[i].gyr);
+    acc_mean[0] = acc_mean[0] - state[10];
+    acc_mean[1] = acc_mean[1] - state[11];
+    acc_mean[2] = acc_mean[2] - state[12];
+    gyr_mean[0] = gyr_mean[0] - state[13];
+    gyr_mean[1] = gyr_mean[1] - state[14];
+    gyr_mean[2] = gyr_mean[2] - state[15];
+
+    PoseType pose;
+    pose.timestamp = static_cast<uint64_t>(imus[i].stamp * 1000000);
+    double dt = (pose.timestamp - imu_poses[i].timestamp) / 1000000.0;
+
+    Eigen::Quaterniond rot = Eigen::Quaterniond(imu_poses[i].T.topLeftCorner<3, 3>()).normalized();
+    rot = rot * Eigen::Quaterniond(1, gyr_mean[0] * dt / 2, gyr_mean[1] * dt / 2, gyr_mean[2] * dt / 2).normalized();
+
+    acc_mean    = rot * acc_mean;
+    acc_mean[0] = acc_mean[0] + state[16];
+    acc_mean[1] = acc_mean[1] + state[17];
+    acc_mean[2] = acc_mean[2] + state[18];
+
+    pose.T = Eigen::Matrix4d::Identity();
+    pose.T.topRightCorner<3, 1>() = imu_poses[i].T.topRightCorner<3, 1>() + last_vec * dt + 0.5 * acc_mean * dt * dt;
+    pose.T.topLeftCorner<3, 3>()  = rot.toRotationMatrix();
+    last_vec = last_vec + acc_mean * dt;
+    last_acc = imus[i].acc;
+    last_gyr = imus[i].gyr;
+    imu_poses.push_back(pose);
+  }
+
+  // erase the poses before current frame
+  auto it = imu_poses.begin();
+  while (it->timestamp < frame->cloud->header.stamp) {
+    it = imu_poses.erase(it);
+  }
+
+  // transform from imu to lidar
+  for (int i = 0; i < imu_poses.size(); i++) {
+    imu_poses[i].T = staticTrans.inverse() * imu_poses[i].T * staticTrans;
+  }
+  for (int i = imu_poses.size() - 1; i >= 0; i--) {
+    imu_poses[i].T = imu_poses[0].T.inverse() * imu_poses[i].T;
+  }
+  undistortPoints(imu_poses, frame);
+}
 
 HDL_FastLIO::HDL_FastLIO() : SlamBase(), mOriginIsSet(false) {
   mLidarName = "";
@@ -65,7 +128,9 @@ std::vector<std::string> HDL_FastLIO::setSensors(std::vector<std::string> &senso
 
 bool HDL_FastLIO::init(InitParameter &param) {
   mConfig = param;
+  mLastStamp = 0;
   mLastOdom.setIdentity();
+  mLastFrame.T.setIdentity();
   // fast lio init
   mImuInsStaticTrans = mImuStaticTrans * mStaticTrans.inverse();
   std::vector<double> extrinsicT = {mImuInsStaticTrans(0, 3), mImuInsStaticTrans(1, 3), mImuInsStaticTrans(2, 3)};
@@ -123,38 +188,42 @@ void HDL_FastLIO::feedPointData(const uint64_t &timestamp, std::map<std::string,
   mFrameAttr->cloud = PointCloud::Ptr(new PointCloud(*mFrame));
 
   // process imu data
+  std::vector<ImuType> sync_imu;
   mImuDataMutex.lock();
-  bool use_imu = false;
-  auto it = mImuData.begin();
-  int imu_data_num = 0;
-  Eigen::Vector3d acc_mean(0, 0, 0);
-  Eigen::Vector3d gyr_mean(0, 0, 0);
-  for(it; it != mImuData.end(); it++) {
+  auto it_erase = mImuData.begin();
+  uint64_t last_imu_stamp = 0;
+  for(auto it = mImuData.begin(); it != mImuData.end(); it++) {
     if(mFrame->header.stamp < uint64_t((it->stamp - mConfig.scan_period) * 1000000.0)) {
       break;
     }
-    acc_mean = acc_mean + it->acc;
-    gyr_mean = gyr_mean + it->gyr;
-    imu_data_num++;
+    if (mLastStamp < uint64_t(it->stamp * 1000000.0)) {
+      // check and insert the stamp point of current frame
+      if (last_imu_stamp < mFrame->header.stamp && mFrame->header.stamp < uint64_t(it->stamp * 1000000.0)) {
+        ImuType imu = *it;
+        if (sync_imu.size() > 0) {
+          imu.acc = 0.5 * (imu.acc + sync_imu.back().acc);
+          imu.gyr = 0.5 * (imu.gyr + sync_imu.back().gyr);
+        }
+        imu.stamp = mFrame->header.stamp / 1000000.0;
+        sync_imu.push_back(imu);
+      }
+      sync_imu.push_back(*it);
+    } else {
+      it_erase = it;
+    }
+    last_imu_stamp = uint64_t(it->stamp * 1000000);
   }
-  if (imu_data_num != 0) {
-    acc_mean = acc_mean / imu_data_num;
-    gyr_mean = gyr_mean / imu_data_num;
-    use_imu = true;
-  }
-  mImuData.erase(mImuData.begin(), it);
+  mImuData.erase(mImuData.begin(), it_erase);
   mImuDataMutex.unlock();
 
-  // undistortion pointcloud based on IMU rotation integration
-  if (use_imu) {
-    gyr_mean = Eigen::Quaterniond(mImuInsStaticTrans.topLeftCorner<3, 3>()).normalized().inverse() * gyr_mean;
-    acc_mean = Eigen::Quaterniond(mImuInsStaticTrans.topLeftCorner<3, 3>()).normalized().inverse() * acc_mean;
-    enqueue_graph_imu(mFrame->header.stamp, gyr_mean, acc_mean);
-    Eigen::Matrix4d delta_odom = Eigen::Matrix4d::Identity();
-    delta_odom.block<3, 3>(0, 0) = Eigen::Quaterniond(1, gyr_mean[0] * mConfig.scan_period / 2, gyr_mean[1] * mConfig.scan_period / 2, gyr_mean[2] * mConfig.scan_period / 2).normalized().toRotationMatrix();
-    undistortPoints(Eigen::Matrix4f::Identity(), delta_odom.cast<float>(), mFrameAttr, mConfig.scan_period);
+  if (sync_imu.size() > 0) {
+    ImuType last_imu = sync_imu.back();
+    last_imu.stamp = mFrame->header.stamp / 1000000.0 + mConfig.scan_period;
+    sync_imu.push_back(last_imu);
+    undistortion(mLastStamp, mFrameAttr, sync_imu, mImuInsStaticTrans);
   }
 
+  mLastStamp = mFrame->header.stamp;
   // enqueue to FastLIO engine and floor detection
   fastlio_pcl_enqueue(mFrameAttr, false);
   mFloorQueue.enqueue(new PointCloudType(mFrameAttr->cloud));
@@ -167,10 +236,13 @@ Eigen::Matrix4d HDL_FastLIO::getPose(PointCloudAttrImagePose &frame) {
   Eigen::Matrix4d delta_odom = mLastOdom.inverse() * odom.matrix();
   mLastOdom = odom.matrix();
 
+  // output the last frame (delay 1 frame)
+  frame = mLastFrame;
+  frame.points->T = delta_odom;
+
   // combine whole frame
   mFrameAttr->cloud = mFrame; // restore raw pointcloud
-  mFrameAttr->T = delta_odom;
-  frame = PointCloudAttrImagePose(mFrameAttr, mImages, mImagesStream, odom);
+  mLastFrame = PointCloudAttrImagePose(mFrameAttr, mImages, mImagesStream, odom);
 
   return (get_odom2map() * odom).matrix();
 }
