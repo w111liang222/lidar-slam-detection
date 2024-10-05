@@ -33,9 +33,10 @@ public:
   static double calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, double max_range = std::numeric_limits<double>::max());
 
   static void rebuild_kd_tree(const pcl::PointCloud<PointT>::ConstPtr& cloud);
-  static double fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, const double& floor_height, int& nr, pcl::PointIndices::Ptr &inliers, double max_range = std::numeric_limits<double>::max());
+  static double calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose, int& nr, double max_range = std::numeric_limits<double>::max());
 
   Eigen::MatrixXd calc_information_matrix(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Isometry3d& relpose) const;
+  Eigen::MatrixXd calc_information_matrix(const double& fitness_score) const;
 
   Eigen::MatrixXd const_information_matrix() const;
 

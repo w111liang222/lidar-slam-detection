@@ -105,8 +105,9 @@ class ConfigManager():
 
         return "localhost"
 
-    def dump_config(self, path, sync=True):
-        _d = json.loads(json.dumps(self.config))
+    def dump_config(self, path, config=None, sync=True):
+        config = config if config is not None else self.config
+        _d = json.loads(json.dumps(config))
         try:
             os.umask(0)
             with open(path, 'w', opener=opener) as f:

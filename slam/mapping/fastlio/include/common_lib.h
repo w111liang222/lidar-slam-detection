@@ -73,6 +73,7 @@ struct MeasureGroup     // Lidar data and imu dates for the curent process
     double lidar_end_time;
     PointCloudXYZI::Ptr lidar;
     deque<ImuType> imu;
+    deque<RTKType> ins;
 };
 
 struct StatesGroup

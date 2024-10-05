@@ -6,6 +6,7 @@
 #include <kkl/alg/unscented_kalman_filter.hpp>
 
 #include "Logger.h"
+#include "slam_base.h"
 
 namespace hdl_localization {
 
@@ -141,7 +142,6 @@ bool PoseEstimator::get_timed_pose(RTKType &ins, Eigen::Matrix4d &pose) {
  */
 void PoseEstimator::predict(const uint64_t& stamp) {
   std::lock_guard<std::mutex> lock(data_mutex);
-  last_observation = matrix();
   if ((stamp - init_stamp) / 1000000.0 < cool_time_duration || prev_stamp == 0 || prev_stamp == stamp) {
     prev_stamp = stamp;
     return;
@@ -167,7 +167,6 @@ void PoseEstimator::predict(const uint64_t& stamp) {
  */
 void PoseEstimator::predict(const uint64_t& stamp, const Eigen::Vector3f& acc, const Eigen::Vector3f& gyro) {
   std::lock_guard<std::mutex> lock(data_mutex);
-  last_observation = matrix();
   if ((stamp - init_stamp) / 1000000.0 < cool_time_duration || prev_stamp == 0 || prev_stamp == stamp) {
     prev_stamp = stamp;
     return;
@@ -347,38 +346,10 @@ bool PoseEstimator::match(Eigen::VectorXf &observation, Eigen::MatrixXf &observa
  * @return cloud aligned to the globalmap
  */
 void PoseEstimator::correct(const uint64_t& stamp,
-                            Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-                            boost::optional<Eigen::Matrix4d> &delta_observation,
-                            boost::optional<Eigen::Matrix4d> &vo_observation) {
+                            Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov) {
   std::lock_guard<std::mutex> lock(data_mutex);
   last_correction_stamp = stamp;
   prev_stamp = stamp;
-
-  if (delta_observation) {
-    Eigen::Matrix4f odom_delta = (*delta_observation).cast<float>();
-    Eigen::Quaternionf delta_quat(odom_delta.block<3, 3>(0, 0));
-    Eigen::MatrixXf odom_noise = Eigen::MatrixXf::Identity(7, 7);
-    odom_noise.topLeftCorner(3, 3) = Eigen::Matrix3f::Identity() * odom_delta.block<3, 1>(0, 3).norm() + Eigen::Matrix3f::Identity() * 1e-1;
-    odom_noise.bottomRightCorner(4, 4) = Eigen::Matrix4f::Identity() * (1 - std::abs(delta_quat.w())) + Eigen::Matrix4f::Identity() * 5e-2;
-
-    Eigen::VectorXf odom_obs(7);
-    Eigen::Matrix4f odom = last_observation * odom_delta;
-    Eigen::Quaternionf quat(odom.block<3, 3>(0, 0));
-    odom_obs.middleRows(0, 3) = odom.block<3, 1>(0, 3);
-    odom_obs.middleRows(3, 4) = Eigen::Vector4f(quat.w(), quat.x(), quat.y(), quat.z());
-
-    fusion_pose(observation_cov, odom_noise, observation, odom_obs, observation_cov, observation);
-  }
-
-  // if (vo_observation) {
-  //   Eigen::Matrix4f vo_odom = (*vo_observation).cast<float>();
-  //   Eigen::VectorXf vo_obs(7);
-  //   Eigen::Quaternionf quat(vo_odom.block<3, 3>(0, 0));
-  //   vo_obs.middleRows(0, 3) = vo_odom.block<3, 1>(0, 3);
-  //   vo_obs.middleRows(3, 4) = Eigen::Vector4f(quat.w(), quat.x(), quat.y(), quat.z());
-
-  //   fusion_pose(observation_cov, visual_noise, observation, vo_obs, observation_cov, observation);
-  // }
 
   // ukf->setMeasurementNoiseCov(observation_cov);
   ukf->correct(observation);

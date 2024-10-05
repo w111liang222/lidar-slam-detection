@@ -15,6 +15,20 @@ void Localization::releaseStaticResources() {
   deinit_graph_node();
 }
 
+void Localization::setMapRender(bool enable) {
+  mMap->setMapRender(enable);
+}
+
+void Localization::renderMap(Eigen::Matrix4d pose, PointCloudAttrPtr cloud, std::map<std::string, ImageType> images) {
+  std::map<std::string, ImageType> render_images;
+  for (auto &im : images) {
+    if (getTimedPose(im.second.stamp, im.second.T)) {
+      render_images[im.first] = im.second;
+    }
+  }
+  mMap->render(pose, cloud, render_images);
+}
+
 void Localization::mergeMap(const std::string &directory, std::vector<std::shared_ptr<KeyFrame>> &frames) {
   std::unique_ptr<MapLoader> newMap(new MapLoader());
   InitParameter param = mConfig;
@@ -23,18 +37,17 @@ void Localization::mergeMap(const std::string &directory, std::vector<std::share
     LOG_ERROR("Map Merge: failed to load map: {}", param.map_path);
     return;
   }
-  frames = newMap->mKeyFramesWhole;
   mMap->mergeMap(newMap.get());
-  newMap.reset(nullptr);
+  frames = newMap->mKeyFrames;
 }
 
 Localization::Localization() : SlamBase(), mFrameAttr(nullptr), mGraphKDTree(nullptr) {
-  mOriginIsSet = false;
-  mFailureLocalizeCount = 0;
+  mFailureCounter  = 0;
+  mLocalizationAge = 0;
   mInitialized = false;
   mImageName = "";
   mLidarName = "";
-  mImage = ImageType();
+  mImage = std::map<std::string, ImageType>();
   mLastOdom.setIdentity();
 
   mLocalMapUpdateThread = nullptr;
@@ -56,8 +69,11 @@ Localization::~Localization() {
 void Localization::initLocalizer(uint64_t stamp, const Eigen::Matrix4d& pose) {
   std::lock_guard<std::mutex> lock(mMutex);
   std::lock_guard<std::mutex> localizer_lock(mLocalizerMutex);
+  mFailureCounter  = 0;
+  mLocalizationAge = 0;
+
   mLocalMap = nullptr;
-  mLocalizer.reset(new HdlLocalization(mImageName));
+  mLocalizer.reset(new HdlLocalization());
   mLocalizer->setStaticTransform(mStaticTrans);
   mLocalizer->setImuStaticTransform(mImuStaticTrans);
   mLocalizer->setCameraParams(mCameraParams);
@@ -94,11 +110,10 @@ bool Localization::init(InitParameter &param) {
     return false;
   }
 
-  mOriginIsSet = mMap->originIsSet();
-  mOrigin = mMap->getOrigin();
-  if (mOriginIsSet) {
-    mProjector->FromGlobalToLocal(mOrigin.latitude, mOrigin.longitude, mZeroUtm(0), mZeroUtm(1));
-    mZeroUtm(2) = mOrigin.altitude;
+  mMap->setParameter(mStaticTrans, mCameraParams);
+  if (mMap->originIsSet()) {
+    mProjector->FromGlobalToLocal(mMap->getOrigin().latitude, mMap->getOrigin().longitude, mZeroUtm(0), mZeroUtm(1));
+    mZeroUtm(2) = mMap->getOrigin().altitude;
   }
   // set data for sub modules
   mKeyFrames = mMap->mKeyFrames;
@@ -116,8 +131,24 @@ bool Localization::init(InitParameter &param) {
   return true;
 }
 
+bool Localization::originIsSet() {
+  return mMap->originIsSet();
+}
+
+RTKType& Localization::getOrigin() {
+  return mMap->getOrigin();
+}
+
+MapCoordinateType Localization::getMapCoordinate() {
+  return mMap->getMapCoordinate();
+}
+
 bool Localization::isInited() {
-  return mInitialized;
+  return (mInitialized && isStable());
+}
+
+bool Localization::isStable() {
+  return (mLocalizationAge >= 10);
 }
 
 std::vector<std::string> Localization::setSensors(std::vector<std::string> &sensors) {
@@ -130,11 +161,10 @@ std::vector<std::string> Localization::setSensors(std::vector<std::string> &sens
     if (sensor.compare("RTK") == 0 || sensor.compare("IMU") == 0) {
       sensor_list.push_back(sensor);
     }  else if (sensor.length() < 2 || sensor[1] != '-') { // not a "n-" pattern -> CameraName
+      sensor_list.push_back(sensor);
       if (!is_camera_set) {
         is_camera_set = true;
         mImageName = sensor;
-        sensor_list.push_back(sensor);
-        LOG_INFO("Localization: use Camera: {} to localize", sensor);
       }
     } else {
       sensor_list.push_back(sensor);
@@ -167,7 +197,7 @@ int Localization::getEstimatePose(Eigen::Matrix4d &t) {
 }
 
 void Localization::feedInsData(std::shared_ptr<RTKType> ins) {
-  if (!mOriginIsSet) {
+  if (!originIsSet()) {
     return;
   }
   ins->T = computeRTKTransform(*mProjector, ins, mZeroUtm);
@@ -176,60 +206,67 @@ void Localization::feedInsData(std::shared_ptr<RTKType> ins) {
   } else {
     mLocalizer->feedInsData(ins);
   }
-};
+}
 
 void Localization::feedImuData(ImuType &imu) {
   if (!mInitialized) {
     return;
   }
   mLocalizer->feedImuData(imu);
-};
+}
 
 void Localization::feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) {
   // transform to INS coordinate
-  mFrameAttr = mergePoints(mLidarName, points, uint64_t(mConfig.scan_period * 1000000.0));
+  mFrameAttr = points[mLidarName];
   preprocessPoints(mFrameAttr->cloud, mFrameAttr->cloud);
+  ImageType image = (mImage.find(mImageName) != mImage.end()) ? mImage[mImageName] : ImageType();
 
   if (!mInitialized) {
-    mInitialized = mGlobalLocator->initializePose(mFrameAttr->cloud, std::make_pair(mImageName, mImage), mLastOdom);
+    mInitialized = mGlobalLocator->initializePose(mFrameAttr->cloud, std::make_pair(mImageName, image), mLastOdom);
     if (!mInitialized) {
       return; // pose is not initialized, return
     } else {
-      mFailureLocalizeCount = 0;
       initLocalizer(mFrameAttr->cloud->header.stamp, mLastOdom.matrix());
       mPoseQueue.enqueue(mLastOdom);
     }
   }
 
   // local localization
-  auto result = mLocalizer->localize(mFrameAttr, mImage, mLastOdom);
-  mPoseQueue.enqueue(mLastOdom); // push located pose and check if local map is needed to update
+  auto result = mLocalizer->localize(mFrameAttr, image, mLastOdom);
 
   if (result == LocType::OK) {
-    mFailureLocalizeCount = 0;
-  } else if (result == LocType::ERROR) {
-    mFailureLocalizeCount++;
-    if (mFailureLocalizeCount >= 5) {
-      LOG_ERROR("Localization: failed to localize, fallback to initializing");
-      PoseRange r(-10000, 10000, -10000, 10000);
-      setInitPoseRange(r);
+    mLocalizationAge++;
+    mFailureCounter = 0;
+
+    mPoseQueue.enqueue(mLastOdom); // push located pose and check if local map is needed to update
+    if (isStable()) {
+      renderMap(mLastOdom.matrix(), mFrameAttr, mImage);
     }
+  } else {
+    mFailureCounter++;
+  }
+
+  // check if submap matching error
+  if (mFailureCounter >= 5) {
+    LOG_ERROR("Localization: failed to localize, fallback to initializing");
+    PoseRange r(-10000, 10000, -10000, 10000);
+    setInitPoseRange(r);
   }
 }
 
 void Localization::feedImageData(const uint64_t &timestamp,
                                  std::map<std::string, ImageType> &images,
                                  std::map<std::string, cv::Mat> &images_stream) {
-  if (images.find(mImageName) != images.end()) {
-    mImage = images[mImageName];
-  } else {
-    mImage = ImageType();
-  }
+  mImage = images;
 }
 
 Eigen::Matrix4d Localization::getPose(PointCloudAttrImagePose &frame) {
   frame = PointCloudAttrImagePose(mFrameAttr);
   return mLastOdom.matrix();
+}
+
+std::vector<PoseType> Localization::getOdometrys() {
+  return mMap->mOdometrys;
 }
 
 bool Localization::getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) {
@@ -251,14 +288,11 @@ bool Localization::getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) {
 }
 
 void Localization::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
-  frames = mMap->mKeyFramesWhole;
+  frames = mMap->mKeyFrames;
 }
 
-void Localization::getColorMap(PointCloudRGB::Ptr &points) {
-  std::lock_guard<std::mutex> lock(mLocalizerMutex);
-  if (mInitialized && mLocalizer != nullptr) {
-    mLocalizer->getColorMap(points);
-  }
+void Localization::getColorMap(PointCloudRGB::Ptr& points) {
+  mMap->getColorMap(points);
 }
 
 void Localization::startMapUpdateThread() {
@@ -299,8 +333,15 @@ void Localization::runUpdateLocalMap() {
       std::vector<float> pointDistance(1);
       if (mGraphKDTree->radiusSearch (searchPoint, radius_distance_threshold, pointIdx, pointDistance) > 0) {
         lastPose = pose;
+        float accumDistance = 0;
         mLocalMap = PointCloud::Ptr(new PointCloud());
         for (size_t i = 0; i < pointIdx.size(); i++) {
+          float distance = std::sqrt(pointDistance[i]);
+          if (!mLocalMap->points.empty() && (distance - accumDistance) < mConfig.key_frame_distance) {
+            continue;
+          }
+
+          accumDistance = distance;
           *mLocalMap += *(mKeyFrames[pointIdx[i]]->mTransfromPoints);
           if (mLocalMap->points.size() >= max_local_map_points_num) {
             break;

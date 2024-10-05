@@ -40,14 +40,20 @@ struct PointCloudAttr {
 struct ImageType {
   ImageType() {
     image = cv::Mat();
+    T = Eigen::Matrix4d::Identity();
     stamp = 0;
+    id = 0;
   }
   ImageType(const cv::Mat &i, const uint64_t &t) {
     image = i;
     stamp = t;
+    T = Eigen::Matrix4d::Identity();
+    id = 0;
   }
   cv::Mat image;
+  Eigen::Matrix4d T;
   uint64_t stamp;
+  uint64_t id;
 };
 
 typedef std::shared_ptr<PointCloudAttr> PointCloudAttrPtr;
@@ -60,7 +66,7 @@ struct PoseType {
     status = 0;
     state = "";
     timestamp = 0;
-    T = Eigen::Matrix4d::Zero();
+    T = Eigen::Matrix4d::Identity();
   }
   double latitude;           // deg
   double longitude;          // deg
@@ -178,6 +184,7 @@ struct PointCloudAttrImagePose {
     points = in.points;
     images = in.images;
     images_stream = in.images_stream;
+    imu_poses = in.imu_poses;
     T = in.T;
   }
   PointCloudAttrImagePose(const PointCloudAttrPtr &in) {
@@ -185,10 +192,12 @@ struct PointCloudAttrImagePose {
     T = Eigen::Isometry3d::Identity();
   }
   PointCloudAttrImagePose(const PointCloudAttrPtr &in, const std::map<std::string, ImageType> &im,
-                          const std::map<std::string, cv::Mat> &im_stream, const Eigen::Isometry3d &t) {
+                          const std::map<std::string, cv::Mat> &im_stream, const std::vector<PoseType> &poses,
+                          const Eigen::Isometry3d &t) {
     points = in;
     images = im;
     images_stream = im_stream;
+    imu_poses = poses;
     T = t;
   }
   PointCloudAttrImagePose(const PointCloudAttrPtr &in, const Eigen::Isometry3d &t) {
@@ -198,6 +207,7 @@ struct PointCloudAttrImagePose {
   PointCloudAttrPtr points;
   std::map<std::string, ImageType> images;
   std::map<std::string, cv::Mat> images_stream;
+  std::vector<PoseType> imu_poses;
   Eigen::Isometry3d T;
 };
 

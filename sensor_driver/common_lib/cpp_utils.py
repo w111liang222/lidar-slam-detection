@@ -24,21 +24,15 @@ def get_projection_backward(lat0, lon0, x, y):
 def get_transform_from_RPYT(x, y, z, yaw, pitch, roll):
     return np.array(cpp_utils_ext.get_transform_from_RPYT(x, y, z, yaw, pitch, roll)).reshape(4, 4)
 
-
 def get_RPYT_from_transform(tM):
     return cpp_utils_ext.get_RPYT_from_transform(tM)
-
 
 def get_transform_from_cfg(x, y, z, roll, pitch, yaw):
     return np.array(cpp_utils_ext.get_transform_from_RPYT(x, y, z, yaw, pitch, roll)).reshape(4, 4)
 
-
 def get_cfg_from_transform(tM):
     x, y, z, yaw, pitch, roll = cpp_utils_ext.get_RPYT_from_transform(tM)
     return [x, y, z, roll, pitch, yaw]
-
-def get_global_transform(lat, lon, alt, yaw, pitch, roll):
-    return np.array(cpp_utils_ext.get_global_transform(lat, lon, alt, yaw, pitch, roll)).reshape(4, 4)
 
 def get_transform_from_rtk(lat0, lon0, alt0, yaw0, pitch0, roll0,
                            lat1, lon1, alt1, yaw1, pitch1, roll1):

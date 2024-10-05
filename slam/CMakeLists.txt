@@ -34,10 +34,7 @@ include_directories(
 
 add_subdirectory(common)
 add_subdirectory(backend/hdl_graph_slam)
-add_subdirectory(vio)
 add_subdirectory(mapping/rtkm)
-add_subdirectory(mapping/floam)
-add_subdirectory(mapping/gicpm)
 add_subdirectory(mapping/fastlio)
 add_subdirectory(localization)
 
@@ -46,11 +43,7 @@ add_library(slam SHARED
 )
 
 target_link_libraries(slam
-  ${PCL_LIBRARIES}
-  ${OPENCV_LIB}
   rtkm
-  floam
-  gicpm
   fast_lio
   g2o_backend
   localization

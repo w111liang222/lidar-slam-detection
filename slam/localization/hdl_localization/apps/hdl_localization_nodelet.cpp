@@ -9,12 +9,10 @@
 
 #include <hdl_graph_slam/registrations.hpp>
 #include <hdl_localization/pose_estimator.hpp>
-#include <hdl_localization/delta_estimater.hpp>
 
 #include "slam_base.h"
 #include "mapping_types.h"
 #include "localization_base.h"
-#include "visual_odometry.h"
 
 using namespace hdl_graph_slam;
 using namespace Locate;
@@ -26,8 +24,8 @@ struct RegistrationType {
   }
   pcl::Registration<PointT, PointT>::Ptr registration;
 };
-RWQueue<RegistrationType*> hdlRegistrationQueue;
 
+static RWQueue<RegistrationType*> hdlRegistrationQueue;
 static pcl::Registration<PointT, PointT>::Ptr registration[2];
 
 namespace hdl_localization {
@@ -52,8 +50,6 @@ public:
 #endif
       }
     }
-    visual_odometry.reset(new VisualOdometry());
-    visual_odometry->setParameter(camera_param);
   }
 
   void onDeinit() {
@@ -63,8 +59,6 @@ public:
 
     downsample_filter = nullptr;
     pose_estimator.reset(nullptr);
-    delta_estimator.reset(nullptr);
-    visual_odometry.reset(nullptr);
     RegistrationType *registration_ptr = nullptr;
     while (hdlRegistrationQueue.try_dequeue(registration_ptr)) {
         delete registration_ptr;
@@ -84,14 +78,6 @@ public:
     imu_extrinic = extrinic;
   }
 
-  void setCameraParam(const CamParamType &param) {
-    camera_param = param;
-  }
-
-  void setMapColouration(bool enable) {
-    map_colouration = enable;
-  }
-
   void ins_callback(std::shared_ptr<RTKType> &ins) {
     std::lock_guard<std::mutex> lock(ins_data_mutex);
     if (ins_data.size() >= 10) {
@@ -105,17 +91,6 @@ public:
    * @param imu
    */
   void imu_callback(ImuType& imu) {
-    if (use_delta_estimator && delta_estimator == nullptr) {
-      LOG_INFO("Localization: setup delta estimater");
-      delta_estimator.reset(new hdl_localization::DeltaEstimater());
-      delta_estimator->init(imu_extrinic);
-    }
-    if (delta_estimator) {
-      delta_estimator->feedImuData(imu);
-    }
-    if (visual_odometry) {
-      visual_odometry->feedImuData(imu);
-    }
     std::lock_guard<std::mutex> lock(imu_data_mutex);
     imu_data.push_back(imu);
   }
@@ -188,12 +163,6 @@ public:
     return result;
   }
 
-  void get_color_map(PointCloudRGB::Ptr &points) {
-    if (visual_odometry) {
-      visual_odometry->getColorMap(points);
-    }
-  }
-
   /**
    * @brief callback for point cloud data
    * @param cloud
@@ -219,13 +188,6 @@ public:
       pose_estimator->set_registration(registration_ptr->registration);
       delete registration_ptr;
       last_pingpong_idx.store((last_pingpong_idx + 1) % 2);
-    }
-
-    // enqueue image data to vo
-    bool use_vo = false;
-    Eigen::Matrix4d camera_pose;
-    if (map_colouration && get_timed_pose(image.stamp, camera_pose)) {
-      use_vo = visual_odometry->feedImageData(image.stamp, camera_pose, image.image);
     }
 
     // imu process
@@ -261,34 +223,26 @@ public:
     // undistortion points
     Eigen::Matrix4d start_pose, stop_pose;
     if (get_timed_pose(stamp, start_pose) && get_timed_pose(stamp + pose_estimator->get_dt(), stop_pose)) {
-      undistortPoints(Eigen::Matrix4f::Identity(), (start_pose.inverse() * stop_pose).cast<float>(), cloud, mConfig.scan_period);
+      undistortPoints((start_pose.inverse() * stop_pose).cast<float>(), cloud, mConfig.scan_period);
     }
 
     auto filtered = downsample(cloud->cloud);
-    // enqueue pointcloud to delta estimator
-    if (delta_estimator && use_imu) {
-      delta_estimator->feedPointData(cloud);
-    }
 
     // ins process
     boost::optional<std::shared_ptr<RTKType>> gps_observation;
     ins_data_mutex.lock();
     if (!ins_data.empty()) {
-      if (stamp >= ins_data.back()->timestamp) {
-        gps_observation = ins_data.back();
+      if (stamp > ins_data.back()->timestamp) {
         ins_data.clear();
-      } else if (stamp > ins_data.front()->timestamp && ins_data.size() >= 2) {
-        bool gps_data_valid = true;
+      } else if (stamp >= ins_data.front()->timestamp) {
+        bool gps_data_valid = false;
         auto first_ins  = ins_data.begin();
         auto second_ins = ins_data.begin();
         for(; second_ins != ins_data.end(); second_ins++) {
           auto dt = ((*first_ins)->timestamp - double(stamp)) / 1000000.0;
           auto dt2 = ((*second_ins)->timestamp - double(stamp)) / 1000000.0;
-          if (((*first_ins)->latitude - (*second_ins)->latitude) > 1e-3 || ((*first_ins)->longitude - (*second_ins)->longitude) > 1e-3) {
-            LOG_WARN("localization get wrong GPS data: ({}, {}), ({}, {})", (*first_ins)->latitude, (*first_ins)->longitude, (*second_ins)->latitude, (*second_ins)->longitude);
-            gps_data_valid = false;
-          }
-          if(dt <= 0 && dt2 >= 0) {
+          if(dt <= 0 && dt2 >= 0  && (dt2 - dt) < 0.2) {
+            gps_data_valid = true;
             break;
           }
           first_ins = second_ins;
@@ -317,25 +271,7 @@ public:
       result = pose_estimator->match(observation, observation_cov, gps_observation);
     }
 
-    // get output of visual odometry
-    boost::optional<Eigen::Matrix4d> vo_observation;
-    if (visual_odometry && use_vo) {
-      Eigen::Matrix4d vo_pose;
-      if (visual_odometry->getPose(vo_pose)) {
-        vo_observation = vo_pose;
-      }
-    }
-
-    // get output of delta estimater
-    boost::optional<Eigen::Matrix4d> delta_observation;
-    if (delta_estimator && use_imu) {
-      Eigen::Matrix4d delta;
-      if (delta_estimator->getDeltaOdom(delta)) {
-        delta_observation = delta;
-      }
-    }
-
-    pose_estimator->correct(stamp, observation, observation_cov, delta_observation, vo_observation);
+    pose_estimator->correct(stamp, observation, observation_cov);
     pose = Eigen::Isometry3d(pose_estimator->matrix().cast<double>());
     update_pose(stamp, pose.matrix());
 
@@ -343,17 +279,6 @@ public:
     if (fitness_score > 1.0) {
       LOG_WARN("localization fitness score is too large, score {}", fitness_score);
       result = false;
-    }
-
-    if (isnan(pose(0, 3)) || isnan(pose(1, 3))) {
-      LOG_ERROR("localization error, pose ({:.2f}, {:.2f})", pose(0, 3), pose(1, 3));
-      result = false;
-    }
-
-    // update map or initialize visual odometry
-    visual_odometry->updateMap(pose.matrix(), cloud->cloud);
-    if (map_colouration && result && !visual_odometry->isInitialized() && get_timed_pose(image.stamp, camera_pose)) {
-      visual_odometry->initialize(image.stamp, camera_pose, image.image, cloud->cloud);
     }
 
     return (result ? LocType::OK : LocType::ERROR);
@@ -420,7 +345,6 @@ public:
 
 private:
   InitParameter mConfig;
-  bool map_colouration;
   std::mutex pose_data_mutex;
   std::vector<std::shared_ptr<PoseType>> pose_data;
   // ins input buffer
@@ -433,13 +357,9 @@ private:
   pcl::Filter<PointT>::Ptr downsample_filter;
 
   // pose estimator
-  bool use_delta_estimator = false;
   Eigen::Matrix4d imu_extrinic;
-  CamParamType camera_param;
   std::mutex pose_estimator_mutex;
   std::unique_ptr<hdl_localization::PoseEstimator> pose_estimator;
-  std::unique_ptr<hdl_localization::DeltaEstimater> delta_estimator;
-  std::unique_ptr<VisualOdometry> visual_odometry;
 
   std::atomic<int> pingpong_idx;
   std::atomic<int> last_pingpong_idx;
@@ -458,14 +378,6 @@ void deinit_hdl_localization_node() {
 
 void set_imu_extrinic_hdl_localization(Eigen::Matrix4d extrinic) {
   hdlLocalizationNode.setImuExtrinic(extrinic);
-}
-
-void set_camera_param_hdl_localization(const CamParamType &param) {
-  hdlLocalizationNode.setCameraParam(param);
-}
-
-void set_map_colouration_hdl_localization(bool enable) {
-  hdlLocalizationNode.setMapColouration(enable);
 }
 
 void set_initpose_hdl_localization(uint64_t stamp, const Eigen::Matrix4d& pose) {
@@ -490,10 +402,6 @@ bool get_timed_pose_hdl_localization(uint64_t timestamp, Eigen::Matrix4d &pose) 
 
 bool get_timed_pose_hdl_localization(RTKType &ins, Eigen::Matrix4d &pose) {
   return hdlLocalizationNode.get_timed_pose(ins, pose);
-}
-
-void get_color_map_hdl_localization(PointCloudRGB::Ptr &points) {
-  hdlLocalizationNode.get_color_map(points);
 }
 
 LocType enqueue_hdl_localization(PointCloudAttrPtr& cloud, ImageType& image, Eigen::Isometry3d& pose) {

@@ -1,20 +1,24 @@
 #include "UTMProjector.h"
+#include <iostream>
 #include <cmath>
 
 const double PI = 3.1415926535897932384626433832795;
 
 UTMProjector::UTMProjector(int zoneWidth) {
   mZoneWidth = zoneWidth;
+  mProjectNo = -1;
 }
 UTMProjector::~UTMProjector() {}
 
 int UTMProjector::FromGlobalToLocal(double latitude, double longitude,
                                     double &x, double &y) {
   double iPI = PI / 180;
-  int mZoneWidth = 6;
   double a = 6378137.0;
   double f = 1.0 / 298.257222101;
-  int ProjNo = floor(longitude / mZoneWidth);
+  if (mProjectNo < 0) {
+    mProjectNo = floor(longitude / mZoneWidth);
+  }
+  double ProjNo = mProjectNo;
   double longitude0 = ProjNo * mZoneWidth + mZoneWidth / 2;
   longitude0 = longitude0 * iPI;
   double latitude0 = 0;
@@ -56,7 +60,10 @@ int UTMProjector::FromLocalToGlobal(double x, double y, double &latitude,
   double mZoneWidth = 6;
   double a = 6378137.0;
   double f = 1.0 / 298.257222101;
-  double ProjNo = floor(x / 1000000);
+  if (mProjectNo < 0) {
+    mProjectNo = floor(x / 1000000) - 1;
+  }
+  double ProjNo = mProjectNo + 1;
   double longitude0 = (ProjNo - 1) * mZoneWidth + mZoneWidth / 2;
   longitude0 = longitude0 * iPI;
   double X0 = ProjNo * 1000000 + 500000;
@@ -99,4 +106,17 @@ int UTMProjector::FromLocalToGlobal(double x, double y, double &latitude,
   longitude = longitude1 / iPI;
   latitude = latitude1 / iPI;
   return 0;
+}
+
+double UTMProjector::GetLongitude0() {
+  if (mProjectNo < 0) {
+    std::cerr << "WARN: UTM Projection is not initialized!" << std::endl;
+  }
+
+  return mProjectNo * mZoneWidth + mZoneWidth / 2;
+}
+
+double get_grid_convergence(const double &longitude0, const double &lat, const double &lon) {
+  double converage = std::atan(std::tan((lon - longitude0) / 180.0 * M_PI) * std::sin(lat / 180.0 * M_PI)) * 180.0 / M_PI;
+  return converage;
 }

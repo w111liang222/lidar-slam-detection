@@ -38,8 +38,9 @@
 
 namespace hdl_graph_slam {
 
-const int ODOMETRY_LOCAL_MAP_NUM = 100000;
-const int NORMAL_VERTEX_ID_OFFSET = 100000;
+const double ODOMETRY_LOCAL_MAP_DIST = 2.0;
+const int ODOMETRY_LOCAL_MAP_NUM     = 100000;
+const int NORMAL_VERTEX_ID_OFFSET    = 100000;
 
 class HdlGraphSlamNodelet {
 public:
@@ -53,16 +54,15 @@ public:
     init_config = param;
 
     // keyframe selector
-    initialized = false;
     best_score = std::numeric_limits<double>::max();
     best_inlier_ratio = 0.0;
     average_score = 0.0;
     map_keyframe_count = 0;
+    map_keyframe_step = std::max(1, int(std::round(ODOMETRY_LOCAL_MAP_DIST / param.key_frame_distance)));
     best_frame = PointCloudAttrImagePose();
-    best_align_frame = PointCloud::Ptr(new PointCloud());
+    best_frame_cloud = PointCloud::Ptr(new PointCloud());
     odom_local_map = PointCloud::Ptr(new PointCloud());
 
-    map_cloud_resolution = 0.05;
     trans_odom2map.setIdentity();
     keyframe_queue.clear();
     floor_coeffs_queue.clear();
@@ -70,8 +70,6 @@ public:
     imu_queue.clear();
     keyframes_snapshot.clear();
     new_keyframes.clear();
-
-    max_keyframes_per_update = 10;
 
     //
     fix_first_node = true;
@@ -107,8 +105,6 @@ public:
     imu_acceleration_edge_stddev = 100.0;
     imu_last_update_id = 0;
 
-    points_topic = "/velodyne_points";
-
     graph_updated = false;
     graph_loop_detected = false;
     double graph_update_interval = 3.0;
@@ -122,7 +118,7 @@ public:
   virtual void deInit() {
     LOG_INFO("releasing hdl graph nodelet...");
     best_frame = PointCloudAttrImagePose();
-    best_align_frame = nullptr;
+    best_frame_cloud = nullptr;
     odom_local_map = nullptr;
 
     keyframe_queue.clear();
@@ -179,6 +175,7 @@ public:
     if (keyframe_updater->is_first_frame()) {
       keyframe_updater->update(odom);
       frame.points->cloud = downsample(frame.points->cloud);
+      // frame.points->cloud = filter(frame.points->cloud, 0.5);
       pcl::transformPointCloud(*frame.points->cloud, *odom_local_map, odom.matrix());
       InformationMatrixCalculator::rebuild_kd_tree(odom_local_map);
       return false;
@@ -191,72 +188,34 @@ public:
       return false;
     }
 
-    // get odometry to map
-    trans_odom2map_mutex.lock();
-    Eigen::Isometry3d odometry2map = Eigen::Isometry3d(trans_odom2map.cast<double>());
-    trans_odom2map_mutex.unlock();
-
     // undistortion pointcloud
-    Eigen::Matrix4f delta_odom = (frame.points->T).cast<float>();
-    undistortPoints(Eigen::Matrix4f::Identity(), delta_odom, frame.points, init_config.scan_period);
+    if (frame.imu_poses.empty()) {
+      Eigen::Matrix4f delta_odom = (frame.points->T).cast<float>();
+      undistortPoints(delta_odom, frame.points, init_config.scan_period);
+    } else{
+      undistortPoints(frame.imu_poses, frame.points);
+    }
 
     // downsample pointcloud
     frame.points->cloud = downsample(frame.points->cloud);
 
-    // transform to odometry coordinate
-    PointCloud::Ptr aligned(new PointCloud());
-    pcl::transformPointCloud(*frame.points->cloud , *aligned, odom.matrix());
+    // filter the ground points
+    // PointCloud::Ptr frame_cloud = filter(frame.points->cloud, 0.5);
+	PointCloud::Ptr frame_cloud = frame.points->cloud;
 
     // calculate fitness score and find best frame
     int nr = 0;
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    double fitness_score = InformationMatrixCalculator::fitness_score(odom_local_map, aligned, odometry2map, floor_height, nr, inliers, 1.0);
-    float inlier_ratio = float(nr) / aligned->points.size();
+    double fitness_score = InformationMatrixCalculator::calc_fitness_score(odom_local_map, frame_cloud, odom, nr, 1.0);
+    float inlier_ratio = float(nr) / frame_cloud->points.size();
     if ((fitness_score * 0.8 + (1.0 - inlier_ratio) * 0.2)  <= (best_score * 0.8 + (1.0 - best_inlier_ratio) * 0.2)) {
-      if (floor_enable && floor_plane_node != nullptr) {
-        frame.points->cloud = extract(frame.points->cloud, inliers);
-        aligned = extract(aligned, inliers);
-      }
-
       best_score = fitness_score;
       best_inlier_ratio = inlier_ratio;
       best_frame = frame;
-      best_align_frame = aligned;
-    }
-
-    if (initialized && best_score < (average_score * 0.6) && best_inlier_ratio > 0.98) {
-      must_update = true;
+      best_frame_cloud = frame_cloud;
     }
 
     if (must_update) {
       LOG_INFO("map update, average score {}, best score {}, inlier ratio {}, dx {}, da {}", average_score, best_score, best_inlier_ratio, dx, da);
-      if (!initialized) {
-        if (dx < (keyframe_updater->keyframe_delta_trans / 2.0) && da >= (keyframe_updater->keyframe_delta_angle * 3.0 / 2.0)) {
-          LOG_WARN("map initializing, do not allow only rotation, resetting...");
-        } else if (best_score > 0.15 || best_inlier_ratio < 0.85) {
-          LOG_WARN("map initializing, odometry not stable, resetting...");
-        } else {
-          initialized = true;
-          LOG_INFO("map initialize success");
-        }
-      }
-      // if not initialized, reset
-      if (!initialized) {
-        keyframe_updater->reset();
-        best_score = std::numeric_limits<double>::max();
-        return false;
-      }
-
-      // if best frame is not so good, keep finding
-      if (map_keyframe_count > 0 && (best_score > (average_score * 2.0) || best_inlier_ratio < 0.90)) {
-        if (dx < (keyframe_updater->keyframe_delta_trans * 2.0) && da < (keyframe_updater->keyframe_delta_angle * 2.0)) {
-          LOG_WARN("map update, keep finding better keyframe");
-          return false;
-        } else {
-          LOG_WARN("map update, maybe a bad keyframe, stamp {}", best_frame.points->cloud->header.stamp);
-        }
-      }
-
       keyframe_updater->update(odom);
       double accum_d = keyframe_updater->get_accum_distance();
       KeyFrame::Ptr keyframe_ptr(new KeyFrame(best_frame.points->cloud->header.stamp, best_frame.T, accum_d, best_frame.points->cloud));
@@ -265,17 +224,26 @@ public:
         keyframe_queue.push_back(keyframe_ptr);
       }
 
-      // update odometry local map and mean fitness score
-      *odom_local_map += *best_align_frame;
-      if (odom_local_map->points.size() > ODOMETRY_LOCAL_MAP_NUM) {
-        odom_local_map->erase(odom_local_map->begin(), odom_local_map->begin() + (odom_local_map->points.size() - ODOMETRY_LOCAL_MAP_NUM));
-      }
-      InformationMatrixCalculator::rebuild_kd_tree(odom_local_map);
+      // update mean score
       map_keyframe_count += 1;
       average_score = (average_score * (map_keyframe_count - 1) + best_score) / map_keyframe_count;
       best_score = std::numeric_limits<double>::max();
 
+      // update odometry local map
+      if ((map_keyframe_count % map_keyframe_step) == 0) {
+        PointCloud::Ptr best_align_frame(new PointCloud());
+        pcl::transformPointCloud(*best_frame_cloud , *best_align_frame, best_frame.T.matrix());
+        *odom_local_map += *best_align_frame;
+        if (odom_local_map->points.size() > ODOMETRY_LOCAL_MAP_NUM) {
+          odom_local_map->erase(odom_local_map->begin(), odom_local_map->begin() + (odom_local_map->points.size() - ODOMETRY_LOCAL_MAP_NUM));
+        }
+        InformationMatrixCalculator::rebuild_kd_tree(odom_local_map);
+      }
+
       // assign the best frame to keyframe
+      trans_odom2map_mutex.lock();
+      Eigen::Isometry3d odometry2map = Eigen::Isometry3d(trans_odom2map.cast<double>());
+      trans_odom2map_mutex.unlock();
       keyframe = best_frame;
       keyframe.T = odometry2map * keyframe.T;
     }
@@ -284,7 +252,7 @@ public:
   }
 
   void wait_for_flush() {
-    LOG_INFO("start wait for flush keyframe queue");
+    // LOG_INFO("start wait for flush keyframe queue");
     // wait for flush keyframe queue
     while(true) {
       keyframe_queue_mutex.lock();
@@ -307,7 +275,7 @@ public:
       usleep(100000);
     }
 
-    LOG_INFO("flush keyframe queue done");
+    // LOG_INFO("flush keyframe queue done");
   }
 
   /**
@@ -327,7 +295,7 @@ public:
     trans_odom2map_mutex.unlock();
 
     int num_processed = 0;
-    for(int i = 0; i < std::min<int>(keyframe_queue_snapshot.size(), max_keyframes_per_update); i++) {
+    for(int i = 0; i < keyframe_queue_snapshot.size(); i++) {
       num_processed = i;
 
       const auto& keyframe = keyframe_queue_snapshot[i];
@@ -415,7 +383,7 @@ public:
       for(; second_gps != gps_queue.end(); second_gps++) {
         auto dt = ((*first_gps)->timestamp - double(keyframe->stamp)) / 1000000.0;
         auto dt2 = ((*second_gps)->timestamp - double(keyframe->stamp)) / 1000000.0;
-        if(dt <= 0 && dt2 >= 0) {
+        if(dt <= 0 && dt2 >= 0 && (dt2 - dt) < 2.0) {
           break;
         }
         first_gps = second_gps;
@@ -432,7 +400,7 @@ public:
       // convert (latitude, longitude, altitude) -> (easting, northing, altitude) in UTM coordinate
       int gps_dim = (*first_gps)->dimension;
       double gps_xyz_stddev = (*first_gps)->precision;
-      double gps_rot_stddev = (*first_gps)->precision;
+      double gps_rot_stddev = (*first_gps)->precision * 10.0;
       Eigen::Matrix4d utm_transform = interpolated_transform(*first_gps, *second_gps, keyframe->stamp);
       Eigen::Vector3d xyz = utm_transform.block<3, 1>(0, 3);
       xyz[2] = (gps_dim == 2) ? 0 : xyz[2];
@@ -724,15 +692,17 @@ public:
     return filtered;
   }
 
-  pcl::PointCloud<PointT>::Ptr extract(const pcl::PointCloud<PointT>::Ptr& cloud, const pcl::PointIndices::Ptr &indices) const {
-    PointCloud::Ptr extract_cloud(new PointCloud());
-    pcl::ExtractIndices<PointT> extract;
-    extract.setInputCloud(cloud);
-    extract.setIndices(indices);
-    extract.setNegative(true);
-    extract.filter(*extract_cloud);
+  pcl::PointCloud<PointT>::Ptr filter(const pcl::PointCloud<PointT>::Ptr& cloud, float floor_height) {
+    pcl::PointCloud<PointT>::Ptr filtered(new pcl::PointCloud<PointT>());
+    std::copy_if(cloud->begin(), cloud->end(), std::back_inserter(filtered->points), [&](const Point& p) {
+        return (p.z > floor_height);
+    });
 
-    return extract_cloud;
+    filtered->width = filtered->size();
+    filtered->height = 1;
+    filtered->is_dense = false;
+    filtered->header = cloud->header;
+    return filtered;
   }
 
   InitParameter init_config;
@@ -740,16 +710,14 @@ public:
   std::mutex trans_odom2map_mutex;
   Eigen::Matrix4f trans_odom2map;
 
-  std::string points_topic;
-
   // keyframe selector
-  bool initialized;
   double best_score;
-  float best_inlier_ratio;
+  float  best_inlier_ratio;
   double average_score = 0.0;
   int    map_keyframe_count = 0;
+  int    map_keyframe_step = 0;
   PointCloudAttrImagePose best_frame;
-  PointCloud::Ptr best_align_frame;
+  PointCloud::Ptr best_frame_cloud;
   PointCloud::Ptr odom_local_map;
 
   // keyframe queue
@@ -787,7 +755,6 @@ public:
   // for map cloud generation
   std::atomic_bool graph_updated;
   std::atomic_bool graph_loop_detected;
-  double map_cloud_resolution;
   std::mutex keyframes_snapshot_mutex;
   std::vector<KeyFrameSnapshot::Ptr> keyframes_snapshot;
 
@@ -921,19 +888,10 @@ void graph_get_edges(std::vector<EdgeType> &edges) {
   }
 }
 
-void graph_add_edge(const PointCloud::Ptr& prev, int prev_id,
-                    const PointCloud::Ptr& next, int next_id,
-                    Eigen::Isometry3d &relative_pose) {
+void graph_add_vertex(int id) {
   if (graphNode.graph_slam == nullptr) {
     return;
   }
-
-  graphNode.wait_for_flush();
-  Eigen::MatrixXd information = graphNode.inf_calclator->calc_information_matrix(prev, next, relative_pose);
-  g2o::VertexSE3* prev_node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[prev_id]);
-  g2o::VertexSE3* next_node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[next_id]);
-  auto edge = graphNode.graph_slam->add_se3_edge(prev_node, next_node, relative_pose, information);
-  graphNode.graph_slam->add_robust_kernel(edge, "Huber", 1.0);
 }
 
 void graph_del_vertex(int id) {
@@ -961,6 +919,46 @@ void graph_del_vertex(int id) {
   graphNode.graph_updated = false;
 }
 
+void graph_add_edge(const PointCloud::Ptr& prev, int prev_id,
+                    const PointCloud::Ptr& next, int next_id,
+                    Eigen::Isometry3d &relative_pose,
+                    double score) {
+  if (graphNode.graph_slam == nullptr) {
+    return;
+  }
+
+  graphNode.wait_for_flush();
+  Eigen::MatrixXd information;
+  if (score <= 0.0) {
+    information = graphNode.inf_calclator->calc_information_matrix(prev, next, relative_pose);
+  } else {
+    information = graphNode.inf_calclator->calc_information_matrix(score);
+  }
+  g2o::VertexSE3* prev_node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[prev_id]);
+  g2o::VertexSE3* next_node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[next_id]);
+  auto edge = graphNode.graph_slam->add_se3_edge(prev_node, next_node, relative_pose, information);
+  graphNode.graph_slam->add_robust_kernel(edge, "Huber", 1.0);
+}
+
+void graph_add_prior_edge(int id, Eigen::Isometry3d &prior, double xyz_stddev, double rot_stddev) {
+  if (graphNode.graph_slam == nullptr) {
+    return;
+  }
+
+  graphNode.wait_for_flush();
+
+  g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[id]);
+  // translation
+  Eigen::Vector3d xyz = prior.matrix().block<3, 1>(0, 3);
+  Eigen::Matrix3d xyz_information_matrix = Eigen::Matrix3d::Identity() / xyz_stddev;
+  graphNode.graph_slam->add_se3_prior_xyz_edge(node, xyz, xyz_information_matrix);
+
+  // rotation
+  Eigen::Quaterniond orientation = Eigen::Quaterniond(prior.matrix().block<3, 3>(0, 0)).normalized();
+  Eigen::MatrixXd rotation_information_matrix = Eigen::MatrixXd::Identity(3, 3) / rot_stddev;
+  graphNode.graph_slam->add_se3_prior_quat_edge(node, orientation, rotation_information_matrix);
+}
+
 void graph_del_edge(int id) {
   if (graphNode.graph_slam == nullptr) {
     return;
@@ -974,6 +972,37 @@ void graph_del_edge(int id) {
     }
     graphNode.graph_slam->del_se3_edge(e);
     break;
+  }
+}
+
+void graph_del_prior_edges() {
+  if (graphNode.graph_slam == nullptr) {
+    return;
+  }
+
+  graphNode.wait_for_flush();
+  // PriorXYZ
+  std::vector<g2o::EdgeSE3PriorXYZ*> xyz_priors;
+  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
+    g2o::EdgeSE3PriorXYZ* e = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge);
+    if (e != nullptr) {
+      xyz_priors.push_back(e);
+    }
+  }
+  for (auto &e : xyz_priors) {
+    graphNode.graph_slam->graph->removeEdge(e);
+  }
+
+  // PriorQuat
+  std::vector<g2o::EdgeSE3PriorQuat*> quat_priors;
+  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
+    g2o::EdgeSE3PriorQuat* e = dynamic_cast<g2o::EdgeSE3PriorQuat*>(edge);
+    if (e != nullptr) {
+      quat_priors.push_back(e);
+    }
+  }
+  for (auto &e : quat_priors) {
+    graphNode.graph_slam->graph->removeEdge(e);
   }
 }
 
@@ -1192,16 +1221,16 @@ bool graph_merge(const std::string& directory, std::vector<std::shared_ptr<KeyFr
     new_graph.graph_slam->graph->detachVertex(new_graph.anchor_node);
   }
 
-  // clone vertices
-  for(const auto& vertex : new_graph.graph_slam->graph->vertices()) {
-    g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(vertex.second);
+  // clone vertices, increase with the origin order
+  for (auto &kf : kfs) {
+    g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(new_graph.graph_slam->graph->vertices()[kf->mId]);
     int new_vertex_id = -1;
     if (node != nullptr) {
       new_vertex_id = ++max_se3_vertex_id;
     } else {
       new_vertex_id = ++max_normal_vertex_id;
     }
-    auto v = dynamic_cast<g2o::OptimizableGraph::Vertex*>(vertex.second);
+    auto v = dynamic_cast<g2o::OptimizableGraph::Vertex*>(new_graph.graph_slam->graph->vertices()[kf->mId]);
 
     // copy params via g2o::Factory
     std::stringstream sst;

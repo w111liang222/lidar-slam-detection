@@ -21,7 +21,6 @@ class SLAM(SLAMTemplate):
         self.imu_ext_params = config.ins.imu_extrinsic_parameters
 
         self.last_timestamp = 0
-        self.image_data = {'image': {}, 'image_jpeg': {}, 'image_param': {}}
         self.is_inited = False
         self.map_manager = MapManager(config, logger)
 
@@ -84,6 +83,7 @@ class SLAM(SLAMTemplate):
         # load map at initilzation for localization mode
         if self.mode == "localization":
             self.map_manager.update(slam.get_graph_map(), load_map_meta(self.map_path + '/graph/map_meta.json'), True)
+            self.map_manager.on_open_map(self.map_path)
 
         self.is_inited = True
 
@@ -110,10 +110,9 @@ class SLAM(SLAMTemplate):
             elif input_dict['image_valid'] and sensor in input_dict['image'] and sensor in input_dict['image_jpeg']:
                 images_list[sensor] = input_dict['image'][sensor]
                 images_jpeg_list[sensor] = input_dict['image_jpeg'][sensor]
-            else:
-                return False
 
         if len(points_list) <= 0:
+            # self.logger.warn('%s, lidar data is invalid at timestamp: %d' % (self.name, input_dict['frame_start_timestamp']))
             return False
 
         if self.mode == "mapping":
@@ -121,11 +120,16 @@ class SLAM(SLAMTemplate):
             #     return False
 
             if "IMU" in self.sensor_input and ('imu_data' not in input_dict or input_dict['imu_data'].shape[0] < 2):
+                self.logger.warn('%s, imu data is invalid at timestamp: %d' % (self.name, input_dict['frame_start_timestamp']))
                 return False
 
         if input_dict['frame_start_timestamp'] <= self.last_timestamp:
             self.logger.warn('%s, timestamp is unordered' % (self.name))
             return False
+
+        deviation_timestamp = input_dict['frame_start_timestamp'] - self.last_timestamp
+        if deviation_timestamp < 50000 or deviation_timestamp > 150000:
+            self.logger.warn('%s, timestamp is not continuous: %d - %d' % (self.name, input_dict['frame_start_timestamp'], self.last_timestamp))
 
         self.last_timestamp = input_dict['frame_start_timestamp']
 
@@ -199,6 +203,8 @@ class SLAM(SLAMTemplate):
 
     def merge_map(self, map_file):
         self.map_manager.update(slam.merge_map(map_file), load_map_meta(map_file + '/graph/map_meta.json'), False)
+        self.map_manager.on_merge_map(map_file)
+        self.graph_optimize()
 
     def set_export_map_config(self, z_min, z_max, color):
         self.map_manager.set_export_map_config(z_min, z_max, color)
@@ -227,14 +233,11 @@ class SLAM(SLAMTemplate):
     def process(self, input_dict):
         result = slam.process(input_dict['points'],
                               input_dict['points_attr'],
-                              self.image_data['image'],
-                              self.image_data['image_jpeg'],
-                              self.image_data['image_param'],
+                              input_dict['image'],
+                              input_dict['image_jpeg'],
+                              input_dict['image_param'],
                               input_dict['ins_data'],
                               input_dict['imu_data'],
                               input_dict['frame_start_timestamp'])
-        self.image_data['image'] = input_dict['image']
-        self.image_data['image_jpeg'] = input_dict['image_jpeg']
-        self.image_data['image_param'] = input_dict['image_param']
         result['pose']['area'] = self.map_manager.is_in_area(result['pose']['odom_matrix'])
         return result

@@ -51,9 +51,12 @@ bool graph_load(const std::string& directory, std::vector<std::shared_ptr<KeyFra
 bool graph_merge(const std::string& directory, std::vector<std::shared_ptr<KeyFrame>> &kfs);
 std::vector<std::string> graph_save(const std::string& directory);
 
+void graph_add_vertex(int id);
 void graph_del_vertex(int id);
-void graph_add_edge(const PointCloud::Ptr& prev, int prev_id, const PointCloud::Ptr& next, int next_id, Eigen::Isometry3d &relative_pose);
+void graph_add_edge(const PointCloud::Ptr& prev, int prev_id, const PointCloud::Ptr& next, int next_id, Eigen::Isometry3d &relative_pose, double score = -1.0);
+void graph_add_prior_edge(int id, Eigen::Isometry3d &prior, double xyz_stddev, double rot_stddev);
 void graph_del_edge(int id);
+void graph_del_prior_edges();
 void graph_get_edges(std::vector<EdgeType> &edges);
 
 void graph_set_vertex_fix(int id, bool fix);

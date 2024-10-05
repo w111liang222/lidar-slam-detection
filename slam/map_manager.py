@@ -2,13 +2,16 @@ import os
 import copy
 import datetime
 import json
+import yaml
 import numpy as np
+from pathlib import Path
 from shapely.geometry import Point, Polygon
 from threading import Thread
 
 import slam_wrapper as slam
 from proto import internal_pb2
 from util.common_util import do_mkdir, run_cmd
+from module.export_interface import call
 
 def prepend(header, file):
     data = open(file, "rb").read() if os.path.exists(file) else b''
@@ -16,6 +19,18 @@ def prepend(header, file):
         fw.write(header)
         fw.write(data)
         fw.close()
+
+def glob_configs(map_path):
+    map_path = Path(map_path).expanduser().absolute() / 'graph' / 'configs'
+    config_list = list(map(str, map_path.glob('*.yaml')))
+    config_list.sort()
+    configs = [yaml.safe_load(Path(config_file).open()) for config_file in config_list]
+    return configs
+
+def sync_keys(source, target):
+    for k, v in target.copy().items():
+        if k not in source:
+            target.pop(k)
 
 def load_map_meta(file):
     if not os.path.exists(file):
@@ -28,7 +43,7 @@ def dump_map_meta(file, meta):
 
 class MapManager():
     def __init__(self, config, logger):
-        self.config = config
+        self.configs = [config]
         self.logger = logger
 
         self.data = dict(
@@ -50,6 +65,12 @@ class MapManager():
             self.thread.join()
             self.thread = None
 
+    def on_open_map(self, map_path):
+        self.configs = glob_configs(map_path)
+
+    def on_merge_map(self, map_path):
+        self.configs.extend(glob_configs(map_path))
+
     def update(self, data, meta, replace):
         if replace is True:
             self.data = data
@@ -68,6 +89,9 @@ class MapManager():
     def update_pose(self, pose, replace):
         if replace is True:
             self.data['poses'] = pose
+            sync_keys(self.data['poses'], self.data['points'])
+            sync_keys(self.data['poses'], self.data['images'])
+            sync_keys(self.data['poses'], self.data['stamps'])
         else:
             self.data['poses'].update(pose)
 
@@ -219,11 +243,16 @@ class MapManager():
         # create map path
         file_path = root_path + '/' + (datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S') if name is None else name)
         graph_path = file_path + '/graph'
+        config_path = graph_path + '/configs'
         if not do_mkdir(graph_path):
+            return "error"
+
+        if not do_mkdir(config_path):
             return "error"
 
         os.chmod(file_path, 0o777)
         os.chmod(graph_path, 0o777)
+        os.chmod(config_path, 0o777)
         self.logger.info('mkdir success: %s' % file_path)
 
         # save meta data
@@ -243,6 +272,9 @@ class MapManager():
         return "ok"
 
     def saving_thread_loop(self, file_path, pose, points, image, stamps):
+        for idx, config in enumerate(self.configs):
+            call('config.dump_config', path=file_path + f'/configs/{idx}.yaml', config=config, sync=True)
+        slam.dump_odometry(file_path)
         dump_map_meta(file_path + "/map_meta.json", {'area': self.meta["area"]})
         vertexes = slam.dump_graph(file_path)
         for idx, stamp in stamps.items():

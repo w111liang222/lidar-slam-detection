@@ -407,7 +407,7 @@ void Preprocess::velodyne_handler(PointCloudAttrPtr &pl_orig)
         added_pt.y = pl_orig->cloud->points[i].y;
         added_pt.z = pl_orig->cloud->points[i].z;
         added_pt.intensity = pl_orig->cloud->points[i].intensity;
-        added_pt.curvature = 0;  // curvature unit: ms // cout<<added_pt.curvature<<endl;
+        added_pt.curvature = pl_orig->attr[i].stamp / 1000.0f;  // curvature unit: ms // cout<<added_pt.curvature<<endl;
 
         // if (!given_offset_time)
         // {

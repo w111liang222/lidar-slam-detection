@@ -58,7 +58,8 @@ pcl::Registration<pcl::PointXYZI, pcl::PointXYZI>::Ptr select_registration_metho
     fast_gicp::FastVGICP<PointT, PointT>::Ptr vgicp(new fast_gicp::FastVGICP<PointT, PointT>());
     vgicp->setNumThreads(4);
     vgicp->setResolution(1.0);
-    vgicp->setTransformationEpsilon(0.01);
+    vgicp->setTransformationEpsilon(0.1);
+    vgicp->setRotationEpsilon(0.1);
     vgicp->setMaximumIterations(64);
     vgicp->setCorrespondenceRandomness(20);
     vgicp->setMaxProcessTime(max_process_time);

@@ -37,6 +37,11 @@ struct PoseRange {
   double      y_max;
 };
 
+enum MapCoordinateType {
+  WGS84 = 0,
+  GCJ02,
+};
+
 class SlamBase {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -51,7 +56,9 @@ class SlamBase {
     virtual bool originIsSet() = 0;
     virtual RTKType& getOrigin() = 0;
     virtual void setOrigin(RTKType rtk) = 0;
-
+    virtual MapCoordinateType getMapCoordinate() {
+      return MapCoordinateType::WGS84;
+    }
     virtual std::vector<std::string> setSensors(std::vector<std::string> &sensors) {
       return sensors;
     }
@@ -92,6 +99,9 @@ class SlamBase {
     }
     virtual bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) {
       return false;
+    }
+    virtual std::vector<PoseType> getOdometrys() {
+      return std::vector<PoseType>();
     }
     virtual void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
     }

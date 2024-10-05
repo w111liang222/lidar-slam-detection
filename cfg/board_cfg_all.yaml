@@ -20,7 +20,7 @@ detection:
 
 slam:
     mode: 'mapping'
-    method: 'FastLIO' # FLOAM, GICPM, FastLIO
+    method: 'FastLIO' # RTKM
     origin: {
         use: true,
         latitude: 0.0,
@@ -29,8 +29,8 @@ slam:
     }
 
     mapping:
-        sensor_input: ["1-Ouster-OS1", "IMU"]
-        ground_constraint: true
+        sensor_input: ["0-Ouster-OS1", "IMU"]
+        ground_constraint: false
         gravity_constraint: false
         loop_closure: true
         key_frames_interval: [4.0, 20.0]  # distance and degree threshold
@@ -91,19 +91,19 @@ ins:
     extrinsic_parameters: [0, 0, 0, 0, 0, 0]
     imu_extrinsic_parameters: [0, 0, 0, 0, 0, 0]
     ins_fix: {
-        use: true,
+        use: false,
         status: -1,
         stable_time: 10.0,
         precision: 20.0,
     }
     ins_float: {
-        use: true,
+        use: false,
         status: -1,
         stable_time: 10.0,
         precision: 50.0,
     }
     ins_normal: {
-        use: true,
+        use: false,
         status: -1,
         stable_time: 0.0,
         precision: 200.0,
@@ -225,7 +225,7 @@ output:
 
     protocol:
         UDP:
-            use: true
+            use: false
             destination: 192.168.1.101
             port: 9000
         CAN:

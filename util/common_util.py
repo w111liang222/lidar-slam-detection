@@ -25,6 +25,7 @@ def do_mkdir(path):
         success = False
     return success
 
+DEFAULT_DISK_PATH = '/root/exchange'
 def has_extension_disk():
     has_disk = False
     disk_name = ''
@@ -36,6 +37,12 @@ def has_extension_disk():
                 has_disk = True
                 disk_name = mount_name
                 break
+
+    # check the default path is exist
+    if not has_disk and os.path.exists(DEFAULT_DISK_PATH):
+        has_disk = True
+        disk_name = DEFAULT_DISK_PATH
+
     return has_disk, disk_name
 
 def get_disk_info(disk_name):
@@ -175,7 +182,7 @@ class ThreadWorker():
         for i in range(self.worker_num):
             input_queue = queue.Queue(maxsize=3)
             output_queue = queue.Queue(maxsize=3)
-            thread = Thread(target=self.worker_loop, args=(i, input_queue, output_queue,), daemon=True)
+            thread = Thread(target=self.worker_loop, args=(i, input_queue, output_queue,), name=self.name + "-" + str(i), daemon=True)
             thread.start()
             self.worker_threads.append(thread)
             self.input_queues.append(input_queue)
@@ -212,8 +219,8 @@ def encode_image(worker_idx, img):
 def init_image_encoder():
     from third_party.turbojpeg import TurboJPEG
     global is_encoder_init, encoders, encode_worker
-    encoders = [TurboJPEG() for i in range(8)]
-    encode_worker = ThreadWorker('jpeg encoder', encode_image, 8)
+    encoders = [TurboJPEG() for i in range(16)]
+    encode_worker = ThreadWorker('jpeg encoder', encode_image, 16)
     encode_worker.start()
     is_encoder_init = True
 
@@ -222,4 +229,24 @@ def encoder_image_jpeg(images):
     if not is_encoder_init:
         init_image_encoder()
     images = encode_worker.apply_task_sync(images)
+    return images
+
+is_decoder_init, decoders, decoder_worker = False, None, None
+def decode_image(worker_idx, img):
+    global decoders
+    return decoders[worker_idx].decode(img)
+
+def init_image_decoder():
+    from third_party.turbojpeg import TurboJPEG
+    global is_decoder_init, decoders, decoder_worker
+    decoders = [TurboJPEG() for i in range(16)]
+    decoder_worker = ThreadWorker('jpeg decoder', decode_image, 16)
+    decoder_worker.start()
+    is_decoder_init = True
+
+def decode_image_jpeg(images):
+    global is_decoder_init, decoder_worker
+    if not is_decoder_init:
+        init_image_decoder()
+    images = decoder_worker.apply_task_sync(images)
     return images

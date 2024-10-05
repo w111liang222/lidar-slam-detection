@@ -33,7 +33,8 @@ Transform computeRTKTransform(InsDataType &data) {
     static UTMProjector projector;
     double dataX, dataY;
     projector.FromGlobalToLocal(data.latitude, data.longitude, dataX, dataY);
-    return getTransformFromRPYT(dataX, dataY, data.altitude, -data.heading, data.pitch, data.roll);
+    double heading = data.heading - get_grid_convergence(projector.GetLongitude0(), data.latitude, data.longitude);
+    return getTransformFromRPYT(dataX, dataY, data.altitude, -heading, data.pitch, data.roll);
 }
 
 InsDriver::InsDriver(std::string ins_type, std::string mode) : mInsType(ins_type) {

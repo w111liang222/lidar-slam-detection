@@ -29,8 +29,6 @@ class SLAM {
   enum modeType {
     None,
     RTKM,
-    FLOAM,
-    GICPM,
     FastLIO,
     Localization,
   };
@@ -61,9 +59,11 @@ class SLAM {
            std::map<std::string, cv::Mat> &images_stream,
            RTKType &rtk, std::vector<ImuType> &imu, PoseType &pose);
   bool getKeyframe(PointCloudAttrImagePose &keyframe);
+  void getOdometrys(std::vector<PoseType> &odometrys);
   void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames);
   void getColorMap(PointCloudRGB::Ptr &points);
   RTKType &getOrigin();
+  MapCoordinateType getMapCoordinate();
   void setOrigin(RTKType &rtk);
   void mergeMap(const std::string& directory, std::vector<std::shared_ptr<KeyFrame>> &frames);
 

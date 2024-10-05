@@ -36,6 +36,7 @@ class ImuProcess
   ~ImuProcess();
   
   void Reset();
+  bool IsInit();
   // void Reset(double start_timestamp, const sensor_msgs::ImuConstPtr &lastimu);
   void set_extrinsic(const V3D &transl, const M3D &rot);
   void set_extrinsic(const V3D &transl);
@@ -54,6 +55,8 @@ class ImuProcess
   V3D cov_gyr_scale;
   V3D cov_bias_gyr;
   V3D cov_bias_acc;
+  state_ikfom start_state_point;
+  double mean_acc_norm;
   double first_lidar_time;
   bool   undistort = true;
 
@@ -70,6 +73,7 @@ class ImuProcess
   V3D Lidar_T_wrt_IMU;
   V3D mean_acc;
   V3D mean_gyr;
+  V3D vel_last;
   V3D angvel_last;
   V3D acc_s_last;
   double start_timestamp_;
@@ -77,10 +81,11 @@ class ImuProcess
   int    init_iter_num = 1;
   bool   b_first_frame_ = true;
   bool   imu_need_init_ = true;
+  bool   state_init_done_ = false;
 };
 
 ImuProcess::ImuProcess()
-    : b_first_frame_(true), imu_need_init_(true), start_timestamp_(-1)
+    : b_first_frame_(true), imu_need_init_(true), state_init_done_(false), start_timestamp_(-1)
 {
   init_iter_num = 1;
   Q = process_noise_cov();
@@ -90,10 +95,12 @@ ImuProcess::ImuProcess()
   cov_bias_acc  = V3D(0.0001, 0.0001, 0.0001);
   mean_acc      = V3D(0, 0, -1.0);
   mean_gyr      = V3D(0, 0, 0);
+  vel_last      = V3D(0, 0, 0);
   angvel_last     = Zero3d;
   Lidar_T_wrt_IMU = Zero3d;
   Lidar_R_wrt_IMU = Eye3d;
   last_imu_ = ImuType();
+  start_state_point = state_ikfom();
 }
 
 ImuProcess::~ImuProcess() {}
@@ -103,14 +110,21 @@ void ImuProcess::Reset()
   // ROS_WARN("Reset ImuProcess");
   mean_acc      = V3D(0, 0, -1.0);
   mean_gyr      = V3D(0, 0, 0);
+  vel_last      = V3D(0, 0, 0);
   angvel_last       = Zero3d;
   imu_need_init_    = true;
+  state_init_done_  = false;
   start_timestamp_  = -1;
   init_iter_num     = 1;
   v_imu_.clear();
   IMUpose.clear();
   last_imu_ = ImuType();
   cur_pcl_un_.reset(new PointCloudXYZI());
+}
+
+bool ImuProcess::IsInit()
+{
+  return state_init_done_;
 }
 
 void ImuProcess::set_extrinsic(const MD(4,4) &T)
@@ -184,6 +198,14 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
     N ++;
   }
 
+  if (!meas.ins.empty())
+  {
+    const auto &ins = meas.ins.back();
+    double vel = std::sqrt(ins.Ve * ins.Ve + ins.Vn * ins.Vn);
+    vel_last = V3D(0, vel, 0);
+  }
+
+  mean_acc_norm = mean_acc.norm();
   LOG_INFO("FastLIO IMU init mean acc {}, gyr {}", mean_acc.norm(), mean_gyr.norm());
   if (fabs(mean_acc.norm() - 1.0) > 0.1 || mean_gyr.norm() > (10.0 / 180.0 * M_PI)) {
     b_first_frame_ = true;
@@ -194,7 +216,9 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
   init_state.grav = S2(- mean_acc / mean_acc.norm() * G_m_s2);
   
   //state_inout.rot = Eye3d; // Exp(mean_acc.cross(V3D(0, 0, -1 / scale_gravity)));
-  init_state.bg  = mean_gyr;
+  init_state.vel = vel_last;
+  init_state.bg  = V3D(0, 0, 0);
+  init_state.ba  = V3D(0, 0, 0);
   init_state.offset_T_L_I = Lidar_T_wrt_IMU;
   init_state.offset_R_L_I = Lidar_R_wrt_IMU;
   kf_state.change_x(init_state);
@@ -208,11 +232,41 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
   init_P(21,21) = init_P(22,22) = 0.00001; 
   kf_state.change_P(init_P);
   last_imu_ = meas.imu.back();
+  last_lidar_end_time_ = meas.lidar_end_time;
+  start_state_point = kf_state.get_x();
 
 }
 
 void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI &pcl_out)
 {
+  // predict the state at the scan start time
+  if (meas.lidar_beg_time > last_lidar_end_time_)
+  {
+    input_ikfom in;
+    V3D angvel_avr, acc_avr;
+    angvel_avr<< last_imu_.gyr[0], last_imu_.gyr[1], last_imu_.gyr[2];
+    acc_avr   << last_imu_.acc[0], last_imu_.acc[1], last_imu_.acc[2];
+    acc_avr = acc_avr * G_m_s2 / mean_acc.norm();
+    in.acc  = acc_avr;
+    in.gyro = angvel_avr;
+    double dt = meas.lidar_beg_time - last_lidar_end_time_;
+    Q.block<3, 3>(0, 0).diagonal() = cov_gyr;
+    Q.block<3, 3>(3, 3).diagonal() = cov_acc;
+    Q.block<3, 3>(6, 6).diagonal() = cov_bias_gyr;
+    Q.block<3, 3>(9, 9).diagonal() = cov_bias_acc;
+    kf_state.predict(dt, Q, in);
+    state_ikfom imu_state = kf_state.get_x();
+    angvel_last = angvel_avr - imu_state.bg;
+    acc_s_last  = imu_state.rot * (acc_avr - imu_state.ba);
+    for(int i=0; i<3; i++)
+    {
+      acc_s_last[i] += imu_state.grav[i];
+    }
+    last_lidar_end_time_ = meas.lidar_beg_time;
+  }
+
+  start_state_point = kf_state.get_x();
+
   /*** add the imu of the last frame-tail to the of current frame-head ***/
   auto v_imu = meas.imu;
   v_imu.push_front(last_imu_);
@@ -289,12 +343,24 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
   }
 
   /*** calculated the pos and attitude prediction at the frame-end ***/
+  angvel_avr<< v_imu.back().gyr[0], v_imu.back().gyr[1], v_imu.back().gyr[2];
+  acc_avr   << v_imu.back().acc[0], v_imu.back().acc[1], v_imu.back().acc[2];
+  acc_avr     = acc_avr * G_m_s2 / mean_acc.norm();
+  in.acc = acc_avr;
+  in.gyro = angvel_avr;
   double note = pcl_end_time > imu_end_time ? 1.0 : -1.0;
   dt = note * (pcl_end_time - imu_end_time);
   dt = std::min(1.0, dt);
   kf_state.predict(dt, Q, in);
   
   imu_state = kf_state.get_x();
+  angvel_last = angvel_avr - imu_state.bg;
+  acc_s_last  = imu_state.rot * (acc_avr - imu_state.ba);
+  for(int i=0; i<3; i++)
+  {
+    acc_s_last[i] += imu_state.grav[i];
+  }
+  IMUpose.push_back(set_pose6d((pcl_end_time - pcl_beg_time), acc_s_last, angvel_last, imu_state.vel, imu_state.pos, imu_state.rot.toRotationMatrix()));
   last_imu_ = meas.imu.back();
   last_lidar_end_time_ = pcl_end_time;
 
@@ -366,7 +432,8 @@ void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 
 
       cov_acc = cov_acc_scale;
       cov_gyr = cov_gyr_scale;
-      LOG_INFO("IMU Initial Done");
+      LOG_INFO("IMU Initial Done: Gravity: {:.4f} {:.4f} {:.4f} {:.4f}; Velocity: {:.4f} {:.4f} {:.4f}",
+                imu_state.grav[0], imu_state.grav[1], imu_state.grav[2], mean_acc.norm(), imu_state.vel[0], imu_state.vel[1], imu_state.vel[2]);
       // ROS_INFO("IMU Initial Done: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f %.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: %.8f %.8f %.8f",\
       //          imu_state.grav[0], imu_state.grav[1], imu_state.grav[2], mean_acc.norm(), cov_bias_gyr[0], cov_bias_gyr[1], cov_bias_gyr[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0], cov_gyr[1], cov_gyr[2]);
       // fout_imu.open(DEBUG_FILE_DIR("imu.txt"),ios::out);
@@ -375,6 +442,7 @@ void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 
     return;
   }
 
+  state_init_done_ = true;
   UndistortPcl(meas, kf_state, *cur_pcl_un_);
 
   // t2 = omp_get_wtime();

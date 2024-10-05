@@ -3,8 +3,6 @@
 #include <sys/prctl.h>
 
 #include "rtkm.h"
-#include "floam.h"
-#include "gicpm.h"
 #include "fastlio.h"
 #include "localization.h"
 #include "backend_api.h"
@@ -24,10 +22,6 @@ SLAM::runType SLAM::getRunModeType(std::string name) {
 SLAM::modeType SLAM::getMappingTypeByName(std::string name) {
   if (name.compare("RTKM") == 0) {
     return modeType::RTKM;
-  } else if (name.compare("FLOAM") == 0) {
-    return modeType::FLOAM;
-  } else if (name.compare("GICPM") == 0) {
-    return modeType::GICPM;
   } else if (name.compare("FastLIO") == 0) {
     return modeType::FastLIO;
   } else if (name.compare("Localization") == 0) {
@@ -41,10 +35,6 @@ std::string SLAM::getMappingNameByType(modeType type) {
   switch (type) {
     case modeType::RTKM:
       return "RTKM";
-    case modeType::FLOAM:
-      return "FLOAM";
-    case modeType::GICPM:
-      return "GICPM";
     case modeType::FastLIO:
       return "FastLIO";
     case modeType::Localization:
@@ -57,10 +47,6 @@ std::string SLAM::getMappingNameByType(modeType type) {
 SLAM::SLAM(enum runType run, modeType modeIn) : mRunMode(run), mMappingMode(modeIn) {
   if (mMappingMode == modeType::RTKM) {
     mSlam.reset(new Mapping::RTKM());
-  } else if (mMappingMode == modeType::FLOAM) {
-    mSlam.reset(new Mapping::HDL_FLOAM());
-  } else if (mMappingMode == modeType::GICPM) {
-    mSlam.reset(new Mapping::HDL_GICP());
   } else if (mMappingMode == modeType::FastLIO) {
     mSlam.reset(new Mapping::HDL_FastLIO());
   } else if (mMappingMode == modeType::Localization) {
@@ -191,6 +177,10 @@ bool SLAM::setup() {
 
 bool SLAM::getKeyframe(PointCloudAttrImagePose &keyframe) {
   return mKeyframeQueue.try_dequeue(keyframe);
+}
+
+void SLAM::getOdometrys(std::vector<PoseType> &odometrys) {
+  odometrys = mSlam->getOdometrys();
 }
 
 void SLAM::getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) {
@@ -326,7 +316,7 @@ bool SLAM::run(const uint64_t &timestamp,
 
   // mSlam->getTimedPose(rtk_ptr->timestamp, odom);
   pose.T         = odom;
-  pose.timestamp = timestamp;
+  pose.timestamp = frame.points->cloud->header.stamp;
 
   // localization mode
   if (mMappingMode == modeType::Localization) {
@@ -364,6 +354,10 @@ bool SLAM::run(const uint64_t &timestamp,
 
 RTKType &SLAM::getOrigin() {
   return mSlam->getOrigin();
+}
+
+MapCoordinateType SLAM::getMapCoordinate() {
+  return mSlam->getMapCoordinate();
 }
 
 void SLAM::setOrigin(RTKType &rtk) {

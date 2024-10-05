@@ -18,17 +18,17 @@ namespace Locate {
 class Localization : public SlamBase {
  public:
   static void releaseStaticResources();
+  static void setMapRender(bool enable);
+  void renderMap(Eigen::Matrix4d pose, PointCloudAttrPtr cloud, std::map<std::string, ImageType> images);
+
   void mergeMap(const std::string &directory, std::vector<std::shared_ptr<KeyFrame>> &frames);
   Localization();
   virtual ~Localization();
   bool init(InitParameter &param) override;
   bool isInited() override;
-  bool originIsSet() override {
-    return mOriginIsSet;
-  }
-  RTKType& getOrigin() override {
-    return mOrigin;
-  }
+  bool originIsSet() override;
+  RTKType& getOrigin() override;
+  MapCoordinateType getMapCoordinate() override;
   void setOrigin(RTKType rtk) override {
   }
   std::vector<std::string> setSensors(std::vector<std::string> &sensors) override;
@@ -42,12 +42,14 @@ class Localization : public SlamBase {
                      std::map<std::string, ImageType> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
+  std::vector<PoseType> getOdometrys() override;
   bool getTimedPose(uint64_t timestamp, Eigen::Matrix4d &pose) override;
   bool getTimedPose(RTKType &ins, Eigen::Matrix4d &pose) override;
   void getGraphMap(std::vector<std::shared_ptr<KeyFrame>> &frames) override;
   void getColorMap(PointCloudRGB::Ptr &points) override;
 
  protected:
+  bool isStable();
   void initLocalizer(uint64_t stamp, const Eigen::Matrix4d& pose);
 
  private:
@@ -56,17 +58,16 @@ class Localization : public SlamBase {
 
  protected:
   InitParameter mConfig;
-  RTKType mOrigin;
-  bool mOriginIsSet;
   Eigen::Vector3d mZeroUtm;
 
   std::string mLidarName;
   std::string mImageName;
   PointCloudAttrPtr mFrameAttr;
-  ImageType mImage;
+  std::map<std::string, ImageType> mImage;
 
   std::atomic<bool> mInitialized;
-  int mFailureLocalizeCount;
+  uint64_t mFailureCounter;
+  uint64_t mLocalizationAge;
   Eigen::Isometry3d mLastOdom;
   PointCloud::Ptr mLocalMap;
   std::vector<std::shared_ptr<KeyFrame>> mKeyFrames;

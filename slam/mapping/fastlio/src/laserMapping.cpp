@@ -86,7 +86,7 @@ condition_variable sig_buffer;
 // string root_dir = ROOT_DIR;
 
 double res_mean_last = 0.05, total_residual = 0.0;
-double last_timestamp_lidar = 0, last_timestamp_imu = -1.0;
+double last_timestamp_lidar = 0, last_timestamp_imu = -1.0, last_timestamp_ins = -1.0;
 double gyr_cov = 0.1, acc_cov = 0.1, b_gyr_cov = 0.0001, b_acc_cov = 0.0001;
 double filter_size_surf_min = 0, filter_size_map_min = 0, fov_deg = 0;
 double cube_len = 0, HALF_FOV_COS = 0, FOV_DEG = 0, lidar_end_time = 0, first_lidar_time = 0.0;
@@ -104,6 +104,7 @@ vector<double>       extrinR(9, 0.0);
 deque<double>                     time_buffer;
 deque<PointCloudXYZI::Ptr>        lidar_buffer;
 deque<ImuType> imu_buffer;
+deque<RTKType> ins_buffer;
 
 // PointCloudXYZI::Ptr featsFromMap(new PointCloudXYZI());
 PointCloudXYZI::Ptr feats_undistort(new PointCloudXYZI());
@@ -296,21 +297,8 @@ void lasermap_fov_segment()
 //     sig_buffer.notify_all();
 // }
 
-void fastlio_pcl_enqueue(PointCloudAttrPtr &points, bool sync)
+void fastlio_pcl_enqueue(PointCloudAttrPtr &points)
 {
-    if (sync) {
-        int retry = 100;
-        while (retry >= 0) {
-            retry--;
-            mtx_buffer.lock();
-            bool is_empty = lidar_buffer.empty();
-            mtx_buffer.unlock();
-            if (is_empty) {
-                break;
-            }
-            usleep(2000);
-        }
-    }
     mtx_buffer.lock();
     // scan_count ++;
     // double preprocess_start_time = omp_get_wtime();
@@ -415,6 +403,16 @@ void fastlio_imu_enqueue(ImuType imu)
     sig_buffer.notify_all();
 }
 
+void fastlio_ins_enqueue(RTKType ins) {
+    // mtx_buffer.lock();
+
+    //last_timestamp_ins = ins.timestamp / 1000000.0;
+
+    // ins_buffer.push_back(ins);
+    // mtx_buffer.unlock();
+    // sig_buffer.notify_all();
+}
+
 double lidar_mean_scantime = 0.0;
 int    scan_num = 0;
 bool sync_packages(MeasureGroup &meas)
@@ -429,42 +427,64 @@ bool sync_packages(MeasureGroup &meas)
     {
         meas.lidar = lidar_buffer.front();
         meas.lidar_beg_time = time_buffer.front();
-        if (meas.lidar->points.size() <= 1) // time too little
-        {
-            lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
-            LOG_WARN("Too few input point cloud!");
-        }
-        else if (meas.lidar->points.back().curvature / double(1000) < 0.5 * lidar_mean_scantime)
-        {
-            lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
-        }
-        else
-        {
-            scan_num ++;
-            lidar_end_time = meas.lidar_beg_time + meas.lidar->points.back().curvature / double(1000);
-            lidar_mean_scantime += (meas.lidar->points.back().curvature / double(1000) - lidar_mean_scantime) / scan_num;
-        }
+        lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
+        // if (meas.lidar->points.size() <= 1) // time too little
+        // {
+        //     lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
+        //     LOG_WARN("Too few input point cloud!");
+        // }
+        // else if (meas.lidar->points.back().curvature / double(1000) < 0.5 * lidar_mean_scantime)
+        // {
+        //     lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
+        // }
+        // else
+        // {
+        //     scan_num ++;
+        //     lidar_end_time = meas.lidar_beg_time + meas.lidar->points.back().curvature / double(1000);
+        //     lidar_mean_scantime += (meas.lidar->points.back().curvature / double(1000) - lidar_mean_scantime) / scan_num;
+        // }
 
         meas.lidar_end_time = lidar_end_time;
 
         lidar_pushed = true;
     }
 
-    if (last_timestamp_imu < lidar_end_time)
-    {
-        return false;
-    }
+    // if (last_timestamp_imu < lidar_end_time)
+    // {
+    //     return false;
+    // }
 
     /*** push imu data, and pop from imu buffer ***/
-    double imu_time = imu_buffer.front().stamp;
     meas.imu.clear();
-    while ((!imu_buffer.empty()) && (imu_time < lidar_end_time))
-    {
-        imu_time = imu_buffer.front().stamp;
-        if(imu_time > lidar_end_time) break;
+    while(!imu_buffer.empty()) {
+        double imu_time = imu_buffer.front().stamp;
+        if (imu_time > lidar_end_time) {
+            break;
+        }
         meas.imu.push_back(imu_buffer.front());
         imu_buffer.pop_front();
     }
+
+    meas.ins.clear();
+    while(!ins_buffer.empty()) {
+        double ins_time = ins_buffer.front().timestamp / 1000000.0;
+        if (ins_time > lidar_end_time) {
+            break;
+        }
+        meas.ins.push_back(ins_buffer.front());
+        ins_buffer.pop_front();
+    }
+
+    // /*** push imu data, and pop from imu buffer ***/
+    // double imu_time = imu_buffer.front().stamp;
+    // meas.imu.clear();
+    // while ((!imu_buffer.empty()) && (imu_time < lidar_end_time))
+    // {
+    //     imu_time = imu_buffer.front().stamp;
+    //     if(imu_time > lidar_end_time) break;
+    //     meas.imu.push_back(imu_buffer.front());
+    //     imu_buffer.pop_front();
+    // }
 
     lidar_buffer.pop_front();
     time_buffer.pop_front();
@@ -635,35 +655,58 @@ void map_incremental()
     
 // }
 
-std::vector<double> get_fastlio_odom()
+
+void fastlio_odometry(Eigen::Matrix4d &odom_s, Eigen::Matrix4d &odom_e)
+{
+    odom_s = Eigen::Matrix4d::Identity();
+    odom_e = Eigen::Matrix4d::Identity();
+
+    odom_s.topRightCorner<3, 1>() = Eigen::Vector3d(p_imu->start_state_point.pos(0),
+                                                    p_imu->start_state_point.pos(1),
+                                                    p_imu->start_state_point.pos(2));
+    odom_s.topLeftCorner<3, 3>()  = Eigen::Quaterniond(p_imu->start_state_point.rot.coeffs()[3],
+                                                       p_imu->start_state_point.rot.coeffs()[0],
+                                                       p_imu->start_state_point.rot.coeffs()[1],
+                                                       p_imu->start_state_point.rot.coeffs()[2]).normalized().toRotationMatrix();
+
+    odom_e.topRightCorner<3, 1>() = Eigen::Vector3d(state_point.pos(0),
+                                                    state_point.pos(1),
+                                                    state_point.pos(2));
+    odom_e.topLeftCorner<3, 3>()  = Eigen::Quaterniond(state_point.rot.coeffs()[3],
+                                                       state_point.rot.coeffs()[0],
+                                                       state_point.rot.coeffs()[1],
+                                                       state_point.rot.coeffs()[2]).normalized().toRotationMatrix();
+}
+
+std::vector<double> fastlio_state()
 {
     std::vector<double> state;
-    state.push_back(state_point.pos(0));
-    state.push_back(state_point.pos(1));
-    state.push_back(state_point.pos(2));
-    state.push_back(state_point.rot.coeffs()[0]);
-    state.push_back(state_point.rot.coeffs()[1]);
-    state.push_back(state_point.rot.coeffs()[2]);
-    state.push_back(state_point.rot.coeffs()[3]);
+    state.push_back(p_imu->start_state_point.pos(0));
+    state.push_back(p_imu->start_state_point.pos(1));
+    state.push_back(p_imu->start_state_point.pos(2));
+    state.push_back(p_imu->start_state_point.rot.coeffs()[0]);
+    state.push_back(p_imu->start_state_point.rot.coeffs()[1]);
+    state.push_back(p_imu->start_state_point.rot.coeffs()[2]);
+    state.push_back(p_imu->start_state_point.rot.coeffs()[3]);
+    state.push_back(p_imu->start_state_point.vel(0));
+    state.push_back(p_imu->start_state_point.vel(1));
+    state.push_back(p_imu->start_state_point.vel(2));
+    state.push_back(p_imu->start_state_point.ba(0));
+    state.push_back(p_imu->start_state_point.ba(1));
+    state.push_back(p_imu->start_state_point.ba(2));
+    state.push_back(p_imu->start_state_point.bg(0));
+    state.push_back(p_imu->start_state_point.bg(1));
+    state.push_back(p_imu->start_state_point.bg(2));
+    state.push_back(p_imu->start_state_point.grav[0]);
+    state.push_back(p_imu->start_state_point.grav[1]);
+    state.push_back(p_imu->start_state_point.grav[2]);
+    state.push_back(p_imu->mean_acc_norm);
     return state;
 }
 
-std::vector<double> get_fastlio_state()
+bool fastlio_is_init()
 {
-    std::vector<double> state = get_fastlio_odom();
-    state.push_back(state_point.vel(0));
-    state.push_back(state_point.vel(1));
-    state.push_back(state_point.vel(2));
-    state.push_back(state_point.ba(0));
-    state.push_back(state_point.ba(1));
-    state.push_back(state_point.ba(2));
-    state.push_back(state_point.bg(0));
-    state.push_back(state_point.bg(1));
-    state.push_back(state_point.bg(2));
-    state.push_back(state_point.grav[0]);
-    state.push_back(state_point.grav[1]);
-    state.push_back(state_point.grav[2]);
-    return state;
+    return p_imu->IsInit();
 }
 
 // void publish_odometry(const ros::Publisher & pubOdomAftMapped)
@@ -833,7 +876,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     // solve_time += omp_get_wtime() - solve_start_;
 }
 
-int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int max_point_num, bool undistort) {
+int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int max_point_num, double scan_period, bool undistort) {
     NUM_MAX_ITERATIONS = 4;
     filter_size_surf_min = 0.5;
     filter_size_map_min = 0.5;
@@ -843,6 +886,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
 
     last_timestamp_lidar = 0;
     last_timestamp_imu = -1.0;
+    last_timestamp_ins = -1.0;
     lidar_end_time = 0;
     first_lidar_time = 0.0;
     effct_feat_num = 0;
@@ -855,6 +899,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     time_buffer.clear();
     lidar_buffer.clear();
     imu_buffer.clear();
+    ins_buffer.clear();
 
     feats_undistort = PointCloudXYZI::Ptr(new PointCloudXYZI());
     feats_down_body = PointCloudXYZI::Ptr(new PointCloudXYZI());
@@ -917,7 +962,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     LocalMap_Points = BoxPointType();
     Localmap_Initialized = false;
 
-    lidar_mean_scantime = 0;
+    lidar_mean_scantime = scan_period;
     scan_num = 0;
     return 0;
 }

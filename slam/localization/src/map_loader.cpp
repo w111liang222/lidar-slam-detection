@@ -1,21 +1,60 @@
 #include "map_loader.h"
-#include <omp.h>
 #include <fstream>
+#include <omp.h>
+
+#include <pcl/filters/voxel_grid.h>
+
+#include "overlap_removal.hpp"
+#include "overlap_merge.hpp"
+#include "overlap_update.hpp"
 #include "backend_api.h"
 
 using namespace Locate;
 
 MapLoader::MapLoader() : mGraphKDTree(new pcl::KdTreeFLANN<pcl::PointXYZ>()), mPoseCloud(nullptr) {
   mOriginIsSet = false;
+  mProjector.reset(new UTMProjector());
 }
 
 MapLoader::~MapLoader() {
-  mKeyFramesWhole.clear();
   mKeyFrames.clear();
 }
 
 void MapLoader::getGraphEdges(std::vector<EdgeType> &edges) {
   graph_get_edges(edges);
+}
+
+bool MapLoader::loadSlamMap(bool is_merge) {
+    // load map meta data
+    bool is_load_ok = loadMapOrigin(mConfig.map_path);
+    if (!is_load_ok) {
+        return false;
+    }
+
+    // load odometry
+    loadOdometry(mConfig.map_path);
+
+    // get all keyframe files
+    auto keyframe_files = getKeyframeFiles(mConfig.map_path);
+
+    loadGraphMap(keyframe_files);
+    LOG_INFO("Map: total {} key frames", mKeyFrames.size());
+    if (mKeyFrames.size() <= 0) {
+        return false;
+    }
+
+    if (!is_merge) {
+      bool load_graph_ok = graph_load(mConfig.map_path + "/graph", mKeyFrames);
+      if (!load_graph_ok) {
+        return false;
+      }
+
+      // build kdtree for keyframe poses
+      buildGraphKDTree();
+    }
+
+    mType = MapType::SLAM;
+    return true;
 }
 
 bool MapLoader::init(InitParameter &param, bool is_merge) {
@@ -24,72 +63,114 @@ bool MapLoader::init(InitParameter &param, bool is_merge) {
       init_graph_node(param);
     }
 
-    // load map meta data
-    bool is_load_graph = true;
-    bool is_load_ok = loadMapOrigin(mConfig.map_path, is_load_graph);
-    if (!is_load_ok) {
-        return false;
+    LOG_INFO("Map: start to load map, path: {}", mConfig.map_path);
+    if (isFileExist(mConfig.map_path + "/graph/map_info.txt")) {
+      return loadSlamMap(is_merge);
     }
 
-    // get all keyframe files
-    auto keyframe_files = getKeyframeFiles(mConfig.map_path, is_load_graph);
-
-    loadGraphMap(keyframe_files, is_load_graph);
-    LOG_INFO("Localization: total {} key frames", mKeyFrames.size());
-    if (mKeyFrames.size() <= 0) {
-        return false;
-    }
-    mKeyFramesWhole = mKeyFrames;
-    if (is_load_graph) {
-      bool load_graph_ok = false;
-      if (!is_merge) {
-        load_graph_ok = graph_load(mConfig.map_path + "/graph", mKeyFramesWhole);
-      } else {
-        load_graph_ok = graph_merge(mConfig.map_path + "/graph", mKeyFramesWhole);
-      }
-      if (!load_graph_ok) {
-        return false;
-      }
-    }
-
-    // map resample
-    resampleMap(mConfig.key_frame_distance, mConfig.key_frame_degree);
-
-    // map voxel grid filter
-    voxelFilterMap(mConfig.key_frame_distance / 2.0);
-
-    // build kdtree for keyframe poses
-    buildGraphKDTree();
-    return true;
+    LOG_ERROR("Map: not recognize the valid format, please check the map path");
+    return false;
 }
 
 bool MapLoader::reloadGraph() {
   init_graph_node(mConfig);
-  bool load_graph_ok = graph_load(mConfig.map_path + "/graph", mKeyFramesWhole);
+  bool load_graph_ok = graph_load(mConfig.map_path + "/graph", mKeyFrames);
   return load_graph_ok;
 }
 
-void MapLoader::mergeMap(MapLoader *new_map) {
-  mKeyFramesWhole.insert(mKeyFramesWhole.end(), new_map->mKeyFramesWhole.begin(), new_map->mKeyFramesWhole.end());
+void MapLoader::MergeManual(MapLoader *new_map) {
+  // merge pose graph
+  bool load_graph_ok = graph_merge(new_map->mConfig.map_path + "/graph", new_map->mKeyFrames);
+  if (!load_graph_ok) {
+    return;
+  }
+
+  // merge keyframes
   mKeyFrames.insert(mKeyFrames.end(), new_map->mKeyFrames.begin(), new_map->mKeyFrames.end());
-  LOG_INFO("Merged Map: total {} key frames", mKeyFramesWhole.size());
+  mOdometrys.emplace_back(PoseType()); // push a zero pose as the splitter
+  mOdometrys.insert(mOdometrys.end(), new_map->mOdometrys.begin(), new_map->mOdometrys.end());
+
+  // optimize
+  OptimizeMap();
+  LOG_WARN("Map: total {} frames, a manual loop is need to finish merging", mKeyFrames.size());
 }
 
-bool MapLoader::loadMapOrigin(const std::string &map_path, bool &is_load_graph) {
+void MapLoader::mergeMapSLAM(MapLoader *new_map) {
+  if (!mOriginIsSet || !new_map->mOriginIsSet) {
+    LOG_WARN("Map: origin is not set, {} / {}", mOriginIsSet, new_map->mOriginIsSet);
+    MergeManual(new_map);
+    return;
+  }
+
+  if (std::fabs(mOrigin.latitude  - new_map->mOrigin.latitude)  > 1e-4 ||
+      std::fabs(mOrigin.longitude - new_map->mOrigin.longitude) > 1e-4 ||
+      std::fabs(mOrigin.altitude  - new_map->mOrigin.altitude)  > 1e-4) {
+    LOG_WARN("Map: origin is not consistent, {}, {}, {} / {}, {}, {}", mOrigin.latitude, mOrigin.longitude, mOrigin.altitude,
+                                                                       new_map->mOrigin.latitude, new_map->mOrigin.longitude, new_map->mOrigin.altitude);
+    MergeManual(new_map);
+    return;
+  }
+
+  // merge pose graph
+  bool load_graph_ok = graph_merge(new_map->mConfig.map_path + "/graph", new_map->mKeyFrames);
+  if (!load_graph_ok) {
+    return;
+  }
+
+  // 1. resample single clip map
+  // new_map->resampleMap();
+
+  // 2. detect the overlap region based on distance and pointcloud registration
+  {
+    OverlapDetector overlap_detector;
+    std::vector<Overlap::Ptr> overlaps = overlap_detector.detect(mKeyFrames, new_map->mKeyFrames);
+    for (auto &overlap : overlaps) {
+      graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
+    }
+  }
+
+  // 3. merge keyframes
+  mKeyFrames.insert(mKeyFrames.end(), new_map->mKeyFrames.begin(), new_map->mKeyFrames.end());
+  mOdometrys.emplace_back(PoseType()); // push a zero pose as the splitter
+  mOdometrys.insert(mOdometrys.end(), new_map->mOdometrys.begin(), new_map->mOdometrys.end());
+
+  // 4. optimize
+  OptimizeMap();
+
+  // 5. detect duplicate region and update
+  {
+    OverlapUpdator overlap_updator;
+    // std::vector<std::shared_ptr<KeyFrame>> duplicate_regions = overlap_updator.detect(mKeyFrames);
+    // mKeyFrames = overlap_updator.update(mKeyFrames, duplicate_regions);
+    // for(size_t i = 0; i < duplicate_regions.size(); i++) {
+    //   graph_del_vertex(duplicate_regions[i]->mId);
+    // }
+    std::vector<Overlap::Ptr> overlaps = overlap_updator.post_process(mKeyFrames);
+    for (auto &overlap : overlaps) {
+      graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
+    }
+  }
+
+  // 6. optimize
+  OptimizeMap();
+  LOG_INFO("Map: merge success, total {} key frames", mKeyFrames.size());
+}
+
+void MapLoader::mergeMap(MapLoader *new_map) {
+  if (mType == MapType::SLAM && new_map->mType == MapType::SLAM) {
+    mergeMapSLAM(new_map);
+  } else {
+    LOG_ERROR("Map: map type is not support for merging: {} / {}", mType, new_map->mType);
+  }
+}
+
+bool MapLoader::loadMapOrigin(const std::string &map_path) {
   std::string meta_file;
   {
     meta_file = map_path + "/graph/map_info.txt";
     std::ifstream fs(meta_file, std::ifstream::in);
     if (!fs) {
-      is_load_graph = false;
-    }
-  }
-
-  if (!is_load_graph) {
-    meta_file = map_path + "/odometry/map_info.txt";
-    std::ifstream fs(meta_file, std::ifstream::in);
-    if (!fs) {
-      LOG_ERROR("Localization: failed to load map meta data, {}", meta_file);
+      LOG_ERROR("Map: failed to load map info data: {}", meta_file);
       return false;
     }
   }
@@ -102,6 +183,11 @@ bool MapLoader::loadMapOrigin(const std::string &map_path, bool &is_load_graph) 
   fs >> mOrigin.pitch;
   fs >> mOrigin.roll;
 
+  // coordinate type, default: 0 = WGS84
+  double coordinate = 0;
+  fs >> coordinate;
+  mCoordinate = static_cast<MapCoordinateType>(int(coordinate));
+
   // all zeros is invalid origin
   if (fabs(mOrigin.latitude) < 1e-4 && fabs(mOrigin.longitude) < 1e-4 && fabs(mOrigin.altitude) < 1e-4 &&
       fabs(mOrigin.heading)  < 1e-4 && fabs(mOrigin.pitch)     < 1e-4 && fabs(mOrigin.roll)     < 1e-4) {
@@ -110,44 +196,72 @@ bool MapLoader::loadMapOrigin(const std::string &map_path, bool &is_load_graph) 
     mOriginIsSet = true;
   }
 
-  LOG_INFO("Localization: load {} map origin: {}, {}, {}, {}, {}, {}",
-                (is_load_graph ? "graph" : "odometry"),
+  if (mOriginIsSet) {
+    mProjector->FromGlobalToLocal(mOrigin.latitude, mOrigin.longitude, mZeroUtm(0), mZeroUtm(1));
+    mZeroUtm(2) = mOrigin.altitude;
+  }
+
+  LOG_INFO("Map: load graph map origin: {}, {}, {}, {}, {}, {}",
                 mOrigin.latitude, mOrigin.longitude, mOrigin.altitude,
                 mOrigin.heading, mOrigin.pitch, mOrigin.roll);
   return true;
 }
 
-std::vector<std::string> MapLoader::getKeyframeFiles(const std::string &map_path, bool is_load_graph) {
-  std::vector<std::string> keyframe_files;
-  if (is_load_graph) {
-    keyframe_files = getDirDirs(map_path + "/graph");
-    auto it = keyframe_files.begin();
-    while (it != keyframe_files.end()) {
-      if (isFileExist(*it + "/data") && isFileExist(*it + "/cloud.pcd")) {
-        it++;
-      } else {
-        it = keyframe_files.erase(it);
-      }
+void MapLoader::loadOdometry(const std::string &map_path) {
+  std::string odometry_file = map_path + "/graph/odometrys.txt";
+  std::ifstream fs(odometry_file, std::ifstream::in);
+  if (!fs) {
+    LOG_WARN("Map: failed to load odometry, {}", odometry_file);
+    return;
+  }
+
+  while(!fs.eof()) {
+    double stamp;
+    Eigen::Vector3d t;
+    Eigen::Quaterniond q;
+    fs >> stamp;
+    fs >> t[0];
+    fs >> t[1];
+    fs >> t[2];
+    fs >> q.x();
+    fs >> q.y();
+    fs >> q.z();
+    fs >> q.w();
+    if (fs.eof()) {
+      break;
     }
-  } else {
-    keyframe_files = getDirFiles(map_path + "/odometry", ".odom");
-    std::for_each(keyframe_files.begin(), keyframe_files.end(), [](std::string & f) {
-      f.replace(f.end() - 5, f.end(), "");
-    });
+
+    PoseType odom;
+    odom.timestamp = uint64_t(stamp * 1000000);
+    odom.T.block<3, 1>(0, 3) = t;
+    odom.T.block<3, 3>(0, 0) = q.toRotationMatrix();
+    mOdometrys.emplace_back(odom);
+  }
+}
+
+std::vector<std::string> MapLoader::getKeyframeFiles(const std::string &map_path) {
+  std::vector<std::string> keyframe_files = getDirDirs(map_path + "/graph");
+  auto it = keyframe_files.begin();
+  while (it != keyframe_files.end()) {
+    if (isFileExist(*it + "/data") && isFileExist(*it + "/cloud.pcd")) {
+      it++;
+    } else {
+      it = keyframe_files.erase(it);
+    }
   }
 
   std::sort(keyframe_files.begin(), keyframe_files.end());
   return keyframe_files;
 }
 
-void MapLoader::loadGraphMap(const std::vector<std::string> &files, bool is_load_graph) {
+void MapLoader::loadGraphMap(const std::vector<std::string> &files) {
   mKeyFrames.clear();
   int keyframe_idx = 0;
   for (size_t i = 0; i < files.size(); i++) {
-    std::shared_ptr<KeyFrame> frame(new KeyFrame(keyframe_idx, files[i], is_load_graph));
+    std::shared_ptr<KeyFrame> frame(new KeyFrame(keyframe_idx, files[i], true));
     bool result = frame->loadOdom();
     if (!result) {
-      LOG_ERROR("Localization: failed to load {}", files[i]);
+      LOG_ERROR("Map: failed to load {}", files[i]);
       mKeyFrames.clear();
       break;
     }
@@ -172,56 +286,17 @@ void MapLoader::loadGraphMap(const std::vector<std::string> &files, bool is_load
   }
 }
 
+void MapLoader::resampleMap() {
+  // removal based on distance
+  OverlapRemover overlap_remover;
+  std::vector<std::shared_ptr<KeyFrame>> duplicate_frames = overlap_remover.detect(mKeyFrames);
+  mKeyFrames = overlap_remover.remove(mKeyFrames, duplicate_frames);
 
-void MapLoader::resampleMap(double key_frame_distance, double key_frame_degree) {
-  bool is_first = true;
-  Eigen::Isometry3d prev_keypose;
-  auto it = mKeyFrames.begin();
-  // re-calculate the keyframe based on localization settings
-  while (it != mKeyFrames.end()) {
-    if (is_first) {
-      is_first = false;
-      prev_keypose = (*it)->mOdom;
-      it++;
-      continue;
-    }
-
-    // calculate the delta transformation from the previous keyframe
-    Eigen::Isometry3d delta = prev_keypose.inverse() * (*it)->mOdom;
-    double dx = delta.translation().norm();
-    double da = Eigen::AngleAxisd(delta.linear()).angle() / M_PI * 180;
-
-    // too close to the previous frame
-    if(dx < key_frame_distance && da < key_frame_degree) {
-      it = mKeyFrames.erase(it);
-    } else {
-      prev_keypose = (*it)->mOdom;
-      it++;
-    }
+  // sync to graph
+  for(size_t i = 0; i < duplicate_frames.size(); i++) {
+    graph_del_vertex(duplicate_frames[i]->mId);
   }
-
-  LOG_INFO("Localization: after resample to {} key frames", mKeyFrames.size());
-}
-
-void MapLoader::voxelFilterMap(double voxel_size) {
-  std::map<uint64_t, bool> grid;
-  auto it = mKeyFrames.begin();
-  while (it != mKeyFrames.end()) {
-    double grid_x = (*it)->mOdom(0, 3);
-    double grid_y = (*it)->mOdom(1, 3);
-    double grid_z = (*it)->mOdom(2, 3);
-    grid_x = int(grid_x / voxel_size) * voxel_size;
-    grid_y = int(grid_y / voxel_size) * voxel_size;
-    grid_z = int(grid_z / voxel_size) * voxel_size;
-    uint64_t hash_code = hashCoordinate(grid_x, grid_y, grid_z);
-    if (grid.find(hash_code) != grid.end()) {
-      it = mKeyFrames.erase(it);
-    } else {
-      grid[hash_code] = true;
-      it++;
-    }
-  }
-  LOG_INFO("Localization: after voxel filter to {} key frames", mKeyFrames.size());
+  LOG_INFO("Map: resample map to {} key frames", mKeyFrames.size());
 }
 
 void MapLoader::buildGraphKDTree() {
@@ -235,4 +310,29 @@ void MapLoader::buildGraphKDTree() {
     mPoseCloud->points[i].z = mKeyFrames[i]->mOdom(2, 3);
   }
   mGraphKDTree->setInputCloud(mPoseCloud);
+}
+
+void MapLoader::OptimizeMap() {
+  std::map<int, Eigen::Matrix4d> update_pose;
+  graph_optimize(update_pose);
+  for(size_t i = 0; i < mKeyFrames.size(); i++) {
+    mKeyFrames[i]->mOdom = Eigen::Isometry3d(update_pose[mKeyFrames[i]->mId]);
+  }
+}
+
+// Map Render
+void MapLoader::setParameter(Eigen::Matrix4d staticTrans, std::map<std::string, CamParamType> cameraParam) {
+  mRender.setParameter(staticTrans, cameraParam);
+}
+
+void MapLoader::setMapRender(bool enable) {
+  mRender.setActive(enable);
+}
+
+void MapLoader::render(Eigen::Matrix4d pose, PointCloudAttrPtr cloud, std::map<std::string, ImageType> images) {
+  mRender.render(pose, cloud, images);
+}
+
+void MapLoader::getColorMap(PointCloudRGB::Ptr& points) {
+  mRender.getColorMap(points);
 }

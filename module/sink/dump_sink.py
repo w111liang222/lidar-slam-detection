@@ -11,7 +11,7 @@ from sensor_driver.common_lib.cpp_utils import (
 class DumpSink(SinkTemplate):
     def __init__(self, cfg, logger):
         super().__init__('DumpSink', cfg, logger)
-        self.f = open("dump_data.txt", "ab")
+        self.f = open("output/dump_data.txt", "wb", 0)
         self.data_origin = None
         self.start()
 
@@ -54,7 +54,8 @@ class DumpSink(SinkTemplate):
         return data_dict
 
     def sink(self, data_dict):
-        if 'pose' in data_dict and data_dict['slam_valid'] and 'ins_data' in data_dict and data_dict['ins_valid']:
+        if 'pose' in data_dict and data_dict['slam_valid'] and data_dict['pose']['state'] != "Initializing" and \
+           'ins_data' in data_dict and data_dict['ins_valid'] and data_dict['ins_data']['Status'] != 0:
             pose_dict = data_dict['pose']
             [x, y, z, roll, pitch, yaw] = cpp_utils.get_cfg_from_transform(pose_dict['odom_matrix'])
             if abs(roll) >= 90.0 or abs(pitch) >= 90:

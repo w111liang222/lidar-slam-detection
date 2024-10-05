@@ -113,7 +113,7 @@ Eigen::Matrix4d RTKM::getPose(PointCloudAttrImagePose &frame) {
 
   // combine whole frame
   mFrameAttr->T = delta_odom;
-  frame = PointCloudAttrImagePose(mFrameAttr, mImages, mImagesStream, Eigen::Isometry3d(odom));
+  frame = PointCloudAttrImagePose(mFrameAttr, mImages, mImagesStream, std::vector<PoseType>(), Eigen::Isometry3d(odom));
 
   return odom;
 }
@@ -126,7 +126,9 @@ void RTKM::computeRTKTransform(const RTKType &origin, std::shared_ptr<RTKType> &
   dataX -= originX;
   dataY -= originY;
   dataZ = data->altitude - origin.altitude;
-  double dataYaw = -data->heading;
+
+  double heading = data->heading - get_grid_convergence(mProjector->GetLongitude0(), data->latitude, data->longitude);
+  double dataYaw = -heading;
   double dataPitch = data->pitch;
   double dataRoll = data->roll;
   data->T = getTransformFromRPYT(dataX, dataY, dataZ, dataYaw, dataPitch, dataRoll);

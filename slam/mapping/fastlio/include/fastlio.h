@@ -27,6 +27,7 @@ class HDL_FastLIO : public SlamBase {
                      std::map<std::string, ImageType> &images,
                      std::map<std::string, cv::Mat> &images_stream) override;
   Eigen::Matrix4d getPose(PointCloudAttrImagePose &frame) override;
+  std::vector<PoseType> getOdometrys() override;
 
  private:
   void runLio();
@@ -37,21 +38,19 @@ class HDL_FastLIO : public SlamBase {
   InitParameter mConfig;
   RTKType mOrigin;
   bool mOriginIsSet;
-  PointCloud::Ptr mFrame;
+
+  std::string mLidarName;
   PointCloudAttrPtr mFrameAttr;
   std::map<std::string, ImageType> mImages;
   std::map<std::string, cv::Mat> mImagesStream;
-  std::string mLidarName;
 
   std::mutex mImuDataMutex;
   std::vector<ImuType> mImuData;
+  std::vector<PoseType> mOdometrys;
   Eigen::Matrix4d mImuInsStaticTrans;
 
   RWQueue<PointCloudType*> mFloorQueue;
-  RWQueue<Eigen::Isometry3d> mOdomQueue;
-  uint64_t mLastStamp;
-  Eigen::Matrix4d mLastOdom;
-  PointCloudAttrImagePose mLastFrame;
+  RWQueue<std::pair<Eigen::Isometry3d, Eigen::Isometry3d>> mOdomQueue;
 
   bool mThreadStart;
   std::unique_ptr<std::thread> mLioThread;

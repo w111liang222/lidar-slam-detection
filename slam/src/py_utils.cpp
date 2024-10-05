@@ -79,7 +79,17 @@ py::dict map_to_pydict(const std::map<std::string, ImageType> &m) {
   return dict;
 }
 
-Eigen::Matrix4d numpy_to_eigen(py::array_t<float> &array) {
+Eigen::Matrix4d numpy_to_eigen(const py::array_t<float> &array) {
+  auto ref = array.unchecked<2>();
+  Eigen::Matrix4d matrix;
+  matrix(0, 0) = ref(0, 0); matrix(0, 1) = ref(0, 1); matrix(0, 2) = ref(0, 2); matrix(0, 3) = ref(0, 3);
+  matrix(1, 0) = ref(1, 0); matrix(1, 1) = ref(1, 1); matrix(1, 2) = ref(1, 2); matrix(1, 3) = ref(1, 3);
+  matrix(2, 0) = ref(2, 0); matrix(2, 1) = ref(2, 1); matrix(2, 2) = ref(2, 2); matrix(2, 3) = ref(2, 3);
+  matrix(3, 0) = ref(3, 0); matrix(3, 1) = ref(3, 1); matrix(3, 2) = ref(3, 2); matrix(3, 3) = ref(3, 3);
+  return matrix;
+}
+
+Eigen::Matrix4d numpy_to_eigen(const py::array_t<double> &array) {
   auto ref = array.unchecked<2>();
   Eigen::Matrix4d matrix;
   matrix(0, 0) = ref(0, 0); matrix(0, 1) = ref(0, 1); matrix(0, 2) = ref(0, 2); matrix(0, 3) = ref(0, 3);
@@ -243,6 +253,18 @@ void numpy_to_imu(py::array_t<double> &imu_list, std::vector<ImuType> &imu) {
                                  ref(i, 6) * 9.81);
     imu[i].rot = Eigen::Quaterniond::Identity();
     imu[i].stamp = ref(i, 0) / 1000000.0;
+  }
+}
+
+void numpy_to_odometry(py::array_t<double> &poses, std::vector<PoseType> &odometrys) {
+  auto pose_ref = poses.unchecked<2>();
+  size_t pose_num = pose_ref.shape(0);
+  for (size_t i = 0; i < pose_num; i++) {
+    PoseType pose;
+    pose.timestamp = uint64_t(pose_ref(i, 0));
+    pose.T.block<3, 1>(0, 3) = Eigen::Vector3d(pose_ref(i, 1), pose_ref(i, 2), pose_ref(i, 3));
+    pose.T.block<3, 3>(0, 0) = Eigen::Quaterniond(pose_ref(i, 7), pose_ref(i, 4), pose_ref(i, 5), pose_ref(i, 6)).toRotationMatrix();
+    odometrys.emplace_back(pose);
   }
 }
 

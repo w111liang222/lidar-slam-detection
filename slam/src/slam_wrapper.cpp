@@ -139,14 +139,17 @@ py::dict get_graph_status() {
 
 py::array_t<double> get_map_origin() {
   RTKType &pose = slam_ptr->getOrigin();
-  std::vector<double> origin(6, 0);
+  MapCoordinateType map_coordinate = slam_ptr->getMapCoordinate();
+
+  std::vector<double> origin(7, 0);
   origin[0] = pose.latitude;
   origin[1] = pose.longitude;
   origin[2] = pose.altitude;
   origin[3] = pose.heading;
   origin[4] = pose.pitch;
   origin[5] = pose.roll;
-  return py::array_t<double>(py::array::ShapeContainer({1, 6}), origin.data());
+  origin[6] = static_cast<int>(map_coordinate);
+  return py::array_t<double>(py::array::ShapeContainer({1, 7}), origin.data());
 }
 
 void set_map_origin(double lat, double lon, double alt, double heading, double pitch, double roll) {
@@ -260,7 +263,10 @@ PYBIND11_MODULE(slam_wrapper, m) {
 
   m.def("dump_keyframe", &dump_keyframe, "dump keyframe",
         py::arg("directory"), py::arg("stamp"), py::arg("id"),
-        py::arg("points_input"), py::arg("odom_input")
+        py::arg("points_input"), py::arg("pose_input")
+  );
+  m.def("dump_odometry", &dump_odometry, "dump odometry",
+        py::arg("directory")
   );
   m.def("set_export_map_config", &set_export_map_config, "set export map config",
         py::arg("z_min"), py::arg("z_max"), py::arg("color")
@@ -273,5 +279,37 @@ PYBIND11_MODULE(slam_wrapper, m) {
   );
   m.def("dump_graph", &dump_graph, "dump graph",
         py::arg("directory")
+  );
+
+  // tools for postprocess
+  m.def("align_pose", &align_pose, "align pose",
+        py::arg("stamp1"), py::arg("stamp2"), py::arg("estimate1_py"), py::arg("estimate2_py"),
+        py::arg("poses_stamp"), py::arg("poses_py")
+  );
+  m.def("save_undistortion_cloud", &save_undistortion_cloud, "save undistortion cloud",
+        py::arg("file"), py::arg("points"), py::arg("points_attr"), py::arg("poses")
+  );
+  m.def("accumulate_cloud", &accumulate_cloud, "accumulate cloud",
+        py::arg("points"), py::arg("points_attr"), py::arg("poses"),  py::arg("odometry_type"), py::arg("extract_ground")
+  );
+  m.def("save_accumulate_cloud", &save_accumulate_cloud, "save accumulate cloud",
+        py::arg("file"), py::arg("resolution")
+  );
+  m.def("texture_mesh", &texture_mesh, "texture mesh",
+        py::arg("mesh_path"), py::arg("cloud_path"), py::arg("output_path")
+  );
+
+  // offline colouration cloud
+  m.def("set_colouration_config", &set_colouration_config, "set colouration config",
+        py::arg("cameras")
+  );
+  m.def("set_map_odometrys", &set_map_odometrys, "set map odometrys",
+        py::arg("poses")
+  );
+  m.def("colouration_frame", &colouration_frame, "colouration frame",
+        py::arg("lidar_name"), py::arg("points"), py::arg("points_attr"), py::arg("image_dict"), py::arg("image_stream_dict"), py::arg("image_param")
+  );
+  m.def("save_render_cloud", &save_render_cloud, "save render cloud",
+        py::arg("file")
   );
 }

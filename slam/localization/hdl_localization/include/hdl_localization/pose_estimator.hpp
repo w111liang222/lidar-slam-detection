@@ -13,7 +13,7 @@
 
 namespace kkl {
   namespace alg {
-template<typename T, class System> class UnscentedKalmanFilterX;
+    template<typename T, class System> class UnscentedKalmanFilterX;
   }
 }
 
@@ -85,9 +85,7 @@ public:
    * @param cloud   input cloud
    */
   void correct(const uint64_t& stamp,
-               Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov,
-               boost::optional<Eigen::Matrix4d> &delta_observation,
-               boost::optional<Eigen::Matrix4d> &vo_observation);
+               Eigen::VectorXf &observation, Eigen::MatrixXf &observation_cov);
 
   /* getters */
   uint64_t last_correction_time() const;
@@ -120,7 +118,6 @@ private:
 
   Eigen::MatrixXf gps_noise;
 
-  Eigen::Matrix4f last_observation;
   boost::optional<Eigen::Matrix4f> wo_pred_error;
   boost::optional<Eigen::Matrix4f> imu_pred_error;
 

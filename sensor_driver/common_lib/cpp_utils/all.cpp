@@ -38,7 +38,7 @@ void set_message_core(bool enable) {
 }
 
 py::array_t<double> get_projection_forward(double lat0, double lon0, double lat1, double lon1) {
-    static UTMProjector projector;
+    UTMProjector projector;
     std::vector<double> data(2, 0);
     double originX, originY;
     double dataX, dataY;
@@ -50,7 +50,7 @@ py::array_t<double> get_projection_forward(double lat0, double lon0, double lat1
 }
 
 py::array_t<double> get_projection_backward(double lat0, double lon0, double x, double y) {
-    static UTMProjector projector;
+    UTMProjector projector;
     std::vector<double> data(2, 0);
     double originX, originY;
     projector.FromGlobalToLocal(lat0, lon0, originX, originY);
@@ -92,24 +92,13 @@ py::array_t<float> get_RPYT_from_transform(const py::array_t<float> &transform) 
     return py::array_t<float>(py::array::ShapeContainer({6}), data.data());
 }
 
-Transform getGlobalTransform(double lat, double lon, double alt,
+Transform getGlobalTransform(UTMProjector &projector,
+                             double lat, double lon, double alt,
                              double yaw, double pitch, double roll) {
-    static UTMProjector projector;
     double dataX, dataY;
     projector.FromGlobalToLocal(lat, lon, dataX, dataY);
+    yaw = yaw - get_grid_convergence(projector.GetLongitude0(), lat, lon);
     return getTransformFromRPYT(dataX, dataY, alt, -yaw, pitch, roll);
-}
-
-py::array_t<float> get_global_transform(double lat, double lon, double alt, 
-                                        double yaw, double pitch, double roll) {
-    Transform trans = getGlobalTransform(lat, lon, alt, yaw, pitch, roll);
-
-    Matrix tM = trans.matrix();
-    std::vector<float> data(16, 0);
-    for (int i = 0; i < 16; i++) {
-        data[i] = tM(i / 4, i % 4);
-    }
-    return py::array_t<float>(py::array::ShapeContainer({4, 4}), data.data());
 }
 
 py::array_t<double> getRelativeTransform(double lat0, double lon0, double alt0,
@@ -117,8 +106,9 @@ py::array_t<double> getRelativeTransform(double lat0, double lon0, double alt0,
                                          double lat1, double lon1, double alt1,
                                          double yaw1, double pitch1, double roll1,
                                          double x, double y, double z, double h, double p, double r) {
-    Transform T0 = getGlobalTransform(lat0, lon0, alt0, yaw0, pitch0, roll0);
-    Transform T1 = getGlobalTransform(lat1, lon1, alt1, yaw1, pitch1, roll1);
+    UTMProjector projector;
+    Transform T0 = getGlobalTransform(projector, lat0, lon0, alt0, yaw0, pitch0, roll0);
+    Transform T1 = getGlobalTransform(projector, lat1, lon1, alt1, yaw1, pitch1, roll1);
     Transform staticTransform = getTransformFromRPYT(x, y, z, h, p, r);
     Transform dt = staticTransform.inverse() * (T1.inverse() * T0) * staticTransform;
 
@@ -134,7 +124,7 @@ py::array_t<double> computeRTKTransform(double lat0, double lon0, double alt0,
                                         double yaw0, double pitch0, double roll0,
                                         double lat1, double lon1, double alt1,
                                         double yaw1, double pitch1, double roll1) {
-    static UTMProjector projector;
+    UTMProjector projector;
     double originX, originY;
     double dataX, dataY, dataZ;
     projector.FromGlobalToLocal(lat0, lon0, originX, originY);
@@ -142,6 +132,8 @@ py::array_t<double> computeRTKTransform(double lat0, double lon0, double alt0,
     dataX = dataX - originX;
     dataY = dataY - originY;
     dataZ = alt1 - alt0;
+
+    yaw1 = yaw1 - get_grid_convergence(projector.GetLongitude0(), lat1, lon1);
     double dataYaw = -yaw1;
     double dataPitch = pitch1;
     double dataRoll = roll1;
@@ -381,11 +373,6 @@ PYBIND11_MODULE(cpp_utils_ext, m) {
 
     m.def("get_RPYT_from_transform", &get_RPYT_from_transform, "get_RPYT_from_transform",
           py::arg("transform")
-    );
-
-    m.def("get_global_transform", &get_global_transform, "get_global_transform", 
-          py::arg("lat"), py::arg("lon"), py::arg("alt"), 
-          py::arg("yaw"), py::arg("pitch"), py::arg("roll")
     );
 
     m.def("getRelativeTransform", &getRelativeTransform, "getRelativeTransform",

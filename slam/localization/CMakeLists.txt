@@ -27,13 +27,14 @@ include_directories(
     SYSTEM ${PCL_INCLUDE_DIRS}
 )
 
+add_subdirectory(map_render)
+
 add_library(localization SHARED
     src/localization.cpp
     src/global_localization.cpp
     src/map_loader.cpp
     hdl_localization/hdl_localization.cpp
     hdl_localization/src/pose_estimator.cpp
-    hdl_localization/src/delta_estimater.cpp
     hdl_localization/apps/hdl_localization_nodelet.cpp
 )
 
@@ -46,6 +47,6 @@ target_link_libraries(localization
     ${Boost_LIBRARIES}
     ${PCL_LIBRARIES}
     g2o_backend
+    map_render
     map_common
-    visual_odometry
 )
