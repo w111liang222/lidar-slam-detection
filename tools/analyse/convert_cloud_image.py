@@ -20,14 +20,13 @@ colors = np.stack(colors)
 colors = colors[:, 0]
 
 def intensity_normalize(xs, ys, intensity):
-    if xs.shape[0] < 100:
-        return intensity
+    if intensity.shape[0] < 100:
+        return intensity, None
 
     # histogram
-    histogram_bins = 256
-    histogram, bins = np.histogram(intensity, histogram_bins, density=True)
+    histogram, bins = np.histogram(intensity, bins=1024, range=[0.0, 1.0], density=True)
     cdf = histogram.cumsum() # cumulative distribution function
-    cdf = (histogram_bins - 1) * cdf / cdf[-1] # normalize
+    cdf = 255.0 * cdf / cdf[-1] # normalize
 
     # use linear interpolation of cdf to find new pixel values
     intensity_cdf = np.interp(intensity, bins[:-1], cdf)
@@ -44,7 +43,7 @@ def intensity_normalize(xs, ys, intensity):
         clip_limit = clip_limit + 100.0
 
     intensity = np.clip(intensity_norm, 0, 255)
-    return intensity
+    return intensity, {'cdf': cdf, 'bins': bins, 'clip_limit': clip_limit}
 
 def bev_generate(xs, ys, intensity, image_w, image_h):
     intensity = np.round(intensity).astype(int)
@@ -66,29 +65,15 @@ def quantify_points(points, pixel_per_meter):
 
     xs = np.round( ((points[:, 0] - x_min) / x_range) * x_pixel_size).astype(int)
     ys = np.round(-((points[:, 1] - y_max) / y_range) * y_pixel_size).astype(int)
-    return xs, ys, image_w, image_h
+    return xs, ys, image_w, image_h, {'x_min': x_min, 'x_max': x_max, 'y_min': y_min, 'y_max': y_max}
 
 def filter_noise(xs, ys, intensity):
-    intensity_hist = np.histogram(intensity, bins=100)
+    num = intensity.shape[0]
+    filter_h_num = int(num * 0.999)
+    filter_l_num = int(num * 0.01)
 
-    # filter out the high intensity points
-    filter_h_num = intensity.shape[0] * 0.001
-    for h_index in range(100):
-        filter_h_num -= intensity_hist[0][-1 - h_index]
-        if filter_h_num < 0:
-            break
-
-    # filter out the low intensity points
-    filter_l_num = intensity.shape[0] * 0.1
-    for l_index in range(100):
-        filter_l_num -= intensity_hist[0][l_index]
-        if filter_l_num < 0:
-            break
-
-    intensity_h = intensity_hist[1][-1 - h_index]
-    intensity_l = intensity_hist[1][l_index]
-    mask = (intensity > intensity_l) & (intensity < intensity_h)
-    return xs[mask], ys[mask], intensity[mask]
+    idx = np.argsort(intensity)[filter_l_num:filter_h_num]
+    return xs[idx], ys[idx], intensity[idx]
 
 def scatter(xs, ys, intensity, image_w, image_h):
     intensity  = torch.from_numpy(intensity)
@@ -99,22 +84,60 @@ def scatter(xs, ys, intensity, image_w, image_h):
     ys = unq_coords // image_w
     return xs.numpy(), ys.numpy(), intensity.numpy()
 
-def process_cloud(filename, pixel_per_meter):
-    # Load PCD
+def load_pointcloud(filename):
     print('loading {}'.format(filename))
     pc        = pypcd.PointCloud.from_path(filename)
     points    = np.stack((pc.pc_data['x'], pc.pc_data['y'], pc.pc_data['z']), axis=1)
     intensity = pc.pc_data['intensity']
+    return points, intensity
 
+def process_cloud(points, intensity, pixel_per_meter):
     print('start processing total {} points'.format(intensity.shape[0]))
-    xs, ys, image_w, image_h = quantify_points(points, pixel_per_meter)
+    xs, ys, image_w, image_h, meta = quantify_points(points, pixel_per_meter)
 
     xs, ys, intensity = filter_noise(xs, ys, intensity)
     print('after noise filter: {} points'.format(intensity.shape[0]))
 
     xs, ys, intensity = scatter(xs, ys, intensity, image_w, image_h)
     print('after scatter: {} points'.format(intensity.shape[0]))
-    return xs, ys, intensity, image_w, image_h
+    return xs, ys, intensity, image_w, image_h, meta
+
+def preprocess(filename, pixel_per_meter):
+    points, intensity = load_pointcloud(filename)
+    return process_cloud(points, intensity, pixel_per_meter)
+
+def convert(xs, ys, intensity, image_w, image_h, pixel_per_meter):
+    intensity_norm = copy.deepcopy(intensity)
+
+    patch_size      = int(10.0 * pixel_per_meter)
+    half_patch_size = int(patch_size / 2)
+    quat_patch_size = int(half_patch_size / 2)
+    image_w = int((image_w + half_patch_size) / half_patch_size) * half_patch_size
+    image_h = int((image_h + half_patch_size) / half_patch_size) * half_patch_size
+    print("Image Size: {}, {}".format(image_w, image_h))
+
+    # histogram equalization by patch
+    statistics = []
+    for xi in range(0, image_w + 1, half_patch_size):
+        for yi in range(0, image_h + 1, half_patch_size):
+            xy_mask_l = (xs >= (xi - half_patch_size)) & (xs <= (xi + half_patch_size)) & (ys >= (yi - half_patch_size)) & (ys <= (yi + half_patch_size))
+            xy_mask_s = (xs >= (xi - quat_patch_size)) & (xs <= (xi + quat_patch_size)) & (ys >= (yi - quat_patch_size)) & (ys <= (yi + quat_patch_size))
+
+            # equalization with large patch
+            xs_patch, ys_patch, intensity_patch = xs[xy_mask_l], ys[xy_mask_l], intensity[xy_mask_l]
+            intensity_patch, hist = intensity_normalize(xs_patch, ys_patch, intensity_patch)
+
+            # update the inner patch
+            xy_mask = (xs_patch >= (xi - quat_patch_size)) & (xs_patch <= (xi + quat_patch_size)) & (ys_patch >= (yi - quat_patch_size)) & (ys_patch <= (yi + quat_patch_size))
+            intensity_norm[xy_mask_s] = intensity_patch[xy_mask]
+
+            x_bound = [xi - quat_patch_size, xi + quat_patch_size]
+            y_bound = [yi - quat_patch_size, yi + quat_patch_size]
+            statistics.append({'x_bound': x_bound, 'y_bound': y_bound, 'hist': hist})
+
+    # projection
+    image = bev_generate(xs, ys, intensity_norm, image_w, image_h)
+    return image, statistics
 
 def main():
     parser = argparse.ArgumentParser(description='project the pointcloud to BEV')
@@ -123,32 +146,8 @@ def main():
     parser.add_argument('-o', '--output', required=True, help='output path for save')
     args = parser.parse_args()
 
-    xs, ys, intensity, image_w, image_h = process_cloud(args.data_path, args.pixel_per_meter)
-    intensity_norm = copy.deepcopy(intensity)
-
-    patch_size      = int(10.0 * args.pixel_per_meter)
-    half_patch_size = int(patch_size / 2)
-    quat_patch_size = int(half_patch_size / 2)
-    image_w = int((image_w + half_patch_size) / half_patch_size) * half_patch_size
-    image_h = int((image_h + half_patch_size) / half_patch_size) * half_patch_size
-    print("Image Size: {}, {}".format(image_w, image_h))
-
-    # histogram equalization by patch
-    for xi in range(0, image_w + 1, quat_patch_size):
-        for yi in range(0, image_h + 1, quat_patch_size):
-            xy_mask_l = (xs >= (xi - half_patch_size)) & (xs <= (xi + half_patch_size)) & (ys >= (yi - half_patch_size)) & (ys <= (yi + half_patch_size))
-            xy_mask_s = (xs >= (xi - quat_patch_size)) & (xs <= (xi + quat_patch_size)) & (ys >= (yi - quat_patch_size)) & (ys <= (yi + quat_patch_size))
-
-            # equalization with large patch
-            xs_patch, ys_patch, intensity_patch = xs[xy_mask_l], ys[xy_mask_l], intensity[xy_mask_l]
-            intensity_patch = intensity_normalize(xs_patch, ys_patch, intensity_patch)
-
-            # update the inner patch
-            xy_mask = (xs_patch >= (xi - quat_patch_size)) & (xs_patch <= (xi + quat_patch_size)) & (ys_patch >= (yi - quat_patch_size)) & (ys_patch <= (yi + quat_patch_size))
-            intensity_norm[xy_mask_s] = intensity_patch[xy_mask]
-
-    # projection
-    image = bev_generate(xs, ys, intensity_norm, image_w, image_h)
+    xs, ys, intensity, image_w, image_h, meta = preprocess(args.data_path, args.pixel_per_meter)
+    image, statistics = convert(xs, ys, intensity, image_w, image_h, args.pixel_per_meter)
     cv2.imwrite("{}/bev.png".format(args.output), image)
 
 if __name__ == "__main__":
