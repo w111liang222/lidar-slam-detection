@@ -1003,7 +1003,7 @@ void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odo
 
     LOG_INFO("GNSS outlier detection and removal...");
     // use DCS to identify the GNSS outlier
-    const double max_distance_error2 = 0.5 * 0.5; // 0.5 m
+    const double max_distance_error2 = 1.0 * 1.0; // max error: 1.0 m
     for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
       g2o::EdgeSE3PriorXYZ* edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
       if (edge != nullptr) {
@@ -1034,14 +1034,6 @@ void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odo
       graphNode.graph_slam->graph->removeEdge(edge);
     }
 
-    // remove the robust kernel
-    for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
-      g2o::EdgeSE3PriorXYZ* edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
-      if (edge != nullptr) {
-        edge->setRobustKernel(nullptr);
-      }
-    }
-
     if (mode.compare("mapping") == 0) {
       graphNode.graph_slam->optimize(num_iterations);
       LOG_INFO("GNSS moment estimation...");
@@ -1052,7 +1044,7 @@ void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odo
       g2o::VertexPointXYZ* gnss_moment_node = graphNode.graph_slam->add_point_xyz_node(Eigen::Vector3d(0.0, 0.0, 0.0), hdl_graph_slam::MOMENT_VERTEX_ID_OFFSET);
       g2o::EdgeXYZPrior*   gnss_moment_edge = graphNode.graph_slam->add_xyz_prior_edge(gnss_moment_node, Eigen::Vector3d(0.0, 0.0, 0.0), information_matrix, hdl_graph_slam::MOMENT_VERTEX_ID_OFFSET + 1);
 
-      // replace the g2o::VertexSE3 with g2o::EdgeSE3GNSS*
+      // replace the g2o::EdgeSE3PriorXYZ with g2o::EdgeSE3GNSS*
       std::vector<g2o::EdgeSE3GNSS*> gnss_moment_edges;
       std::vector<g2o::EdgeSE3PriorXYZ*> gnss_prior_edges;
       for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
@@ -1060,6 +1052,8 @@ void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odo
         if (prior_edge != nullptr) {
           g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(prior_edge->vertices()[0]);
           g2o::EdgeSE3GNSS* moment_edge = graphNode.graph_slam->add_se3_gnss_edge(node, gnss_moment_node, prior_edge->measurement(), prior_edge->information());
+          graphNode.graph_slam->add_robust_kernel(moment_edge, "DCS2", max_distance_error2 * prior_edge->information()(0, 0));
+
           gnss_prior_edges.push_back(prior_edge);
           gnss_moment_edges.push_back(moment_edge);
         }
@@ -1077,7 +1071,9 @@ void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odo
         g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(moment_edge->vertices()[0]);
         Eigen::Isometry3d estimate = node->estimate();
         Eigen::Vector3d measurement = moment_edge->measurement() + estimate.linear() * gnss_moment_node->estimate();
-        graphNode.graph_slam->add_se3_prior_xyz_edge(node, measurement, moment_edge->information());
+        g2o::EdgeSE3PriorXYZ* prior_edge = graphNode.graph_slam->add_se3_prior_xyz_edge(node, measurement, moment_edge->information());
+        graphNode.graph_slam->add_robust_kernel(prior_edge, "DCS2", max_distance_error2 * moment_edge->information()(0, 0));
+
         graphNode.graph_slam->graph->removeEdge(moment_edge);
       }
       graphNode.graph_slam->graph->removeEdge(gnss_moment_edge);

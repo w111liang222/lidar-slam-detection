@@ -183,7 +183,7 @@ class PlayerDataManager(DataManagerTemplate):
                                                  data_dict['ins_data']['acc_y'],
                                                  data_dict['ins_data']['acc_z']]], dtype=np.float64)
 
-		data_dict['ins_data']['Sensor'] = data_dict['ins_data']['Sensor'] if 'Sensor' in data_dict['ins_data'] else "GNSS"
+        data_dict['ins_data']['Sensor'] = data_dict['ins_data']['Sensor'] if 'Sensor' in data_dict['ins_data'] else "GNSS"
 
         if 'motion_valid' not in data_dict:
             data_dict['motion_valid'] = data_dict['ins_valid']

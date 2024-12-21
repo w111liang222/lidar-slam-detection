@@ -26,6 +26,13 @@ LSD currently supports many features:
 
 # Changelog
 
+**[2024-12-21]** LiDAR mapping (LIO odometry and PGO) is further improved.
+- LIO odometry: degenerate detection and wheelspeed observation for FASTLIO.
+- PGO backend: GNSS outlier detection and extrinsic estimation.
+- Map management: support automatic multi-maps merging.
+- Other: pointcloud colouration with multi-cam, dense map generation and pointcloud to BEV (under tools/postprocessing).
+- BUG fix: UTM projection when cross the projection zone and the grid converage of UTM is considered.
+
 **[2023-10-08]** Better 3DMOT (GIOU, Two-stage association).
 | Performance (WOD val) | AMOTA ↑ | AMOTP ↓ |  IDs(%) ↓ |
 |-----------------------|:-------:|:-------:|:---------:|
