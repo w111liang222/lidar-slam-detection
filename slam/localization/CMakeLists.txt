@@ -46,6 +46,7 @@ target_include_directories(localization
 target_link_libraries(localization
     ${Boost_LIBRARIES}
     ${PCL_LIBRARIES}
+    fast_max-clique_finder
     g2o_backend
     map_render
     map_common

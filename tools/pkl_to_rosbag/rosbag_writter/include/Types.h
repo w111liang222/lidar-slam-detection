@@ -31,6 +31,12 @@ struct Ins_t {
   double latitude;         // degrees
   double longitude;        // degrees
   double altitude;         // m
+  double heading;          // degrees
+  double pitch;            // degrees
+  double roll;             // degrees
+  double Ve;               // m / s
+  double Vn;               // m / s
+  double Vu;               // m / s
   int status;
   uint64_t timestamp;      // us
 };

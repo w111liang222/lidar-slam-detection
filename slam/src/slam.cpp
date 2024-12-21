@@ -191,14 +191,13 @@ void SLAM::getColorMap(PointCloudRGB::Ptr &points) {
   mSlam->getColorMap(points);
 }
 
-bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
+bool SLAM::preprocessInsData(uint64_t timestamp, std::shared_ptr<RTKType> &rtk) {
   // check the valid of INS data
   if (rtk->status == 0 && fabs(rtk->longitude) < 1e-4 && fabs(rtk->latitude) < 1e-4) {
-    double lost_time = getCurrentTime() / 1000000.0 - mLastInsTimestamp;
+    double lost_time = timestamp / 1000000.0 - mLastInsTimestamp;
     if (mLastInsPriority != -1 && lost_time >= 1.0) {
       LOG_WARN("SLAM: rtk status downgrade from {} to invalid", mInsConfig[mLastInsPriority].status_name);
       mLastInsPriority = -1;
-      mLastInsTimestamp = 0;
     }
     return false;
   }
@@ -228,10 +227,6 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
     }
   }
 
-  if (fabs(mLastInsTimestamp) < 1e-4) {
-    mLastInsTimestamp = rtk->timestamp / 1000000.0;
-  }
-
   int priority = -1;
   if (match_config.priority == mLastInsPriority) {
     // status is not changed
@@ -239,9 +234,10 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
     mLastInsTimestamp = rtk->timestamp / 1000000.0;
   } else if (match_config.priority < mLastInsPriority) {
     // status downgrade immediately
-    LOG_WARN("SLAM: rtk status downgrade from {} to {}",
+    LOG_WARN("SLAM: rtk status downgrade from {} to {}, status enum: {}",
       mInsConfig[mLastInsPriority].status_name,
-      (match_config.priority == -1 ? "invalid" : mInsConfig[match_config.priority].status_name)
+      (match_config.priority == -1 ? "invalid" : mInsConfig[match_config.priority].status_name),
+      rtk->status
     );
     priority = match_config.priority;
     mLastInsPriority = match_config.priority;
@@ -257,11 +253,11 @@ bool SLAM::preprocessInsData(std::shared_ptr<RTKType> &rtk) {
       mLastInsPriority = match_config.priority;
       mLastInsTimestamp = rtk->timestamp / 1000000.0;
     } else {
-      LOG_INFO("SLAM: rtk status is upgrading from {} to {}",
+      LOG_INFO("SLAM: rtk status is upgrading from {} to {}, keep time: {:.2f} s",
         (mLastInsPriority == -1 ? "invalid" : mInsConfig[mLastInsPriority].status_name),
-        mInsConfig[match_config.priority].status_name
+        mInsConfig[match_config.priority].status_name, keep_time
       );
-      priority = std::max(mLastInsPriority, match_config.priority - 2);
+      priority = mLastInsPriority;
     }
   }
 
@@ -282,14 +278,17 @@ bool SLAM::run(const uint64_t &timestamp,
   std::shared_ptr<RTKType> rtk_ptr = std::make_shared<RTKType>(rtk);
 
   // pre-process rtk data
-  bool rtk_valid = preprocessInsData(rtk_ptr);
+  bool rtk_valid = preprocessInsData(timestamp, rtk_ptr);
+  if (!rtk_valid) {
+    rtk_ptr->sensor = boost::replace_all_copy(rtk_ptr->sensor, "GNSS", "");
+  }
 
   // process GPS data
-  if (mUseGPS && rtk_valid) {
-    if (!mSlam->originIsSet()) {
+  if (mUseGPS) {
+    if (rtk_valid && !mSlam->originIsSet()) {
       mSlam->setOrigin(rtk);
     }
-    mSlam->feedInsData(rtk_ptr);
+    mSlam->feedInsData(rtk_valid, rtk_ptr);
   }
 
   // process IMU data
@@ -347,6 +346,20 @@ bool SLAM::run(const uint64_t &timestamp,
     pose.altitude  = rtk.altitude;
     pose.status    = rtk.status;
     pose.state     = "Mapping";
+  }
+
+  // calculate the euler angle
+  double tx, ty, tz;
+  getRPYTfromTransformFrom(odom, tx, ty, tz, pose.heading, pose.pitch, pose.roll);
+  if (std::abs(pose.roll) >= 90.0 || std::abs(pose.pitch) >= 90.0) {
+    odom = getTransformFromRPYT(tx, ty, tz, -pose.heading, pose.pitch, pose.roll);
+    getRPYTfromTransformFrom(odom, tx, ty, tz, pose.heading, pose.pitch, pose.roll);
+  } else {
+    pose.heading = -pose.heading;
+  }
+  // heading range 0 ~ 360
+  if (pose.heading < 0) {
+    pose.heading = pose.heading + 360;
   }
 
   return true;

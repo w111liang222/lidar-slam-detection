@@ -52,7 +52,7 @@ class SLAM {
 
  public:
   bool setup();
-  bool preprocessInsData(std::shared_ptr<RTKType> &rtk);
+  bool preprocessInsData(uint64_t timestamp, std::shared_ptr<RTKType> &rtk);
   bool run(const uint64_t &timestamp,
            std::map<std::string, PointCloudAttrPtr>& points,
            std::map<std::string, ImageType> &images,

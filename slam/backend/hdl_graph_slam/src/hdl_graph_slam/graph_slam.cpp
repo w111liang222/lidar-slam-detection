@@ -14,18 +14,22 @@
 #include <g2o/solvers/pcg/linear_solver_pcg.h>
 #include <g2o/types/slam3d/types_slam3d.h>
 #include <g2o/types/slam3d/edge_se3_pointxyz.h>
+#include <g2o/types/slam3d/edge_xyz_prior.h>
 #include <g2o/types/slam3d_addons/types_slam3d_addons.h>
 #include <g2o/edge_se3_plane.hpp>
 #include <g2o/edge_se3_priorxy.hpp>
 #include <g2o/edge_se3_priorxyz.hpp>
 #include <g2o/edge_se3_priorvec.hpp>
 #include <g2o/edge_se3_priorquat.hpp>
+#include <g2o/edge_se3_gnss.hpp>
 #include <g2o/edge_plane_prior.hpp>
 #include <g2o/edge_plane_identity.hpp>
 #include <g2o/edge_plane_parallel.hpp>
+#include <g2o/robust_kernel_dcs2.hpp>
 #include <g2o/robust_kernel_io.hpp>
 
 #include "Logger.h"
+#include "SystemUtils.h"
 
 G2O_USE_OPTIMIZATION_LIBRARY(pcg)
 G2O_USE_OPTIMIZATION_LIBRARY(cholmod)  // be aware of that cholmod brings GPL dependency
@@ -37,11 +41,13 @@ G2O_REGISTER_TYPE(EDGE_SE3_PRIORXY, EdgeSE3PriorXY)
 G2O_REGISTER_TYPE(EDGE_SE3_PRIORXYZ, EdgeSE3PriorXYZ)
 G2O_REGISTER_TYPE(EDGE_SE3_PRIORVEC, EdgeSE3PriorVec)
 G2O_REGISTER_TYPE(EDGE_SE3_PRIORQUAT, EdgeSE3PriorQuat)
+G2O_REGISTER_TYPE(EDGE_SE3_GNSS, EdgeSE3GNSS)
 G2O_REGISTER_TYPE(EDGE_PLANE_PRIOR_NORMAL, EdgePlanePriorNormal)
 G2O_REGISTER_TYPE(EDGE_PLANE_PRIOR_DISTANCE, EdgePlanePriorDistance)
 G2O_REGISTER_TYPE(EDGE_PLANE_IDENTITY, EdgePlaneIdentity)
 G2O_REGISTER_TYPE(EDGE_PLANE_PARALLEL, EdgePlaneParallel)
 G2O_REGISTER_TYPE(EDGE_PLANE_PAERPENDICULAR, EdgePlanePerpendicular)
+G2O_REGISTER_ROBUST_KERNEL(DCS2, RobustKernelDCS2)
 }  // namespace g2o
 
 namespace hdl_graph_slam {
@@ -124,9 +130,9 @@ g2o::VertexPlane* GraphSLAM::add_plane_node(const Eigen::Vector4d& plane_coeffs,
   return vertex;
 }
 
-g2o::VertexPointXYZ* GraphSLAM::add_point_xyz_node(const Eigen::Vector3d& xyz) {
+g2o::VertexPointXYZ* GraphSLAM::add_point_xyz_node(const Eigen::Vector3d& xyz, const int &id) {
   g2o::VertexPointXYZ* vertex(new g2o::VertexPointXYZ());
-  vertex->setId(static_cast<int>(graph->vertices().size()));
+  vertex->setId(id);
   vertex->setEstimate(xyz);
   graph->addVertex(vertex);
 
@@ -247,6 +253,29 @@ g2o::EdgeSE3PriorQuat* GraphSLAM::add_se3_prior_quat_edge(g2o::VertexSE3* v_se3,
   return edge;
 }
 
+g2o::EdgeSE3GNSS* GraphSLAM::add_se3_gnss_edge(g2o::VertexSE3* v_se3, g2o::VertexPointXYZ* v_xyz, const Eigen::Vector3d& xyz, const Eigen::MatrixXd& information_matrix) {
+  g2o::EdgeSE3GNSS* edge(new g2o::EdgeSE3GNSS());
+  edge->setId(max_edge_id++);
+  edge->setMeasurement(xyz);
+  edge->setInformation(information_matrix);
+  edge->vertices()[0] = v_se3;
+  edge->vertices()[1] = v_xyz;
+  graph->addEdge(edge);
+
+  return edge;
+}
+
+g2o::EdgeXYZPrior* GraphSLAM::add_xyz_prior_edge(g2o::VertexPointXYZ* v_xyz, const Eigen::Vector3d& xyz, const Eigen::Matrix3d& information_matrix, const int &id) {
+  g2o::EdgeXYZPrior* edge(new g2o::EdgeXYZPrior());
+  edge->setId(id);
+  edge->setMeasurement(xyz);
+  edge->setInformation(information_matrix);
+  edge->vertices()[0] = v_xyz;
+  graph->addEdge(edge);
+
+  return edge;
+}
+
 g2o::EdgePlane* GraphSLAM::add_plane_edge(g2o::VertexPlane* v_plane1, g2o::VertexPlane* v_plane2, const Eigen::Vector4d& measurement, const Eigen::Matrix4d& information) {
   g2o::EdgePlane* edge(new g2o::EdgePlane());
   edge->setId(max_edge_id++);
@@ -323,6 +352,7 @@ int GraphSLAM::optimize(int num_iterations) {
   // std::cout << "optimizing... " << std::flush;
 
   // std::cout << "init" << std::endl;
+  auto clock = std::chrono::steady_clock::now();
   graph->initializeOptimization();
   graph->setVerbose(false);
 
@@ -332,9 +362,11 @@ int GraphSLAM::optimize(int num_iterations) {
   // std::cout << "optimize!!" << std::endl;
   // auto t1 = ros::WallTime::now();
   int iterations = graph->optimize(num_iterations);
+  auto elapseMs = since(clock).count();
 
   // auto t2 = ros::WallTime::now();
   // std::cout << "done" << std::endl;
+  LOG_INFO("Graph: pose optimization costs {} ms", elapseMs);
   LOG_INFO("iterations: {} / {}", iterations, num_iterations);
   LOG_INFO("chi2: (before) {} -> (after) {}", chi2, graph->chi2());
   // std::cout << "time: " << boost::format("%.3f") % (t2 - t1).toSec() << "[sec]" << std::endl;

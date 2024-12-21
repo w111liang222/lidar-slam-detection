@@ -45,7 +45,6 @@ class MapLoader {
 
  protected:
   bool loadSlamMap(bool is_merge);
-  void MergeManual(MapLoader *new_map);
   void mergeMapSLAM(MapLoader *new_map);
 
   bool loadMapOrigin(const std::string &map_path);

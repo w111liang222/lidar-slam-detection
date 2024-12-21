@@ -325,6 +325,41 @@ std::pair<int, float> SCManager::detectClosestMatch(Eigen::MatrixXd &sc, std::ve
     return result;
 }
 
+std::vector<SCMatch> SCManager::detectCandidateMatch(Eigen::MatrixXd &sc, std::vector<float> &ringkey, Eigen::MatrixXd &sectorkey) {
+    std::vector<SCMatch> result;
+    if (polarcontexts_.size() <= 0) {
+        return result;
+    }
+
+    int candidate_num = std::min(NUM_CANDIDATES_FROM_TREE, int(polarcontexts_.size()));
+    // knn search
+    std::vector<size_t> candidate_indexes( candidate_num );
+    std::vector<float> out_dists_sqr( candidate_num );
+
+    nanoflann::KNNResultSet<float> knnsearch_result( candidate_num );
+    knnsearch_result.init( &candidate_indexes[0], &out_dists_sqr[0] );
+    polarcontext_tree_->index->findNeighbors( knnsearch_result, &ringkey[0] /* query */, nanoflann::SearchParams(10) );
+
+    /*
+     *  step 2: pairwise distance (find optimal columnwise best-fit using cosine distance)
+     */
+    for ( int candidate_iter_idx = 0; candidate_iter_idx < candidate_num; candidate_iter_idx++ )
+    {
+        MatrixXd polarcontext_candidate = polarcontexts_[ candidate_indexes[candidate_iter_idx] ];
+        std::pair<double, int> sc_dist_result = distanceBtnScanContext( sc, polarcontext_candidate );
+
+        double candidate_dist = sc_dist_result.first;
+        int candidate_align = sc_dist_result.second;
+
+        if( candidate_dist < SC_DIST_THRES )
+        {
+            result.push_back(SCMatch(candidate_indexes[candidate_iter_idx], deg2rad(candidate_align * PC_UNIT_SECTORANGLE), candidate_dist));
+        }
+    }
+
+    return result;
+}
+
 std::pair<int, float> SCManager::detectLoopClosureID ( void )
 {
     int loop_id { -1 }; // init with -1, -1 means no loop (== LeGO-LOAM's variable "closestHistoryFrameID")

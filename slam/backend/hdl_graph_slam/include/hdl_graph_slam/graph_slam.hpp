@@ -18,6 +18,8 @@ class EdgeSE3PriorXY;
 class EdgeSE3PriorXYZ;
 class EdgeSE3PriorVec;
 class EdgeSE3PriorQuat;
+class EdgeSE3GNSS;
+class EdgeXYZPrior;
 class EdgePlane;
 class EdgePlaneIdentity;
 class EdgePlaneParallel;
@@ -58,7 +60,7 @@ public:
    * @param xyz
    * @return registered node
    */
-  g2o::VertexPointXYZ* add_point_xyz_node(const Eigen::Vector3d& xyz);
+  g2o::VertexPointXYZ* add_point_xyz_node(const Eigen::Vector3d& xyz, const int &id);
 
   /**
    * @brief add an edge between SE3 nodes
@@ -112,6 +114,10 @@ public:
   g2o::EdgeSE3PriorQuat* add_se3_prior_quat_edge(g2o::VertexSE3* v_se3, const Eigen::Quaterniond& quat, const Eigen::MatrixXd& information_matrix);
 
   g2o::EdgeSE3PriorVec* add_se3_prior_vec_edge(g2o::VertexSE3* v_se3, const Eigen::Vector3d& direction, const Eigen::Vector3d& measurement, const Eigen::MatrixXd& information_matrix);
+
+  g2o::EdgeSE3GNSS* add_se3_gnss_edge(g2o::VertexSE3* v_se3, g2o::VertexPointXYZ* v_xyz, const Eigen::Vector3d& xyz, const Eigen::MatrixXd& information_matrix);
+
+  g2o::EdgeXYZPrior* add_xyz_prior_edge(g2o::VertexPointXYZ* v_xyz, const Eigen::Vector3d& xyz, const Eigen::Matrix3d& information_matrix, const int &id);
 
   g2o::EdgePlane* add_plane_edge(g2o::VertexPlane* v_plane1, g2o::VertexPlane* v_plane2, const Eigen::Vector4d& measurement, const Eigen::Matrix4d& information);
 

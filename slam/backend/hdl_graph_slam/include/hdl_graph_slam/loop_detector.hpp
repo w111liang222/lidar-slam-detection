@@ -9,7 +9,9 @@
 #include <hdl_graph_slam/graph_slam.hpp>
 
 #include <g2o/types/slam3d/vertex_se3.h>
+
 #include "Logger.h"
+#include "SystemUtils.h"
 
 namespace hdl_graph_slam {
 
@@ -51,7 +53,7 @@ public:
 #ifdef HAVE_CUDA_ENABLE
     registration = select_registration_method("NDT_CUDA");
 #else
-    registration = select_registration_method("FAST_VGICP");
+    registration = select_registration_method("FAST_VGICP", 50000);
 #endif
     registration_accurate = select_registration_method("FAST_GICP");
     registration_accurate->setMaxCorrespondenceDistance(0.5);
@@ -65,6 +67,8 @@ public:
    * @param graph_slam      pose graph
    */
   std::vector<Loop::Ptr> detect(const std::vector<KeyFrame::Ptr>& keyframes, const std::deque<KeyFrame::Ptr>& new_keyframes, hdl_graph_slam::GraphSLAM& graph_slam, bool &is_running) {
+    auto clock = std::chrono::steady_clock::now();
+
     std::vector<Loop::Ptr> detected_loops;
     double accum_distance_new_keyframe = 0;
     for(const auto& new_keyframe : new_keyframes) {
@@ -83,6 +87,8 @@ public:
       }
     }
 
+    auto elapseMs = since(clock).count();
+    LOG_INFO("Graph: loop detection costs {} ms", elapseMs);
     return detected_loops;
   }
 

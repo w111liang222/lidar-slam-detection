@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
     }
 
     // INS data
-    if (data_dict.contains("ins_data") && data_dict["ins_valid"].cast<bool>())
+    if (data_dict.contains("ins_data") && data_dict["ins_valid"].cast<bool>() && data_dict["ins_data"]["timestamp"].cast<uint64_t>() != 0)
     {
       Ins_t ins = toIns(data_dict["ins_data"]);
       wbag.writeIns("ins_raw", "base_link", ins);

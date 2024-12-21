@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 #include <string>
+#include <set>
 #include <memory>
+#include <unistd.h>
 #include <zcm/zcm-cpp.hpp>
 #include "std_msgs/Header.hpp"
 
@@ -33,6 +35,24 @@ std::shared_ptr<zcm::ZCM> create_core();
 void set_core_enable(bool enable);
 bool get_core_enable();
 
+template <class T>
+bool get_core_enable(const std::string &topic, const T &msg) {
+    if (!get_core_enable()) {
+        return false;
+    }
+
+    static std::set<std::string> channels;
+    if (channels.find(topic) == channels.end()) {
+        // repeated send the message to workaround the ZMQ BUG: // https://github.com/ZeroCM/zcm/issues/2
+        for (int i = 0; i < 3; i++) {
+            get_core()->publish(topic, &msg);
+            usleep(100000);
+        }
+    }
+    channels.insert(topic);
+    return true;
+}
+
 void publish_msgs(const std::string &topic, const char &data);
 void publish_msgs(const std::string &topic, const float &data);
 void publish_msgs(const std::string &topic, const double &data);
@@ -41,13 +61,13 @@ void publish_msgs(const std::string &topic, const int64_t &data);
 void publish_msgs(const std::string &topic, const std::string &data);
 
 #define PUBLISH_STD_MSG(topic, data)  do {     \
-    if (get_core_enable()) {                   \
+    if (get_core_enable(topic, msg)) {         \
         publish_msgs(topic, data);             \
     }                                          \
 } while (0)
 
 #define PUBLISH_MSG(topic, msg)       do {     \
-    if (get_core_enable()) {                   \
+    if (get_core_enable(topic, msg)) {         \
         get_core()->publish(topic, &msg);      \
     }                                          \
 } while (0)

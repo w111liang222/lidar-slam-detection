@@ -100,6 +100,12 @@ Ins_t toIns(py::dict input)
     ins.latitude = input["latitude"].cast<double>();
     ins.longitude = input["longitude"].cast<double>();
     ins.altitude = input["altitude"].cast<double>();
+    ins.heading = input["heading"].cast<double>();
+    ins.pitch = input["pitch"].cast<double>();
+    ins.roll = input["roll"].cast<double>();
+    ins.Ve = input["Ve"].cast<double>();
+    ins.Vn = input["Vn"].cast<double>();
+    ins.Vu = input["Vu"].cast<double>();
     if (input.contains("status")) {
         ins.status = input["status"].cast<int>();
     } else {

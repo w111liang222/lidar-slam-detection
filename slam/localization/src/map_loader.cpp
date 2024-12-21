@@ -7,6 +7,7 @@
 #include "overlap_removal.hpp"
 #include "overlap_merge.hpp"
 #include "overlap_update.hpp"
+#include "global_alignment.hpp"
 #include "backend_api.h"
 
 using namespace Locate;
@@ -78,43 +79,37 @@ bool MapLoader::reloadGraph() {
   return load_graph_ok;
 }
 
-void MapLoader::MergeManual(MapLoader *new_map) {
-  // merge pose graph
-  bool load_graph_ok = graph_merge(new_map->mConfig.map_path + "/graph", new_map->mKeyFrames);
-  if (!load_graph_ok) {
-    return;
-  }
-
-  // merge keyframes
-  mKeyFrames.insert(mKeyFrames.end(), new_map->mKeyFrames.begin(), new_map->mKeyFrames.end());
-  mOdometrys.emplace_back(PoseType()); // push a zero pose as the splitter
-  mOdometrys.insert(mOdometrys.end(), new_map->mOdometrys.begin(), new_map->mOdometrys.end());
-
-  // optimize
-  OptimizeMap();
-  LOG_WARN("Map: total {} frames, a manual loop is need to finish merging", mKeyFrames.size());
-}
-
 void MapLoader::mergeMapSLAM(MapLoader *new_map) {
-  if (!mOriginIsSet || !new_map->mOriginIsSet) {
-    LOG_WARN("Map: origin is not set, {} / {}", mOriginIsSet, new_map->mOriginIsSet);
-    MergeManual(new_map);
-    return;
+  if (!mOriginIsSet && new_map->mOriginIsSet) {
+    LOG_ERROR("Map: can not merge, the reference map has no origin, but source has");
+    goto err1;
   }
 
-  if (std::fabs(mOrigin.latitude  - new_map->mOrigin.latitude)  > 1e-4 ||
-      std::fabs(mOrigin.longitude - new_map->mOrigin.longitude) > 1e-4 ||
-      std::fabs(mOrigin.altitude  - new_map->mOrigin.altitude)  > 1e-4) {
-    LOG_WARN("Map: origin is not consistent, {}, {}, {} / {}, {}, {}", mOrigin.latitude, mOrigin.longitude, mOrigin.altitude,
-                                                                       new_map->mOrigin.latitude, new_map->mOrigin.longitude, new_map->mOrigin.altitude);
-    MergeManual(new_map);
-    return;
+  if (mCoordinate != new_map->mCoordinate) {
+    LOG_ERROR("Map: coordinate system is not consistent, {} / {}", mCoordinate, new_map->mCoordinate);
+    goto err1;
   }
 
   // merge pose graph
-  bool load_graph_ok = graph_merge(new_map->mConfig.map_path + "/graph", new_map->mKeyFrames);
-  if (!load_graph_ok) {
-    return;
+  if (!graph_merge(new_map->mConfig.map_path + "/graph", new_map->mKeyFrames)) {
+    LOG_ERROR("Map: can not merge the pose graph");
+    goto err1;
+  }
+
+  if (!mOriginIsSet || !new_map->mOriginIsSet) {
+    LOG_INFO("Map: run global search to align coordinate, source: {}, reference: {}", new_map->mOriginIsSet, mOriginIsSet);
+    if (!global_alignment(mKeyFrames, new_map->mKeyFrames, mOriginIsSet)) {
+      goto err1;
+    }
+  } else {
+    if (std::fabs(mOrigin.latitude  - new_map->mOrigin.latitude)  > 1e-6 ||
+        std::fabs(mOrigin.longitude - new_map->mOrigin.longitude) > 1e-6 ||
+        std::fabs(mOrigin.altitude  - new_map->mOrigin.altitude)  > 1e-6) {
+      LOG_INFO("Map: origin is not consistent, ({}, {}, {}) / ({}, {}, {})", mOrigin.latitude, mOrigin.longitude, mOrigin.altitude,
+                                                                             new_map->mOrigin.latitude, new_map->mOrigin.longitude, new_map->mOrigin.altitude);
+      graph_update_origin(new_map->mOrigin, mOrigin, new_map->mKeyFrames);
+      graph_sync_pose(new_map->mKeyFrames, SyncDirection::FROM_GRAPH);
+    }
   }
 
   // 1. resample single clip map
@@ -122,10 +117,22 @@ void MapLoader::mergeMapSLAM(MapLoader *new_map) {
 
   // 2. detect the overlap region based on distance and pointcloud registration
   {
+    const int fragment = 10;
+    int fragment_num = int(new_map->mKeyFrames.size() / fragment) + 1;
+
     OverlapDetector overlap_detector;
-    std::vector<Overlap::Ptr> overlaps = overlap_detector.detect(mKeyFrames, new_map->mKeyFrames);
-    for (auto &overlap : overlaps) {
-      graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
+    for (int i = 0; i < fragment_num; i++) {
+      int begin_offset = i * fragment;
+      int end_offset = std::min((i + 1) * fragment, int(new_map->mKeyFrames.size()));
+      std::vector<std::shared_ptr<KeyFrame>> fragment_frames(new_map->mKeyFrames.begin() + begin_offset, new_map->mKeyFrames.begin() + end_offset);
+
+      std::vector<Overlap::Ptr> overlaps = overlap_detector.detect(mKeyFrames, fragment_frames);
+      for (auto &overlap : overlaps) {
+        graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
+      }
+      graph_optimize();
+      graph_sync_pose(mKeyFrames, SyncDirection::FROM_GRAPH);
+      graph_sync_pose(new_map->mKeyFrames, SyncDirection::FROM_GRAPH);
     }
   }
 
@@ -135,26 +142,32 @@ void MapLoader::mergeMapSLAM(MapLoader *new_map) {
   mOdometrys.insert(mOdometrys.end(), new_map->mOdometrys.begin(), new_map->mOdometrys.end());
 
   // 4. optimize
-  OptimizeMap();
+  // OptimizeMap();
 
   // 5. detect duplicate region and update
-  {
-    OverlapUpdator overlap_updator;
-    // std::vector<std::shared_ptr<KeyFrame>> duplicate_regions = overlap_updator.detect(mKeyFrames);
-    // mKeyFrames = overlap_updator.update(mKeyFrames, duplicate_regions);
-    // for(size_t i = 0; i < duplicate_regions.size(); i++) {
-    //   graph_del_vertex(duplicate_regions[i]->mId);
-    // }
-    std::vector<Overlap::Ptr> overlaps = overlap_updator.post_process(mKeyFrames);
-    for (auto &overlap : overlaps) {
-      graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
-    }
-  }
+  // {
+  //   OverlapUpdator overlap_updator;
+  //   // std::vector<std::shared_ptr<KeyFrame>> duplicate_regions = overlap_updator.detect(mKeyFrames);
+  //   // mKeyFrames = overlap_updator.update(mKeyFrames, duplicate_regions);
+  //   // for(size_t i = 0; i < duplicate_regions.size(); i++) {
+  //   //   graph_del_vertex(duplicate_regions[i]->mId);
+  //   // }
+  //   std::vector<Overlap::Ptr> overlaps = overlap_updator.post_process(mKeyFrames);
+  //   for (auto &overlap : overlaps) {
+  //     graph_add_edge(overlap->key1->mPoints, overlap->key1->mId, overlap->key2->mPoints, overlap->key2->mId, overlap->relative_pose, overlap->score);
+  //   }
+  // }
 
   // 6. optimize
   OptimizeMap();
   LOG_INFO("Map: merge success, total {} key frames", mKeyFrames.size());
+  return;
+
+err1:
+  new_map->mKeyFrames.clear();
+  LOG_ERROR("Map: fail to merge map: {}", new_map->mConfig.map_path);
 }
+
 
 void MapLoader::mergeMap(MapLoader *new_map) {
   if (mType == MapType::SLAM && new_map->mType == MapType::SLAM) {
@@ -313,11 +326,8 @@ void MapLoader::buildGraphKDTree() {
 }
 
 void MapLoader::OptimizeMap() {
-  std::map<int, Eigen::Matrix4d> update_pose;
-  graph_optimize(update_pose);
-  for(size_t i = 0; i < mKeyFrames.size(); i++) {
-    mKeyFrames[i]->mOdom = Eigen::Isometry3d(update_pose[mKeyFrames[i]->mId]);
-  }
+  graph_optimize();
+  graph_sync_pose(mKeyFrames, SyncDirection::FROM_GRAPH);
 }
 
 // Map Render

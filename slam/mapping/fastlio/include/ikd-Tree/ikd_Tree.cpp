@@ -172,8 +172,8 @@ void KD_TREE<PointType>::start_thread(){
     pthread_mutex_init(&points_deleted_rebuild_mutex_lock, NULL); 
     pthread_mutex_init(&working_flag_mutex, NULL);
     pthread_mutex_init(&search_flag_mutex, NULL);
-    pthread_create(&rebuild_thread, NULL, multi_thread_ptr, (void*) this);
-    printf("Multi thread started \n");    
+    // pthread_create(&rebuild_thread, NULL, multi_thread_ptr, (void*) this);
+    // printf("Multi thread started \n");    
 }
 
 template <typename PointType>
@@ -624,14 +624,14 @@ void KD_TREE<PointType>::BuildTree(KD_TREE_NODE ** root, int l, int r, PointVect
 template <typename PointType>
 void KD_TREE<PointType>::Rebuild(KD_TREE_NODE ** root){    
     KD_TREE_NODE * father_ptr;
-    if ((*root)->TreeSize >= Multi_Thread_Rebuild_Point_Num) { 
-        if (!pthread_mutex_trylock(&rebuild_ptr_mutex_lock)){     
-            if (Rebuild_Ptr == nullptr || ((*root)->TreeSize > (*Rebuild_Ptr)->TreeSize)) {
-                Rebuild_Ptr = root;          
-            }
-            pthread_mutex_unlock(&rebuild_ptr_mutex_lock);
-        }
-    } else {
+    // if ((*root)->TreeSize >= Multi_Thread_Rebuild_Point_Num) { 
+    //     if (!pthread_mutex_trylock(&rebuild_ptr_mutex_lock)){     
+    //         if (Rebuild_Ptr == nullptr || ((*root)->TreeSize > (*Rebuild_Ptr)->TreeSize)) {
+    //             Rebuild_Ptr = root;          
+    //         }
+    //         pthread_mutex_unlock(&rebuild_ptr_mutex_lock);
+    //     }
+    // } else {
         father_ptr = (*root)->father_ptr;
         int size_rec = (*root)->TreeSize;
         PCL_Storage.clear();
@@ -640,7 +640,7 @@ void KD_TREE<PointType>::Rebuild(KD_TREE_NODE ** root){
         BuildTree(root, 0, PCL_Storage.size()-1, PCL_Storage);
         if (*root != nullptr) (*root)->father_ptr = father_ptr;
         if (*root == Root_Node) STATIC_ROOT_NODE->left_son_ptr = *root;
-    } 
+    // } 
     return;
 }
 

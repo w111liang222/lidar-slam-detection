@@ -114,6 +114,12 @@ py::dict run_graph_optimization() {
   return map_to_pydict(odoms);
 }
 
+py::dict run_robust_graph_optimization(std::string mode) {
+  std::map<int, Eigen::Matrix4d> odoms;
+  robust_graph_optimize(mode, odoms);
+  return map_to_pydict(odoms);
+}
+
 void dump_keyframe(const std::string& directory, uint64_t stamp, int id, py::array_t<float> &points_input, py::array_t<float> &pose_input) {
   PointCloud::Ptr points = numpy_to_pointcloud(points_input, 255.0);
   Eigen::Matrix4d pose = numpy_to_eigen(pose_input);

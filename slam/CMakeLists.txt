@@ -10,6 +10,7 @@ else()
 endif()
 
 add_subdirectory(thirdparty/fast_gicp)
+add_subdirectory(thirdparty/fast_max-clique_finder)
 
 set(CMAKE_C_FLAGS "-Wall -Wno-narrowing")
 set(CMAKE_CXX_FLAGS "-std=c++17 -Wno-narrowing -pthread")

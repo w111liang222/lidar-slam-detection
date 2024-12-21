@@ -200,9 +200,7 @@ void ImuProcess::IMU_init(const MeasureGroup &meas, esekfom::esekf<state_ikfom, 
 
   if (!meas.ins.empty())
   {
-    const auto &ins = meas.ins.back();
-    double vel = std::sqrt(ins.Ve * ins.Ve + ins.Vn * ins.Vn);
-    vel_last = V3D(0, vel, 0);
+    vel_last = V3D(meas.ins.back().Ve, meas.ins.back().Vn, meas.ins.back().Vu);
   }
 
   mean_acc_norm = mean_acc.norm();

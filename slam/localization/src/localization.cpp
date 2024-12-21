@@ -196,8 +196,8 @@ int Localization::getEstimatePose(Eigen::Matrix4d &t) {
   return mGlobalLocator->getEstimatePose(t);
 }
 
-void Localization::feedInsData(std::shared_ptr<RTKType> ins) {
-  if (!originIsSet()) {
+void Localization::feedInsData(bool rtk_valid, std::shared_ptr<RTKType> ins) {
+  if (!rtk_valid || !originIsSet()) {
     return;
   }
   ins->T = computeRTKTransform(*mProjector, ins, mZeroUtm);

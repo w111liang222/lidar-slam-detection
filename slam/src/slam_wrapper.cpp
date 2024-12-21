@@ -93,6 +93,12 @@ py::dict process(py::dict& points, py::dict &points_attr, py::dict& image_dict, 
   pose_dict["latitude"]    = pose.latitude;
   pose_dict["longitude"]   = pose.longitude;
   pose_dict["altitude"]    = pose.altitude;
+  pose_dict["heading"]     = pose.heading;
+  pose_dict["pitch"]       = pose.pitch;
+  pose_dict["roll"]        = pose.roll;
+  pose_dict["Ve"]          = 0;
+  pose_dict["Vn"]          = 0;
+  pose_dict["Vu"]          = 0;
   pose_dict["Status"]      = pose.status;
   pose_dict["state"]       = pose.state;
   pose_dict["timestamp"]   = pose.timestamp;
@@ -260,6 +266,9 @@ PYBIND11_MODULE(slam_wrapper, m) {
         py::arg("id"), py::arg("fix")
   );
   m.def("run_graph_optimization", &run_graph_optimization, "run graph optimization");
+  m.def("run_robust_graph_optimization", &run_robust_graph_optimization, "run robust graph optimization",
+        py::arg("mode")
+  );
 
   m.def("dump_keyframe", &dump_keyframe, "dump keyframe",
         py::arg("directory"), py::arg("stamp"), py::arg("id"),

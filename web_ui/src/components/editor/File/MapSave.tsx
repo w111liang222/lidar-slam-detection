@@ -18,9 +18,10 @@ import MapSavingProgress from "@components/preview/MapSavingProgress";
 
 export interface Props {
   onFinish: any;
+  onEvent: any;
 }
 
-export default function MapSave({ onFinish }: Props) {
+export default function MapSave({ onFinish, onEvent }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [mapName, setMapName] = useState(formatDate(new Date()));
@@ -72,6 +73,7 @@ export default function MapSave({ onFinish }: Props) {
           setPause={() => {
             onFinish();
             setOpen(false);
+            onEvent("RefreshMap", false);
           }}
         />
       )}

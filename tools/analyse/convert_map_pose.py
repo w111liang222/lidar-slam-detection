@@ -3,6 +3,9 @@ import sys
 
 sys.path.append(os.getcwd())
 
+import functools
+print = functools.partial(print, flush=True)
+
 import math
 import yaml
 import argparse
@@ -80,7 +83,7 @@ def convert(input_path,  output_path):
     # load configs
     config_path = root_path / 'configs'
     config_list = list(map(str, config_path.glob('*.yaml')))
-    config_list.sort()
+    config_list = sorted(config_list, key=lambda x: int(x.split('/')[-1].replace('.yaml', '')))
     configs = [yaml.safe_load(Path(config_file).open()) for config_file in config_list]
 
     # load graph poses
@@ -191,7 +194,7 @@ def convert(input_path,  output_path):
                 yaw = yaw + 360 if yaw < 0 else yaw
                 data = [map_pose[0], lat, lon, alt, roll, pitch, yaw]
                 data = np.array(data).reshape(1, -1)
-                np.savetxt(f_out, data, fmt='%1.10f')
+                np.savetxt(f_out, data, fmt='%1.6f %1.10f %1.10f %1.10f %1.10f %1.10f %1.10f')
 
 def main():
     parser = argparse.ArgumentParser(description='convert keyframe pose in graph to tum txt')

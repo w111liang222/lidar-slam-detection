@@ -5,6 +5,8 @@ import cv2
 from flask import request
 from flask.helpers import make_response
 from zerocm import ZCM
+
+from sensor_driver.common_lib import cpp_utils
 from sensor_driver.common_lib.logging.message import *
 from proto import internal_pb2
 
@@ -38,6 +40,7 @@ class MessageServer():
         self.app.add_url_rule("/v1/stop-message-subscribe",  view_func=self.stop_subscription,  methods=["GET"])
         self.app.add_url_rule("/v1/get-message-meta", view_func=self.get_message_meta,  methods=["GET"])
         self.app.add_url_rule("/v1/get-message-data", view_func=self.get_message_data, methods=["POST"])
+        self.app.add_url_rule("/v1/publish-message", view_func=self.publish_message, methods=["POST"])
 
     def start_subscription(self):
         if self.subscription is not None:
@@ -168,15 +171,21 @@ class MessageServer():
         )
 
     def format_pointcloud(self, msg):
-        points = np.frombuffer(msg.data, dtype=np.float32).reshape(-1, 8)
+        points      = np.frombuffer(msg.data, dtype=np.float32)
+        points      = points.reshape(-1, int(points.shape[0] / (msg.height * msg.width)))
+        attr        = points[:, 4] if points.shape[1] == 8 else points[:, 3]
+        attr_name   = msg.fields[3].name
+        if attr_name == "intensity":
+            intensity_min, intensity_max = np.min(attr), np.max(attr)
+            attr = (attr - intensity_min) / (intensity_max - intensity_min + 1e-4)
 
         # format proto
         proto_points = internal_pb2.LidarPointcloudMap()
         lidar = proto_points.lp.add()
         lidar.lidar_name = str(msg.header.stamp)
         lidar.points = points[:, :3].tobytes()
-        lidar.attr = points[:, 4].tobytes()
-        lidar.type = msg.fields[3].name
+        lidar.attr = attr.tobytes()
+        lidar.type = attr_name
 
         response = make_response(proto_points.SerializeToString())
         response.headers["Content-Type"] = "application/octet-stream"
@@ -203,3 +212,10 @@ class MessageServer():
                 pass
 
         return data_type
+
+    def publish_message(self):
+        name    = request.get_json()['name']
+        channel = name.split('/')[-1].split('.')[0]
+        data    = cpp_utils.publish_message(name)
+        self.handler(channel, data)
+        return ""

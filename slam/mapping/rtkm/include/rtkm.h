@@ -19,7 +19,7 @@ class RTKM : public SlamBase{
   RTKType &getOrigin() override;
   void setOrigin(RTKType rtk) override;
   std::vector<std::string> setSensors(std::vector<std::string> &sensors) override;
-  void feedInsData(std::shared_ptr<RTKType> data) override;
+  void feedInsData(bool rtk_valid, std::shared_ptr<RTKType> data) override;
   void feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) override;
   void feedImageData(const uint64_t &timestamp,
                      std::map<std::string, ImageType> &images,

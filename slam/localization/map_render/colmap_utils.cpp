@@ -141,11 +141,14 @@ ColmapUtil::ColmapUtil(std::string path) {
     mPointIdx  = 1;
     mRGBPoints = PointCloudRGB::Ptr(new PointCloudRGB());
     mPath = path;
-    createDirectory(mPath + "images");
 }
 
 ColmapUtil::~ColmapUtil() {
 
+}
+
+void ColmapUtil::setup() {
+    createDirectory(mPath + "images");
 }
 
 void ColmapUtil::update(std::map<std::string, std::shared_ptr<CameraModel>> &cameras, std::map<std::string, ImageType> &images) {

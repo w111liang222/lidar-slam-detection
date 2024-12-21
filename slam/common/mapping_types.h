@@ -63,6 +63,9 @@ struct PoseType {
     latitude = 0;
     longitude = 0;
     altitude = 0;
+    heading = 0;
+    pitch = 0;
+    roll = 0;
     status = 0;
     state = "";
     timestamp = 0;
@@ -71,6 +74,9 @@ struct PoseType {
   double latitude;           // deg
   double longitude;          // deg
   double altitude;           // deg
+  double heading;            // deg
+  double pitch;              // deg
+  double roll;               // deg
   int status;
   std::string state;
   uint64_t timestamp;
@@ -96,6 +102,7 @@ struct RTKType {
     Vn = 0;
     Vu = 0;
     status = 0;
+    sensor = "";
     state = "";
     dimension = 2;
     precision = 100.0;
@@ -118,6 +125,7 @@ struct RTKType {
   double Vn;
   double Vu;
   int status;
+  std::string sensor;
   std::string state;
   int dimension;
   double precision;

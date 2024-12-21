@@ -225,6 +225,7 @@ class SLAM(SLAMTemplate):
 
     def start_save_mapping(self, root_path, name):
         self.get_pose() # flush all keyframe
+        self.map_manager.update_pose(slam.run_robust_graph_optimization(self.mode), True)
         return self.map_manager.start_save_mapping(root_path, name)
 
     def get_save_progress(self):

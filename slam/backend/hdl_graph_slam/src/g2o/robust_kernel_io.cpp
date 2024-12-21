@@ -9,6 +9,8 @@
 #include <g2o/core/robust_kernel_factory.h>
 #include <g2o/core/sparse_optimizer.h>
 
+#include <g2o/robust_kernel_dcs2.hpp>
+
 #include "Logger.h"
 
 namespace g2o {
@@ -22,6 +24,9 @@ std::string kernel_type(g2o::RobustKernel* kernel) {
   }
   if(dynamic_cast<g2o::RobustKernelDCS*>(kernel)) {
     return "DCS";
+  }
+  if(dynamic_cast<g2o::RobustKernelDCS2*>(kernel)) {
+    return "DCS2";
   }
   if(dynamic_cast<g2o::RobustKernelFair*>(kernel)) {
     return "Fair";

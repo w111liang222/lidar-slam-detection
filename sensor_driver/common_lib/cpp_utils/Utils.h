@@ -17,11 +17,13 @@
 // sensor_msgs::PointCloud --> pcl::PointCloud
 void toPCL(sensor_msgs::PointCloud &msg, pcl::PointCloud<pcl::PointXYZI> &pcl);
 void toPCL(sensor_msgs::PointCloud &msg, pcl::PointCloud<pcl::PointXYZRGB> &pcl);
+void toPCL(sensor_msgs::PointCloud &msg, pcl::PointCloud<pcl::PointXYZINormal> &pcl);
 void toPCL(sensor_msgs::PointCloud &msg, pcl::PCLPointCloud2 &pcl, bool move = false);
 
 // pcl::PointCloud --> sensor_msgs::PointCloud
 void fromPCL(pcl::PointCloud<pcl::PointXYZI> &pcl, sensor_msgs::PointCloud &msg);
 void fromPCL(pcl::PointCloud<pcl::PointXYZRGB> &pcl, sensor_msgs::PointCloud &msg);
+void fromPCL(pcl::PointCloud<pcl::PointXYZINormal> &pcl, sensor_msgs::PointCloud &msg);
 void fromPCL(pcl::PCLPointCloud2 &pcl, sensor_msgs::PointCloud &msg, bool move = false);
 
 // nav_msgs::Odometry --> Eigen::Matrix4d

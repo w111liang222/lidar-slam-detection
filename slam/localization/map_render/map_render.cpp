@@ -146,6 +146,7 @@ MapRender::~MapRender() {
 
 void MapRender::setActive(bool active) {
     mActive = active;
+    mColmap.setup();
 }
 
 void MapRender::setParameter(Eigen::Matrix4d staticTrans, std::map<std::string, CamParamType> cameraParam) {

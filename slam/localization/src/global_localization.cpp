@@ -376,7 +376,7 @@ std::pair<int, float> GlobalLocalization::localSearch(PointCloud::Ptr &cloud, st
         if( sc_dist_result.first < min_dist ) {
             min_dist = sc_dist_result.first;
             best_match.first = pointIdx[i];
-            best_match.second = sc_dist_result.second * mScManager.PC_UNIT_SECTORANGLE;
+            best_match.second = (sc_dist_result.second * mScManager.PC_UNIT_SECTORANGLE) * M_PI / 180.0;
         }
     }
     LOG_INFO("initialize local search, sc score {}", min_dist);

@@ -21,11 +21,13 @@ endif()
 
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system filesystem regex)
+find_package(OpenCV2 REQUIRED)
 
 include_directories(
     SYSTEM ${EIGEN3_INCLUDE_DIR}
     SYSTEM ${Boost_INCLUDE_DIRS}
     SYSTEM ${CUDA_INCLUDE_DIRS}
+    SYSTEM ${OPENCV_INCLUDE_DIRS}
 )
 
 add_subdirectory(common_lib)

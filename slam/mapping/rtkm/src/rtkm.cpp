@@ -46,6 +46,10 @@ void RTKM::setOrigin(RTKType rtk) {
               x  : {}, y  : {}, z  : {}",
               rtk.latitude, rtk.longitude, rtk.altitude,
               easting, northing, altitude);
+
+    std::shared_ptr<RTKType> rtk_ptr = std::make_shared<RTKType>(rtk);
+    computeRTKTransform(mOrigin, rtk_ptr);
+    mLastOdom = rtk_ptr->T;
   }
 }
 
@@ -84,8 +88,8 @@ std::vector<std::string> RTKM::setSensors(std::vector<std::string> &sensors) {
   return sensor_list;
 }
 
-void RTKM::feedInsData(std::shared_ptr<RTKType> data) {
-  if (mOriginIsSet) {
+void RTKM::feedInsData(bool rtk_valid, std::shared_ptr<RTKType> data) {
+  if (rtk_valid && mOriginIsSet) {
     computeRTKTransform(mOrigin, data);
     mTimedInsData[data->timestamp] = data;
   }

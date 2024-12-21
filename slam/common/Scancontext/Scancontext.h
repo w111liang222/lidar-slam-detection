@@ -32,6 +32,13 @@ Eigen::MatrixXd circshift( Eigen::MatrixXd &_mat, int _num_shift );
 std::vector<float> eig2stdvec( Eigen::MatrixXd _eigmat );
 Eigen::Matrix4f yaw2matrix(const float &y);
 
+struct SCMatch {
+    SCMatch() : sc_idx(-1), sc_yaw(0.0), sc_dist(1.0) {}
+    SCMatch(const int &sc_idx_, const float &sc_yaw_, const float &sc_dist_) : sc_idx(sc_idx_), sc_yaw(sc_yaw_), sc_dist(sc_dist_) {}
+    int sc_idx;
+    float sc_yaw;
+    float sc_dist;
+};
 
 class SCManager
 {
@@ -43,6 +50,7 @@ public:
     Eigen::MatrixXd makeSectorkeyFromScancontext( Eigen::MatrixXd &_desc );
     void buildRingKeyKDTree(KeyMat &polarcontext_invkeys_mat, std::vector<Eigen::MatrixXd>& polarcontexts);
     std::pair<int, float> detectClosestMatch(Eigen::MatrixXd &sc, std::vector<float> &ringkey, Eigen::MatrixXd &sectorkey, double &score);
+    std::vector<SCMatch> detectCandidateMatch(Eigen::MatrixXd &sc, std::vector<float> &ringkey, Eigen::MatrixXd &sectorkey);
 
     int fastAlignUsingVkey ( Eigen::MatrixXd & _vkey1, Eigen::MatrixXd & _vkey2 );
     double distDirectSC ( Eigen::MatrixXd &_sc1, Eigen::MatrixXd &_sc2 ); // "d" (eq 5) in the original paper (IROS 18)

@@ -13,6 +13,7 @@ class ColmapUtil {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     ColmapUtil(std::string path);
     virtual ~ColmapUtil();
+    void setup();
     void update(std::map<std::string, std::shared_ptr<CameraModel>> &cameras, std::map<std::string, ImageType> &images);
     void update(hash_map_3d<int64_t, Render::VoxelPtr> &map);
     void saveFiles();

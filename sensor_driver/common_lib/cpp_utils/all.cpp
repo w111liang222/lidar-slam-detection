@@ -7,11 +7,13 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/filters/voxel_grid.h>
 #ifdef HAVE_CUDA_ENABLE
 #include "cuda_runtime.h"
 #endif
 
+#include "Utils.h"
 #include "Transform.h"
 #include "SystemUtils.h"
 #include "InterProcess.h"
@@ -29,12 +31,35 @@ void set_thread_priority(std::string name, int priority) {
     setSelfThreadPriority(priority);
 }
 
+template <typename T>
+py::bytes message_to_bytes(T &msg) {
+    std::string encode_str(msg.getEncodedSize(), 0);
+    msg.encode(encode_str.data(), 0, encode_str.size());
+    return py::bytes(encode_str);
+}
+
+py::bytes publish_message(std::string filename) {
+    if (ends_with(filename, ".pcd")) {
+        pcl::PCLPointCloud2 cloud;
+        pcl::PCDReader reader;
+        reader.read(filename, cloud);
+
+        // to pointcloud message
+        sensor_msgs::PointCloud msg;
+        fromPCL(cloud, msg, true);
+        return message_to_bytes(msg);
+    }
+
+    return py::bytes();
+}
+
 void set_logger_level(std::string level) {
     set_perception_log_level(level);
 }
 
 void set_message_core(bool enable) {
     set_core_enable(enable);
+    LOG_INFO("message system is set to enable");
 }
 
 py::array_t<double> get_projection_forward(double lat0, double lon0, double lat1, double lon1) {
@@ -354,6 +379,10 @@ PYBIND11_MODULE(cpp_utils_ext, m) {
 
     m.def("set_message_core", &set_message_core, "set_message_core",
           py::arg("enable")
+    );
+
+    m.def("publish_message", &publish_message, "publish_message",
+          py::arg("filename")
     );
 
     m.def("get_projection_forward", &get_projection_forward, "get_projection_forward",

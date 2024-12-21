@@ -73,7 +73,7 @@ class SLAMManager(ManagerTemplate):
         while True:
             if self.slam.is_overload() or self.frame_queue.full():
                 retry = retry + 1
-                if self.cfg.input.mode == 'offline' and retry < 100:
+                if self.cfg.input.mode == 'offline' and retry < 1000:
                     time.sleep(1e-2)
                     continue
                 else:

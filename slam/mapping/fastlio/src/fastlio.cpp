@@ -9,7 +9,7 @@ using namespace Mapping;
 int  fastlio_init(std::vector<double> &extT, std::vector<double>& extR, int filter_num, int max_point_num, double scan_period, bool undistort);
 bool fastlio_is_init();
 void fastlio_imu_enqueue(ImuType imu);
-void fastlio_ins_enqueue(RTKType ins);
+void fastlio_ins_enqueue(bool rtk_valid, RTKType ins);
 void fastlio_pcl_enqueue(PointCloudAttrPtr &points);
 bool fastlio_main();
 void fastlio_odometry(Eigen::Matrix4d &odom_s, Eigen::Matrix4d &odom_e);
@@ -182,9 +182,9 @@ void HDL_FastLIO::setOrigin(RTKType rtk) {
   }
 }
 
-void HDL_FastLIO::feedInsData(std::shared_ptr<RTKType> ins) {
-  enqueue_graph_gps(ins);
-  fastlio_ins_enqueue(*ins);
+void HDL_FastLIO::feedInsData(bool rtk_valid, std::shared_ptr<RTKType> ins) {
+  enqueue_graph_gps(rtk_valid, ins);
+  fastlio_ins_enqueue(rtk_valid, *ins);
 }
 
 void HDL_FastLIO::feedImuData(ImuType &imu) {

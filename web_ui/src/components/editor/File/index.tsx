@@ -65,7 +65,7 @@ function MenuFile(
         <MenuList>
           <MapOpen onFinish={onFinish} onEvent={onEvent} />
           <MapMerge onFinish={onFinish} onEvent={onEvent} />
-          <MapSave onFinish={onFinish} />
+          <MapSave onFinish={onFinish} onEvent={onEvent}/>
           <MapExport config={config} onFinish={onFinish} />
           <MapClose onFinish={onFinish} onEvent={onEvent} />
           <Divider />

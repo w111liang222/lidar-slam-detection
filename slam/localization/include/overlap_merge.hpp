@@ -10,6 +10,14 @@
 #include "backend_api.h"
 #include "Logger.h"
 
+// void dump_registration(std::shared_ptr<KeyFrame> &target_frame, std::shared_ptr<KeyFrame> &source_frame, PointCloud::Ptr align, Eigen::Matrix4f &guess) {
+//   PointCloud::Ptr source(new PointCloud());
+//   pcl::transformPointCloud(*source_frame->mPoints, *source, guess);
+//   pcl::io::savePCDFileBinary("output/target.pcd", *target_frame->mPoints);
+//   pcl::io::savePCDFileBinary("output/source.pcd", *source);
+//   pcl::io::savePCDFileBinary("output/align.pcd",  *align);
+// }
+
 struct Overlap {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -40,6 +48,7 @@ public:
     max_candidate_num = 3;
     fitness_score_max_range = 25.0; // 5m
     fitness_score_thresh = 1.5;
+    fitness_inlier_thresh = 0.2;
 
 #ifdef HAVE_CUDA_ENABLE
     registration = hdl_graph_slam::select_registration_method("NDT_CUDA");
@@ -89,7 +98,7 @@ public:
 
     std::vector<Overlap::Ptr> detected_overlaps;
     for(size_t i = 0; i < new_keyframes.size(); i++) {
-      LOG_INFO("overlap detection, progress: {}/{}", i, new_keyframes.size());
+      LOG_INFO("overlap detection, progress: {}/{}, process id: {}", i, new_keyframes.size(), new_keyframes[i]->mId);
       auto candidates = find_candidates(keyframes, new_keyframes[i]);
       auto overlap = matching(keyframes, candidates, new_keyframes[i]);
       if(overlap) {
@@ -142,17 +151,17 @@ private:
 
     pcl::PointCloud<PointT>::Ptr aligned(new pcl::PointCloud<PointT>());
     double best_score = std::numeric_limits<double>::max();
-    std::shared_ptr<KeyFrame> best_matched;
+    std::shared_ptr<KeyFrame> best_matched(nullptr);
     Eigen::Matrix4f relative_pose;
 
     registration->setInputTarget(new_keyframe->mPoints);
     for(const auto& candidate : candidate_keyframes) {
-      Eigen::Isometry3d new_keyframe_estimate = new_keyframe->mOdom;
-      new_keyframe_estimate.linear() = Eigen::Quaterniond(new_keyframe_estimate.linear()).normalized().toRotationMatrix();
-      Eigen::Isometry3d candidate_estimate = candidate->mOdom;
-      candidate_estimate.linear() = Eigen::Quaterniond(candidate_estimate.linear()).normalized().toRotationMatrix();
-      Eigen::Matrix4f guess = (new_keyframe_estimate.inverse() * candidate_estimate).matrix().cast<float>();
-      // guess(2, 3) = 0.0;
+      Eigen::Matrix4f guess = (new_keyframe->mOdom.inverse() * candidate->mOdom).matrix().cast<float>();
+      std::pair<double, double> fitness = calc_fitness_score(new_keyframe->mPoints, candidate->mPoints, guess, 1.0);
+      if (fitness.second < fitness_inlier_thresh) {
+        continue;
+      }
+
       registration->setInputSource(candidate->mPoints);
       registration->align(*aligned, guess);
 
@@ -169,21 +178,16 @@ private:
       relative_pose = registration->getFinalTransformation();
     }
 
-    if(!best_matched.get()){
-        LOG_INFO("best_matched is null!");
+    if(best_matched == nullptr){
         return nullptr;
     }
 
     // finetune
     pcl::PointCloud<PointT>::Ptr accum_points(new pcl::PointCloud<PointT>());
     *accum_points += (*best_matched->mPoints);
-    Eigen::Isometry3d reference_estimate = best_matched->mOdom;
-    reference_estimate.linear() = Eigen::Quaterniond(reference_estimate.linear()).normalized().toRotationMatrix();
     for(auto &conn : connection_map[best_matched->mId]) {
       const std::shared_ptr<KeyFrame> &relative_frame = keyframes[keyframe_id_map[conn]];
-      Eigen::Isometry3d relative_estimate = relative_frame->mOdom;
-      relative_estimate.linear() = Eigen::Quaterniond(relative_estimate.linear()).normalized().toRotationMatrix();
-      Eigen::Matrix4d relative = (reference_estimate.inverse() * relative_estimate).matrix();
+      Eigen::Matrix4d relative = (best_matched->mOdom.inverse() * relative_frame->mOdom).matrix();
       pcl::PointCloud<PointT>::Ptr retive_points(new pcl::PointCloud<PointT>());
       pcl::transformPointCloud(*relative_frame->mPoints, *retive_points, relative);
       *accum_points += (*retive_points);
@@ -197,7 +201,7 @@ private:
       return nullptr;
     }
     relative_pose = registration_accurate->getFinalTransformation();
-    best_score = calc_fitness_score(accum_points, new_keyframe->mPoints, relative_pose, fitness_score_max_range);
+    best_score = calc_fitness_score(accum_points, new_keyframe->mPoints, relative_pose, fitness_score_max_range).first;
     if(best_score > fitness_score_thresh) {
       return nullptr;
     }
@@ -218,7 +222,7 @@ private:
     filtered.header = cloud->header;
   }
 
-  double calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Matrix4f& relpose, double max_range) {
+  std::pair<double, double> calc_fitness_score(const pcl::PointCloud<PointT>::ConstPtr& cloud1, const pcl::PointCloud<PointT>::ConstPtr& cloud2, const Eigen::Matrix4f& relpose, double max_range) {
     const double pointcloud_range = 100.0; // TODO: read from keyframe config
     const float  pointcloud_min_z = 0.5;
 
@@ -253,9 +257,9 @@ private:
     }
 
     if(nr > 0)
-      return (fitness_score / nr);
+      return std::make_pair<double, double>(fitness_score / nr, double(nr) / input_transformed.points.size());
     else
-      return (std::numeric_limits<double>::max());
+      return std::make_pair<double, double>(std::numeric_limits<double>::max(), 0);
   }
 
   int get_connection_count(std::map<int, std::set<int>>& connection, int source, int target, int max_count) {
@@ -297,6 +301,7 @@ private:
   int    max_candidate_num;
   double fitness_score_max_range;  // maximum allowable distance between corresponding points
   double fitness_score_thresh;     // threshold for scan matching
+  double fitness_inlier_thresh;    // threshold of inlier ratio
 
   pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr pose_kdtree;
   std::map<int, std::set<int>> connection_map;

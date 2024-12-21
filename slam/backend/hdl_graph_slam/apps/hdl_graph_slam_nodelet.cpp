@@ -31,16 +31,20 @@
 #include <g2o/edge_se3_priorxyz.hpp>
 #include <g2o/edge_se3_priorvec.hpp>
 #include <g2o/edge_se3_priorquat.hpp>
+#include <g2o/edge_se3_gnss.hpp>
 
 #include "slam_base.h"
 #include "mapping_types.h"
 #include "UTMProjector.h"
+
+#define ENABLE_ROBUST_GRAPH_OPTIMIZATION
 
 namespace hdl_graph_slam {
 
 const double ODOMETRY_LOCAL_MAP_DIST = 2.0;
 const int ODOMETRY_LOCAL_MAP_NUM     = 100000;
 const int NORMAL_VERTEX_ID_OFFSET    = 100000;
+const int MOMENT_VERTEX_ID_OFFSET    = 1000000;
 
 class HdlGraphSlamNodelet {
 public:
@@ -89,21 +93,11 @@ public:
     projector.reset(new UTMProjector());
     inf_calclator.reset(new InformationMatrixCalculator());
 
-    gps_time_offset = 0.0;
     gps_last_update_pose << 0, 0, 0;
-    // gps_edge_stddev_xy = 20.0;
-    // gps_edge_stddev_z = 5.0;
     floor_edge_stddev = 10.0;
     floor_node_id = NORMAL_VERTEX_ID_OFFSET; // floor node id start from 100000 -
     floor_height = 0;
     floor_last_update_distance = 0;
-
-    imu_time_offset = 0.0;
-    enable_imu_orientation = false;
-    enable_imu_acceleration = false;
-    imu_orientation_edge_stddev = 0.1;
-    imu_acceleration_edge_stddev = 100.0;
-    imu_last_update_id = 0;
 
     graph_updated = false;
     graph_loop_detected = false;
@@ -294,6 +288,7 @@ public:
     Eigen::Isometry3d odom2map(trans_odom2map.cast<double>());
     trans_odom2map_mutex.unlock();
 
+    auto clock = std::chrono::steady_clock::now();
     int num_processed = 0;
     for(int i = 0; i < keyframe_queue_snapshot.size(); i++) {
       num_processed = i;
@@ -341,6 +336,9 @@ public:
     keyframe_queue_mutex.lock();
     keyframe_queue.erase(keyframe_queue.begin(), keyframe_queue.begin() + num_processed + 1);
     keyframe_queue_mutex.unlock();
+
+    auto elapseMs = since(clock).count();
+    LOG_INFO("Graph: flush keyframe queue costs {} ms", elapseMs);
     return true;
   }
 
@@ -350,7 +348,6 @@ public:
    */
   void gps_callback(std::shared_ptr<RTKType>& gps_msg) {
     std::lock_guard<std::mutex> lock(gps_queue_mutex);
-    gps_msg->timestamp += gps_time_offset;
     gps_queue.push_back(gps_msg);
   }
 
@@ -443,12 +440,13 @@ public:
         }
       }
       graph_slam->add_robust_kernel(edge, "Huber", 1.0);
+      LOG_INFO("Add GNSS constraint, ID: {}, meassurement: ({}, {}, {})", edge->id(), xyz(0), xyz(1), xyz(2));
 
       updated = true;
     }
 
     if(updated && fix_first_node) {
-      LOG_INFO("Add GPS constraint, setFix to false for first node");
+      LOG_WARN("Release the first node after GNSS factor received");
       fix_first_node = false;
       if (graph_slam->graph->vertices().find(0) != graph_slam->graph->vertices().end()) {
         auto first_node = dynamic_cast<g2o::VertexSE3*>(graph_slam->graph->vertices()[0]);
@@ -462,9 +460,7 @@ public:
   }
 
   void imu_callback(const uint64_t &timestamp, Eigen::Vector3d &gyro, Eigen::Vector3d &acc) {
-    if(!enable_imu_orientation && !enable_imu_acceleration) {
-      return;
-    }
+    return;
 
     std::lock_guard<std::mutex> lock(imu_queue_mutex);
     ImuType imu;
@@ -510,24 +506,7 @@ public:
         continue;
       }
 
-      if ((keyframe->id() - imu_last_update_id) <= 10) {
-        continue;
-      }
-
-      imu_last_update_id = keyframe->id();
       keyframe->acceleration = closest_imu->acc;
-
-    //   if(enable_imu_orientation) {
-    //     Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / imu_orientation_edge_stddev;
-    //     auto edge = graph_slam->add_se3_prior_quat_edge(keyframe->node, *keyframe->orientation, info);
-    //     graph_slam->add_robust_kernel(edge, "NONE", 1.0);
-    //   }
-
-      if(enable_imu_acceleration) {
-        Eigen::MatrixXd info = Eigen::MatrixXd::Identity(3, 3) / imu_acceleration_edge_stddev;
-        g2o::OptimizableGraph::Edge* edge = graph_slam->add_se3_prior_vec_edge(keyframe->node, Eigen::Vector3d::UnitZ(), *keyframe->acceleration, info);
-        graph_slam->add_robust_kernel(edge, "Huber", 1.0);
-      }
       updated = true;
     }
 
@@ -725,21 +704,12 @@ public:
   std::deque<KeyFrame::Ptr> keyframe_queue;
 
   // gps queue
-  double gps_time_offset;
-  double gps_edge_stddev_xy;
-  double gps_edge_stddev_z;
   boost::optional<Eigen::Vector3d> zero_utm;
   Eigen::Vector3d gps_last_update_pose;
   std::mutex gps_queue_mutex;
   std::deque<std::shared_ptr<RTKType>> gps_queue;
 
   // imu queue
-  double imu_time_offset;
-  bool enable_imu_orientation;
-  double imu_orientation_edge_stddev;
-  bool enable_imu_acceleration;
-  double imu_acceleration_edge_stddev;
-  long imu_last_update_id;
   std::mutex imu_queue_mutex;
   std::deque<ImuType> imu_queue;
 
@@ -817,7 +787,6 @@ bool get_ground_constaint() {
 void set_constraint(bool loop_closure, bool gravity_constraint) {
   std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
   graphNode.loop_enable = loop_closure;
-  graphNode.enable_imu_acceleration = gravity_constraint;
 }
 
 bool enqueue_graph(PointCloudAttrImagePose &frame, PointCloudAttrImagePose &keyframe) {
@@ -828,8 +797,10 @@ void enqueue_graph_floor(FloorCoeffs& floor_coeffs) {
   graphNode.floor_coeffs_callback(floor_coeffs);
 }
 
-void enqueue_graph_gps(std::shared_ptr<RTKType>& rtk) {
-  graphNode.gps_callback(rtk);
+void enqueue_graph_gps(bool rtk_valid, std::shared_ptr<RTKType>& rtk) {
+  if (rtk_valid) {
+    graphNode.gps_callback(rtk);
+  }
 }
 
 void enqueue_graph_imu(const uint64_t &timestamp, Eigen::Vector3d &gyro, Eigen::Vector3d &acc) {
@@ -940,25 +911,6 @@ void graph_add_edge(const PointCloud::Ptr& prev, int prev_id,
   graphNode.graph_slam->add_robust_kernel(edge, "Huber", 1.0);
 }
 
-void graph_add_prior_edge(int id, Eigen::Isometry3d &prior, double xyz_stddev, double rot_stddev) {
-  if (graphNode.graph_slam == nullptr) {
-    return;
-  }
-
-  graphNode.wait_for_flush();
-
-  g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[id]);
-  // translation
-  Eigen::Vector3d xyz = prior.matrix().block<3, 1>(0, 3);
-  Eigen::Matrix3d xyz_information_matrix = Eigen::Matrix3d::Identity() / xyz_stddev;
-  graphNode.graph_slam->add_se3_prior_xyz_edge(node, xyz, xyz_information_matrix);
-
-  // rotation
-  Eigen::Quaterniond orientation = Eigen::Quaterniond(prior.matrix().block<3, 3>(0, 0)).normalized();
-  Eigen::MatrixXd rotation_information_matrix = Eigen::MatrixXd::Identity(3, 3) / rot_stddev;
-  graphNode.graph_slam->add_se3_prior_quat_edge(node, orientation, rotation_information_matrix);
-}
-
 void graph_del_edge(int id) {
   if (graphNode.graph_slam == nullptr) {
     return;
@@ -972,37 +924,6 @@ void graph_del_edge(int id) {
     }
     graphNode.graph_slam->del_se3_edge(e);
     break;
-  }
-}
-
-void graph_del_prior_edges() {
-  if (graphNode.graph_slam == nullptr) {
-    return;
-  }
-
-  graphNode.wait_for_flush();
-  // PriorXYZ
-  std::vector<g2o::EdgeSE3PriorXYZ*> xyz_priors;
-  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
-    g2o::EdgeSE3PriorXYZ* e = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge);
-    if (e != nullptr) {
-      xyz_priors.push_back(e);
-    }
-  }
-  for (auto &e : xyz_priors) {
-    graphNode.graph_slam->graph->removeEdge(e);
-  }
-
-  // PriorQuat
-  std::vector<g2o::EdgeSE3PriorQuat*> quat_priors;
-  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
-    g2o::EdgeSE3PriorQuat* e = dynamic_cast<g2o::EdgeSE3PriorQuat*>(edge);
-    if (e != nullptr) {
-      quat_priors.push_back(e);
-    }
-  }
-  for (auto &e : quat_priors) {
-    graphNode.graph_slam->graph->removeEdge(e);
   }
 }
 
@@ -1045,6 +966,15 @@ void graph_get_info(GraphInfo &info) {
   }
 }
 
+void graph_optimize() {
+  if (graphNode.graph_slam == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
+  int num_iterations = 1024;
+  graphNode.graph_slam->optimize(num_iterations);
+}
+
 void graph_optimize(std::map<int, Eigen::Matrix4d> &odoms) {
   if (graphNode.graph_slam == nullptr) {
     return;
@@ -1058,6 +988,105 @@ void graph_optimize(std::map<int, Eigen::Matrix4d> &odoms) {
       odoms[node->id()] = node->estimate().matrix();
     }
   }
+}
+
+void robust_graph_optimize(std::string mode, std::map<int, Eigen::Matrix4d> &odoms) {
+  if (graphNode.graph_slam == nullptr) {
+    return;
+  }
+
+  LOG_INFO("Robust pose graph optimization, SLAM mode: {}", mode);
+
+#ifdef ENABLE_ROBUST_GRAPH_OPTIMIZATION
+  {
+    std::lock_guard<std::mutex> lock(graphNode.main_thread_mutex);
+
+    LOG_INFO("GNSS outlier detection and removal...");
+    // use DCS to identify the GNSS outlier
+    const double max_distance_error2 = 0.5 * 0.5; // 0.5 m
+    for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
+      g2o::EdgeSE3PriorXYZ* edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
+      if (edge != nullptr) {
+        Eigen::MatrixXd information = edge->information();
+        graphNode.graph_slam->add_robust_kernel(edge, "DCS2", max_distance_error2 * information(0, 0));
+      }
+    }
+
+    // optimize
+    int num_iterations = 1024;
+    graphNode.graph_slam->optimize(num_iterations);
+
+    // check the loss scale
+    std::vector<g2o::EdgeSE3PriorXYZ*> outlier_edges;
+    for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
+      g2o::EdgeSE3PriorXYZ* edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
+      if (edge != nullptr) {
+        Eigen::MatrixXd information = edge->information();
+        double phi = max_distance_error2 * information(0, 0);
+        double scale = (2.0 * phi) / (phi + edge->chi2());
+        if (scale < 0.1) {
+          outlier_edges.push_back(edge);
+        }
+      }
+    }
+    for (auto &edge : outlier_edges) {
+      LOG_WARN("GNSS edge({}) is detected as an outlier", edge->id());
+      graphNode.graph_slam->graph->removeEdge(edge);
+    }
+
+    // remove the robust kernel
+    for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
+      g2o::EdgeSE3PriorXYZ* edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
+      if (edge != nullptr) {
+        edge->setRobustKernel(nullptr);
+      }
+    }
+
+    if (mode.compare("mapping") == 0) {
+      graphNode.graph_slam->optimize(num_iterations);
+      LOG_INFO("GNSS moment estimation...");
+      // new gnss moment node and prior (0, 0, 0) loose constraint
+      Eigen::Matrix3d information_matrix = Eigen::Matrix3d::Identity();
+      information_matrix.block<2, 2>(0, 0) /= 2000.0;
+      information_matrix(2, 2) /= 200.0;
+      g2o::VertexPointXYZ* gnss_moment_node = graphNode.graph_slam->add_point_xyz_node(Eigen::Vector3d(0.0, 0.0, 0.0), hdl_graph_slam::MOMENT_VERTEX_ID_OFFSET);
+      g2o::EdgeXYZPrior*   gnss_moment_edge = graphNode.graph_slam->add_xyz_prior_edge(gnss_moment_node, Eigen::Vector3d(0.0, 0.0, 0.0), information_matrix, hdl_graph_slam::MOMENT_VERTEX_ID_OFFSET + 1);
+
+      // replace the g2o::VertexSE3 with g2o::EdgeSE3GNSS*
+      std::vector<g2o::EdgeSE3GNSS*> gnss_moment_edges;
+      std::vector<g2o::EdgeSE3PriorXYZ*> gnss_prior_edges;
+      for(const auto& edge_ : graphNode.graph_slam->graph->edges()) {
+        g2o::EdgeSE3PriorXYZ* prior_edge = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge_);
+        if (prior_edge != nullptr) {
+          g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(prior_edge->vertices()[0]);
+          g2o::EdgeSE3GNSS* moment_edge = graphNode.graph_slam->add_se3_gnss_edge(node, gnss_moment_node, prior_edge->measurement(), prior_edge->information());
+          gnss_prior_edges.push_back(prior_edge);
+          gnss_moment_edges.push_back(moment_edge);
+        }
+      }
+      for (auto &edge : gnss_prior_edges) {
+        graphNode.graph_slam->graph->removeEdge(edge);
+      }
+
+      // optimize
+      graphNode.graph_slam->optimize(num_iterations);
+      LOG_INFO("GNSS moment: ({}, {}, {})", gnss_moment_node->estimate()[0], gnss_moment_node->estimate()[1], gnss_moment_node->estimate()[2]);
+
+      // add the estimation of moment to GNSS measurement
+      for (auto &moment_edge : gnss_moment_edges) {
+        g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(moment_edge->vertices()[0]);
+        Eigen::Isometry3d estimate = node->estimate();
+        Eigen::Vector3d measurement = moment_edge->measurement() + estimate.linear() * gnss_moment_node->estimate();
+        graphNode.graph_slam->add_se3_prior_xyz_edge(node, measurement, moment_edge->information());
+        graphNode.graph_slam->graph->removeEdge(moment_edge);
+      }
+      graphNode.graph_slam->graph->removeEdge(gnss_moment_edge);
+      graphNode.graph_slam->graph->removeVertex(gnss_moment_node);
+    }
+  }
+#endif // ENABLE_ROBUST_GRAPH_OPTIMIZATION
+
+  graph_optimize(odoms);
 }
 
 std::vector<std::string> graph_save(const std::string& directory) {
@@ -1181,6 +1210,12 @@ bool graph_load_impl(hdl_graph_slam::HdlGraphSlamNodelet &graph_, const std::str
     }
   }
 
+  // compute the current error for calculating the real chi2
+  for(auto& edge : graph_.graph_slam->graph->edges()) {
+    auto e = dynamic_cast<g2o::OptimizableGraph::Edge*>(edge);
+    e->computeError();
+  }
+
   return true;
 }
 
@@ -1302,4 +1337,120 @@ bool graph_merge(const std::string& directory, std::vector<std::shared_ptr<KeyFr
   }
 
   return true;
+}
+
+// below functions are only called by "MapLoader"
+
+void graph_sync_pose(std::vector<std::shared_ptr<KeyFrame>> &kfs, int direction) {
+  std::map<int, std::shared_ptr<KeyFrame>> kfs_map;
+  std::transform(kfs.begin(), kfs.end(), std::inserter(kfs_map, kfs_map.end()),
+                 [](const std::shared_ptr<KeyFrame> &kf) { return std::make_pair(kf->mId, kf); });
+
+  for (auto v : graphNode.graph_slam->graph->vertices()) {
+    auto node = dynamic_cast<g2o::VertexSE3*>(v.second);
+    if (node != nullptr && kfs_map.find(node->id()) != kfs_map.end()) {
+      if (direction == 0) {
+        kfs_map[node->id()]->mOdom = node->estimate();
+      } else if (direction == 1) {
+        node->setEstimate(kfs_map[node->id()]->mOdom);
+      }
+    }
+  }
+}
+
+void graph_add_prior_edge(int id, Eigen::Isometry3d &prior, double xyz_stddev, double rot_stddev) {
+  g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(graphNode.graph_slam->graph->vertices()[id]);
+  // translation
+  Eigen::Vector3d xyz = prior.matrix().block<3, 1>(0, 3);
+  Eigen::Matrix3d xyz_information_matrix = Eigen::Matrix3d::Identity() / xyz_stddev;
+  graphNode.graph_slam->add_se3_prior_xyz_edge(node, xyz, xyz_information_matrix);
+
+  // rotation
+  Eigen::Quaterniond orientation = Eigen::Quaterniond(prior.matrix().block<3, 3>(0, 0)).normalized();
+  Eigen::MatrixXd rotation_information_matrix = Eigen::MatrixXd::Identity(3, 3) / rot_stddev;
+  graphNode.graph_slam->add_se3_prior_quat_edge(node, orientation, rotation_information_matrix);
+}
+
+void graph_del_prior_edges() {
+  // PriorXYZ
+  std::vector<g2o::EdgeSE3PriorXYZ*> xyz_priors;
+  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
+    g2o::EdgeSE3PriorXYZ* e = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge);
+    if (e != nullptr) {
+      xyz_priors.push_back(e);
+    }
+  }
+  for (auto &e : xyz_priors) {
+    graphNode.graph_slam->graph->removeEdge(e);
+  }
+
+  // PriorQuat
+  std::vector<g2o::EdgeSE3PriorQuat*> quat_priors;
+  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
+    g2o::EdgeSE3PriorQuat* e = dynamic_cast<g2o::EdgeSE3PriorQuat*>(edge);
+    if (e != nullptr) {
+      quat_priors.push_back(e);
+    }
+  }
+  for (auto &e : quat_priors) {
+    graphNode.graph_slam->graph->removeEdge(e);
+  }
+}
+
+void graph_update_origin(const RTKType &from_origin, const RTKType &to_origin, std::vector<std::shared_ptr<KeyFrame>> &kfs) {
+  UTMProjector projector_from, projector_to;
+  Eigen::Vector3d zero_utm_from, zero_utm_to;
+  projector_from.FromGlobalToLocal(from_origin.latitude, from_origin.longitude, zero_utm_from(0), zero_utm_from(1));
+  projector_to.FromGlobalToLocal(to_origin.latitude, to_origin.longitude, zero_utm_to(0), zero_utm_to(1));
+
+  std::map<int, std::shared_ptr<KeyFrame>> kfs_map;
+  std::transform(kfs.begin(), kfs.end(), std::inserter(kfs_map, kfs_map.end()),
+                 [](const std::shared_ptr<KeyFrame> &kf) { return std::make_pair(kf->mId, kf); });
+
+  for(const auto& edge : graphNode.graph_slam->graph->edges()) {
+    g2o::EdgeSE3PriorXYZ* e = dynamic_cast<g2o::EdgeSE3PriorXYZ*>(edge);
+    if (e != nullptr) {
+      g2o::VertexSE3* node = dynamic_cast<g2o::VertexSE3*>(e->vertices()[0]);
+      if (kfs_map.find(node->id()) == kfs_map.end()) {
+        continue;
+      }
+
+      Eigen::Vector3d meassurement = e->measurement();
+      // reverse project to LLA by previous origin
+      double gnss_lat, gnss_lon;
+      projector_from.FromLocalToGlobal(meassurement[0] + zero_utm_from(0), meassurement[1] + zero_utm_from(1), gnss_lat, gnss_lon);
+
+      // project to local by new origin
+      double new_local_x, new_local_y;
+      projector_to.FromGlobalToLocal(gnss_lat, gnss_lon, new_local_x, new_local_y);
+      meassurement[0] = new_local_x - zero_utm_to(0);
+      meassurement[1] = new_local_y - zero_utm_to(1);
+      meassurement[2] = meassurement[2] + from_origin.altitude - to_origin.altitude;
+      e->setMeasurement(meassurement);
+    }
+  }
+
+  for (const auto& node : graphNode.graph_slam->graph->vertices()) {
+    g2o::VertexSE3* v = dynamic_cast<g2o::VertexSE3*>(node.second);
+    if (v != nullptr) {
+      if (kfs_map.find(v->id()) == kfs_map.end()) {
+        continue;
+      }
+
+      Eigen::Isometry3d estimate = v->estimate();
+      // reverse project to LLA by previous origin
+      double est_lat, est_lon;
+      projector_from.FromLocalToGlobal(estimate(0, 3) + zero_utm_from(0), estimate(1, 3) + zero_utm_from(1), est_lat, est_lon);
+
+      // project to local by new origin
+      double new_local_x, new_local_y;
+      projector_to.FromGlobalToLocal(est_lat, est_lon, new_local_x, new_local_y);
+      estimate(0, 3) = new_local_x - zero_utm_to(0);
+      estimate(1, 3) = new_local_y - zero_utm_to(1);
+      estimate(2, 3) = estimate(2, 3) + from_origin.altitude - to_origin.altitude;
+      v->setEstimate(estimate);
+    }
+  }
+
+  graph_optimize();
 }

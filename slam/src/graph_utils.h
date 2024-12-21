@@ -20,6 +20,7 @@ void add_graph_edge(py::array_t<float> &prev, int prev_id,
 void del_graph_edge(int id);
 void set_graph_vertex_fix(int id, bool fix);
 py::dict run_graph_optimization();
+py::dict run_robust_graph_optimization(std::string mode);
 
 void dump_keyframe(const std::string& directory, uint64_t stamp, int id, py::array_t<float> &points_input, py::array_t<float> &pose_input);
 void dump_odometry(const std::string& directory);

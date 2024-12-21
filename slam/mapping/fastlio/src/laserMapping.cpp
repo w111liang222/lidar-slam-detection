@@ -59,14 +59,20 @@
 // #include <livox_ros_driver/CustomMsg.h>
 #include "preprocess.h"
 #include <ikd-Tree/ikd_Tree.h>
+#include <ivox3d/ivox3d.h>
 
 #include "mapping_types.h"
 #include "slam_utils.h"
+
+// #define USE_IKD_TREE
+#define USE_IVOX
 
 #define INIT_TIME           (0.1)
 #define LASER_POINT_COV     (0.001)
 #define MAXN                (720000)
 #define PUBFRAME_PERIOD     (20)
+
+using namespace faster_lio;
 
 /*** Time Log Variables ***/
 // double kdtree_incremental_time = 0.0, kdtree_search_time = 0.0, kdtree_delete_time = 0.0;
@@ -74,6 +80,7 @@
 // double match_time = 0, solve_time = 0, solve_const_H_time = 0;
 // int    kdtree_size_st = 0, kdtree_size_end = 0, add_point_size = 0, kdtree_delete_counter = 0;
 bool   runtime_pos_log = false, pcd_save_en = false, extrinsic_est_en = false;
+bool   degenerate_detect_en = true, wheelspeed_en = false;
 /**************************/
 
 float res_last[100000] = {0.0};
@@ -86,6 +93,7 @@ condition_variable sig_buffer;
 // string root_dir = ROOT_DIR;
 
 double res_mean_last = 0.05, total_residual = 0.0;
+double travel_distance = 0;
 double last_timestamp_lidar = 0, last_timestamp_imu = -1.0, last_timestamp_ins = -1.0;
 double gyr_cov = 0.1, acc_cov = 0.1, b_gyr_cov = 0.0001, b_acc_cov = 0.0001;
 double filter_size_surf_min = 0, filter_size_map_min = 0, fov_deg = 0;
@@ -94,6 +102,7 @@ int    effct_feat_num = 0;
 int    feats_down_size = 0, NUM_MAX_ITERATIONS = 0;
 bool   point_selected_surf[100000] = {0};
 bool   lidar_pushed, flg_first_scan = true, flg_EKF_inited;
+bool   is_degenerate = false;
 // bool   scan_pub_en = false, scan_body_pub_en = false;
 
 // vector<vector<int>>  pointSearchInd_surf;
@@ -119,6 +128,8 @@ pcl::VoxelGrid<PointType> downSizeFilterSurf;
 pcl::VoxelGrid<PointType> downSizeFilterMap;
 
 KD_TREE<PointType> ikdtree;
+using IVoxType = IVox<3, IVoxNodeType::DEFAULT, PointType>;
+std::shared_ptr<IVoxType> ivox(nullptr);
 
 V3F XAxisPoint_body(LIDAR_SP_LEN, 0.0, 0.0);
 V3F XAxisPoint_world(LIDAR_SP_LEN, 0.0, 0.0);
@@ -131,7 +142,7 @@ M3D Lidar_R_wrt_IMU(Eye3d);
 MeasureGroup Measures;
 esekfom::esekf<state_ikfom, 12, input_ikfom> kf;
 state_ikfom state_point;
-vect3 pos_lid;
+vect3 last_pos_lid, pos_lid;
 
 // nav_msgs::Odometry odomAftMapped;
 // geometry_msgs::Quaternion geoQuat;
@@ -403,14 +414,30 @@ void fastlio_imu_enqueue(ImuType imu)
     sig_buffer.notify_all();
 }
 
-void fastlio_ins_enqueue(RTKType ins) {
-    // mtx_buffer.lock();
+void fastlio_ins_enqueue(bool rtk_valid, RTKType ins) {
+    // check LLA or Wheel is avaliable
+    if (!rtk_valid && ins.sensor.find("Wheel") == std::string::npos) {
+        return;
+    }
 
-    //last_timestamp_ins = ins.timestamp / 1000000.0;
+    mtx_buffer.lock();
 
-    // ins_buffer.push_back(ins);
-    // mtx_buffer.unlock();
-    // sig_buffer.notify_all();
+    last_timestamp_ins = ins.timestamp / 1000000.0;
+
+    Eigen::Vector3d vec(ins.Ve, ins.Vn, ins.Vu);
+    // ENU -> Ego(INS)
+    Eigen::Matrix4d Tve = getTransformFromRPYT(0, 0, 0, -ins.heading, ins.pitch, ins.roll).inverse();
+    vec = Tve.topLeftCorner<3, 3>() * vec;
+    // Ego(INS) -> IMU
+    vec = Lidar_R_wrt_IMU * vec;
+
+    ins.Ve = vec[0];
+    ins.Vn = vec[1];
+    ins.Vu = 0.0; // vec[2]; body up speed of INS is not accurate
+
+    ins_buffer.push_back(ins);
+    mtx_buffer.unlock();
+    sig_buffer.notify_all();
 }
 
 double lidar_mean_scantime = 0.0;
@@ -537,7 +564,13 @@ void map_incremental()
 
     // double st_time = omp_get_wtime();
     // add_point_size = ikdtree.Add_Points(PointToAdd, true);
+#if defined(USE_IKD_TREE)
+    ikdtree.Add_Points(PointToAdd, true);
     ikdtree.Add_Points(PointNoNeedDownsample, false);
+#elif defined(USE_IVOX)
+    ivox->AddPoints(PointToAdd, travel_distance);
+    ivox->AddPoints(PointNoNeedDownsample, travel_distance);
+#endif
     // add_point_size = PointToAdd.size() + PointNoNeedDownsample.size();
     // kdtree_incremental_time = omp_get_wtime() - st_time;
 }
@@ -652,7 +685,7 @@ void map_incremental()
 //     out.pose.orientation.y = geoQuat.y;
 //     out.pose.orientation.z = geoQuat.z;
 //     out.pose.orientation.w = geoQuat.w;
-    
+
 // }
 
 
@@ -758,7 +791,26 @@ bool fastlio_is_init()
 //     }
 // }
 
-void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_data)
+void h_share_model_wheelspeed(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_data)
+{
+    ekfom_data.valid = false;
+    // check timestamp synchronous within 10 ms
+    if (wheelspeed_en && !Measures.ins.empty() && (Measures.lidar_end_time - Measures.ins.back().timestamp / 1000000.0) < 0.01)
+    {
+        // velocity from body to world
+        V3D vel = s.rot * V3D(Measures.ins.back().Ve, Measures.ins.back().Vn, Measures.ins.back().Vu);
+
+        ekfom_data.h_x = Eigen::MatrixXd::Zero(3, 15);
+        ekfom_data.h.resize(3);
+        // measurement res
+        ekfom_data.h = vel - s.vel;
+        // dh/dv
+        ekfom_data.h_x.block<3, 3>(0, 12) = Eigen::MatrixXd::Identity(3, 3);
+        ekfom_data.valid = true;
+    }
+}
+
+void h_share_model_geometric(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_data)
 {
     // double match_start = omp_get_wtime();
     laserCloudOri->clear();
@@ -790,8 +842,13 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         if (ekfom_data.converge)
         {
             /** Find the closest surfaces in the map **/
+#if defined(USE_IKD_TREE)
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
+#elif defined(USE_IVOX)
+            ivox->GetClosestPoint(point_world, points_near, NUM_MATCH_POINTS, 5);
+            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : true;
+#endif
         }
 
         if (!point_selected_surf[i]) continue;
@@ -840,7 +897,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     // double solve_start_  = omp_get_wtime();
 
     /*** Computation of Measuremnt Jacobian matrix H and measurents vector ***/
-    ekfom_data.h_x = MatrixXd::Zero(effct_feat_num, 12); //23
+    ekfom_data.h_x = MatrixXd::Zero(effct_feat_num, 15); //23
     ekfom_data.h.resize(effct_feat_num);
 
     for (int i = 0; i < effct_feat_num; i++)
@@ -863,17 +920,106 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         if (extrinsic_est_en)
         {
             V3D B(point_be_crossmat * s.offset_R_L_I.conjugate() * C); //s.rot.conjugate()*norm_vec);
-            ekfom_data.h_x.block<1, 12>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), VEC_FROM_ARRAY(B), VEC_FROM_ARRAY(C);
+            ekfom_data.h_x.block<1, 15>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), VEC_FROM_ARRAY(B), VEC_FROM_ARRAY(C), 0.0, 0.0, 0.0;
         }
         else
         {
-            ekfom_data.h_x.block<1, 12>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+            ekfom_data.h_x.block<1, 15>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
         }
 
         /*** Measuremnt: distance to the closest surface/corner ***/
         ekfom_data.h(i) = -norm_p.intensity;
     }
+
+    if (degenerate_detect_en)
+    {
+        // degenerate detection
+        is_degenerate = false;
+        Eigen::MatrixXd h_x = ekfom_data.h_x.leftCols(3);
+        Eigen::Matrix<double, 3, 3> HTH = h_x.transpose() * h_x;
+
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 3, 3>> esolver(HTH);
+        Eigen::Matrix<double, 3, 1> mat_e  = esolver.eigenvalues().real();
+        Eigen::Matrix<double, 3, 3> mat_v  = esolver.eigenvectors().real();
+        Eigen::Matrix<double, 3, 3> mat_v2 = mat_v.transpose();
+
+        for (int i = 0; i < 3; i++)
+        {
+            // calculate the feature's contribution to eigen vector
+            float local_contri = 0, local_strong = 0;
+            for (int j = 0; j < effct_feat_num; j++)
+            {
+                V3D feat_row = h_x.row(j).transpose();
+                feat_row.normalize();
+                V3D dir = mat_v.col(i);
+                const float dotp = fabs(feat_row.dot(dir));
+                if (dotp > 0.1736) // cos(80)
+                {
+                    local_contri += dotp;
+                }
+                if (dotp > 0.7070) // cos(45)
+                {
+                    local_strong += dotp;
+                }
+            }
+            if (local_contri < 250.0 && local_strong < 50.0)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    mat_v2(i, j) = 0;
+                }
+                is_degenerate = true;
+            }
+        }
+
+        if (is_degenerate)
+        {
+            Eigen::Matrix<double, 3, 3> mat_p = mat_v.transpose().inverse() * mat_v2;
+            ekfom_data.h_x.leftCols(3) = (mat_p * h_x.transpose()).transpose();
+        }
+    }
     // solve_time += omp_get_wtime() - solve_start_;
+}
+
+void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_data)
+{
+    // Calculate WheelSpeed Terms
+    esekfom::dyn_share_datastruct<double> ekfom_data_wheelspeed;
+    h_share_model_wheelspeed(s, ekfom_data_wheelspeed);
+
+    // Calculate Point-to-Plane Terms
+    esekfom::dyn_share_datastruct<double> ekfom_data_geo = ekfom_data;
+    h_share_model_geometric(s, ekfom_data_geo);
+
+    int n_terms = ekfom_data_geo.h.rows() + ekfom_data_wheelspeed.h.rows();
+    if (ekfom_data_wheelspeed.valid)
+    {
+        float weight_wheelspeed = 0.0;
+        if (!is_degenerate)
+        {
+            weight_wheelspeed = 0.0001 * ekfom_data_geo.h.rows();
+        }
+        else
+        {
+            weight_wheelspeed = 0.001 * ekfom_data_geo.h.rows();
+        }
+
+        // Concatenate Geometric and Wheel speed Terms
+        ekfom_data.h_x = Eigen::MatrixXd::Zero(n_terms, 15);
+        ekfom_data.h_x << ekfom_data_geo.h_x, ekfom_data_wheelspeed.h_x;
+        ekfom_data.h = Eigen::VectorXd::Zero(n_terms);
+        ekfom_data.h << ekfom_data_geo.h, ekfom_data_wheelspeed.h * weight_wheelspeed;
+    }
+    else
+    {
+        ekfom_data.h_x = ekfom_data_geo.h_x;
+        ekfom_data.h = ekfom_data_geo.h;
+    }
+
+    if (n_terms == 0)
+    {
+        ekfom_data.valid = false;
+    }
 }
 
 int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int max_point_num, double scan_period, bool undistort) {
@@ -884,6 +1030,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     DET_RANGE = 300.0;
     fov_deg = 180;
 
+    travel_distance = 0;
     last_timestamp_lidar = 0;
     last_timestamp_imu = -1.0;
     last_timestamp_ins = -1.0;
@@ -894,6 +1041,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     lidar_pushed = false;
     flg_first_scan = true;
     flg_EKF_inited = false;
+    is_degenerate = false;
 
     Nearest_Points.clear();
     time_buffer.clear();
@@ -909,6 +1057,13 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     corr_normvect    =PointCloudXYZI::Ptr(new PointCloudXYZI(100000, 1));
 
     ikdtree.Build(PointVector());
+    IVoxType::Options ivox_options;
+    ivox_options.resolution_ = 0.5;
+    ivox_options.nearby_type_ = IVoxType::NearbyType::NEARBY74; // switch to NEARBY18 after 1.0s
+    ivox_options.capacity_ = 100000;
+    ivox_options.max_distance_ = 100.0;
+    ivox = std::make_shared<IVoxType>(ivox_options);
+
     XAxisPoint_body = V3F(LIDAR_SP_LEN, 0.0, 0.0);
     XAxisPoint_world= V3F(LIDAR_SP_LEN, 0.0, 0.0);
 
@@ -953,6 +1108,7 @@ int fastlio_init(vector<double> &extT, vector<double>& extR, int filter_num, int
     Measures = MeasureGroup();
     kf = esekfom::esekf<state_ikfom, 12, input_ikfom>();
     state_point = state_ikfom();
+    last_pos_lid = vect3();
     pos_lid = vect3();
 
     double epsi[23] = {0.001};
@@ -1041,14 +1197,17 @@ bool fastlio_main()
 
             flg_EKF_inited = (Measures.lidar_beg_time - first_lidar_time) < INIT_TIME ? \
                             false : true;
+#if defined(USE_IKD_TREE)
             /*** Segment the map in lidar FOV ***/
             lasermap_fov_segment();
+#endif
 
             /*** downsample the feature points in a scan ***/
             downSizeFilterSurf.setInputCloud(feats_undistort);
             downSizeFilterSurf.filter(*feats_down_body);
             // t1 = omp_get_wtime();
             feats_down_size = feats_down_body->points.size();
+#if defined(USE_IKD_TREE)
             /*** initialize the map kdtree ***/
             if(ikdtree.Root_Node == nullptr)
             {
@@ -1064,6 +1223,25 @@ bool fastlio_main()
                 }
                 return true;
             }
+#elif defined(USE_IVOX)
+            if(!ivox->NumValidGrids())
+            {
+                if(feats_down_size > 5)
+                {
+                    feats_down_world->resize(feats_down_size);
+                    for(int i = 0; i < feats_down_size; i++)
+                    {
+                        pointBodyToWorld(&(feats_down_body->points[i]), &(feats_down_world->points[i]));
+                    }
+                    ivox->AddPoints(feats_down_world->points, travel_distance);
+                }
+                return true;
+            }
+
+            if (ivox->GetNearByType() != IVoxType::NearbyType::NEARBY18 && (Measures.lidar_beg_time - first_lidar_time) > 10 * INIT_TIME) {
+                ivox->SetNearByType(IVoxType::NearbyType::NEARBY18);
+            }
+#endif
             // int featsFromMapNum = ikdtree.validnum();
             // kdtree_size_st = ikdtree.size();
 
@@ -1102,9 +1280,15 @@ bool fastlio_main()
             // double t_update_start = omp_get_wtime();
             double solve_H_time = 0;
             kf.update_iterated_dyn_share_modified(LASER_POINT_COV, solve_H_time);
+            if (is_degenerate)
+            {
+                LOG_WARN("FastLio is degenerate!");
+            }
             state_point = kf.get_x();
             // euler_cur = SO3ToEuler(state_point.rot);
             pos_lid = state_point.pos + state_point.rot * state_point.offset_T_L_I;
+            travel_distance = travel_distance + (pos_lid - last_pos_lid).norm();
+            last_pos_lid = pos_lid;
             // geoQuat.x = state_point.rot.coeffs()[0];
             // geoQuat.y = state_point.rot.coeffs()[1];
             // geoQuat.z = state_point.rot.coeffs()[2];

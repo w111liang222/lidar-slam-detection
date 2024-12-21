@@ -13,6 +13,8 @@ export type Props = {
   maxNum?: number;
   points?: LSD.PointCloud2;
   onPointsUpdate?: () => void;
+  begin: number;
+  end: number;
   color?: "gray" | "height" | "depth" | "intensity" | "rgb";
   size?: number;
   frustumCulled?: boolean;
@@ -25,6 +27,8 @@ export default function Pointcloud2({
   maxNum = MAX_POINTS_NUM,
   points,
   onPointsUpdate,
+  begin,
+  end,
   color = "gray",
   size = 1.0,
   frustumCulled = false,
@@ -36,10 +40,9 @@ export default function Pointcloud2({
   const colorAttr = useCreation(() => new THREE.BufferAttribute(new Float32Array(maxNum * 3), 3), [maxNum]);
   useEffect(() => {
     if (points && visible) {
-      let rgb = [];
       if (points.type == "intensity" && color == "intensity") {
-        for (let i = 0; i < points.attr.length; i++) {
-          let h = Math.min(1.0, Math.max(0, points.attr[i] / 1.0)) * 4.0 + 1.0;
+        for (let i = 0; i < ((end - begin) / 3); i++) {
+          let h = Math.min(1.0, Math.max(0, points.attr[i + (begin / 3)] / 1.0)) * 4.0 + 1.0;
           let rank = Math.floor(h);
           let f = h - rank;
           if (rank & 1) f = 1 - f;
@@ -63,32 +66,31 @@ export default function Pointcloud2({
             g = n;
             b = 0;
           }
-          rgb[i * 3 + 0] = r;
-          rgb[i * 3 + 1] = g;
-          rgb[i * 3 + 2] = b;
+          colorAttr.setXYZ(i, r, g, b);
         }
+        colorAttr.count = (end - begin) / 3;
       } else if (points.type == "rgb" && color == "rgb") {
-        for (let i = 0, j = 0; i < points.attr.length; i = i + 4, j = j + 3) {
-          rgb[j + 0] = points.attr[i + 2] / 255.0;
-          rgb[j + 1] = points.attr[i + 1] / 255.0;
-          rgb[j + 2] = points.attr[i + 0] / 255.0;
+        for (let i = 0; i < ((end - begin) / 3); i++) {
+          let r = points.attr[4 * i + 2] / 255.0;
+          let g = points.attr[4 * i + 1] / 255.0;
+          let b = points.attr[4 * i + 0] / 255.0;
+          colorAttr.setXYZ(i, r, g, b);
         }
+        colorAttr.count = (end - begin) / 3;
       }
 
-      positionAttr.set(points.points);
-      positionAttr.count = points.points.length / 3;
-      colorAttr.set(rgb);
-      colorAttr.count = rgb.length / 3;
+      positionAttr.set(points.points.subarray(begin, end));
+      positionAttr.count = (end - begin) / 3;
       positionAttr.needsUpdate = true;
       colorAttr.needsUpdate = true;
     } else {
-      positionAttr.count = 0;
       colorAttr.count = 0;
+      positionAttr.count = 0;
       positionAttr.needsUpdate = true;
       colorAttr.needsUpdate = true;
     }
     onPointsUpdate && onPointsUpdate();
-  }, [points, visible]);
+  }, [points, color, visible]);
 
   const material = useRef();
   const uniforms = useCreation(() => {

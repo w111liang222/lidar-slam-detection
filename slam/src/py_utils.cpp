@@ -233,6 +233,7 @@ void pydict_to_rtk(py::dict& rtk_dict, RTKType &rtk) {
   rtk.Vn        = py::cast<double>(rtk_dict["Vn"]);
   rtk.Vu        = py::cast<double>(rtk_dict["Vu"]);
   rtk.status    = py::cast<int>(rtk_dict["Status"]);
+  rtk.sensor    = py::cast<std::string>(rtk_dict["Sensor"]);
   if (rtk_dict.contains("state")) {
     rtk.state = py::cast<std::string>(rtk_dict["state"]);
   } else {

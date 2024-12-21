@@ -104,6 +104,12 @@ void RosbagWritter::writeIns(std::string topic, const std::string frame, Ins_t &
   insMsg.latitude = ins.latitude;
   insMsg.longitude = ins.longitude;
   insMsg.altitude = ins.altitude;
+  insMsg.position_covariance[0] = ins.heading;
+  insMsg.position_covariance[1] = ins.pitch;
+  insMsg.position_covariance[2] = ins.roll;
+  insMsg.position_covariance[3] = ins.Ve;
+  insMsg.position_covariance[4] = ins.Vn;
+  insMsg.position_covariance[5] = ins.Vu;
   insMsg.status.status = ins.status;
   auto mBagPtr = (rosbag::Bag *)mBag;
   mBagPtr->write(topic, topicTime, insMsg);

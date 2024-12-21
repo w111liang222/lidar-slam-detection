@@ -158,8 +158,6 @@ export default React.memo(
                 <InputLabel>{t("method")}</InputLabel>
                 <Select label={t("method")} name={`method`} value={values.method || "RTKM"} onChange={handleChange}>
                   <MenuItem value={"RTKM"}>{t("RTKM")}</MenuItem>
-                  <MenuItem value={"FLOAM"}>{t("FLOAM")}</MenuItem>
-                  <MenuItem value={"GICPM"}>{t("GICPM")}</MenuItem>
                   <MenuItem value={"FastLIO"}>{t("FastLIO")}</MenuItem>
                 </Select>
               </FormControl>

@@ -10,6 +10,7 @@ export const DEFAULT_CLOUD_CONFIG = {
   open: false,
   color: "height" as "gray" | "depth" | "height" | "intensity" | "rgb",
   size: 1.5,
+  zRange: { min: -10000.0, max: 10000.0 },
 };
 
 export type Config = typeof DEFAULT_CLOUD_CONFIG;
@@ -27,17 +28,21 @@ export type Props = {
 
 function PointCloudMessage({ name, config, chartList, chart, setChart, chartConfig }: Props) {
   const { t } = useTranslation();
-  const [maxNum, setMaxNum] = useState(100e4);
+  const [maxNum, setMaxNum] = useState(1000e4);
+  const [pointsSplition, setPointsSplition] = useState<number [][]>([]);
   const [points, setPoints] = useState<LSD.PointCloud2>();
 
   useRequest(() => getMessageData(name, "PointCloud"), {
     pollingInterval: 50,
     onSuccess: (data: LSD.PointCloud2 | undefined) => {
       if (data != undefined && data.points != undefined) {
-        if (data.points.length >= maxNum) {
-          setMaxNum(maxNum * 10);
-        }
         setPoints(data);
+
+        let splition = [];
+        for (let i = 0; i < data.points.length; i = i + (maxNum * 3)) {
+          splition.push([i, Math.min(i + (maxNum * 3), data.points.length)]);
+        }
+        setPointsSplition(splition);
 
         // Chart Visualization
         let chartData = chart.get(name);
@@ -76,7 +81,15 @@ function PointCloudMessage({ name, config, chartList, chart, setChart, chartConf
     },
   });
 
-  return <Pointcloud2 maxNum={maxNum} color={config.color} size={config.size} points={points} />;
+  return (
+    <>
+      {pointsSplition.map((splition, idx) => {
+        return (
+          <Pointcloud2 maxNum={maxNum} begin={splition[0]} end={splition[1]} color={config.color} size={config.size} zRange={config.zRange} points={points} />
+        );
+      })}
+    </>
+  );
 }
 
 export default React.memo(PointCloudMessage);
@@ -109,6 +122,20 @@ export const PointCloudMessageConfig = React.memo(({ config, message, setConfig 
     setConfig(new Map(config));
   };
 
+  const handleZMin = (data: string) => {
+    const c = config.get(message);
+    c.zRange["min"] = data;
+    config.set(message, c);
+    setConfig(new Map(config));
+  };
+
+  const handleZMax = (data: string) => {
+    const c = config.get(message);
+    c.zRange["max"] = data;
+    config.set(message, c);
+    setConfig(new Map(config));
+  };
+
   return (
     <>
       <Dialog open={config.get(message).open} onClose={() => handleClose()}>
@@ -134,6 +161,22 @@ export const PointCloudMessageConfig = React.memo(({ config, message, setConfig 
               value={config.get(message).size}
               onChange={(event) => {
                 handleSize(event.target.value);
+              }}
+            />
+            <InputLabel style={{ marginLeft: "6px", marginTop: "1rem" }}>{t("zRange") + "Min"}</InputLabel>
+            <TextField
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              value={config.get(message).zRange["min"]}
+              onChange={(event) => {
+                handleZMin(event.target.value);
+              }}
+            />
+            <InputLabel style={{ marginLeft: "6px", marginTop: "1rem" }}>{t("zRange") + "Max"}</InputLabel>
+            <TextField
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+              value={config.get(message).zRange["max"]}
+              onChange={(event) => {
+                handleZMax(event.target.value);
               }}
             />
           </div>

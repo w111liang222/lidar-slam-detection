@@ -618,6 +618,25 @@ def make_xyz_label_point_cloud(xyzl, label_type='f'):
     pc = PointCloud(md, pc_data)
     return pc
 
+def make_xyzi_point_cloud(x, y, z, i):
+    """ Make XYZI point cloud from numpy array.
+    """
+    md = {'version': .7,
+          'fields': ['x', 'y', 'z', 'intensity'],
+          'count': [1, 1, 1, 1],
+          'width': len(x),
+          'height': 1,
+          'viewpoint': [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+          'points': len(x),
+          'data': 'ASCII'}
+
+    md['size'] = [4, 4, 4, 4]
+    md['type'] = ['F', 'F', 'F', 'F']
+
+    dt = np.dtype([('x', np.float32), ('y', np.float32), ('z', np.float32), ('intensity', np.float32)])
+    pc_data = np.rec.fromarrays([x, y, z, i], dtype=dt)
+    pc = PointCloud(md, pc_data)
+    return pc
 
 class PointCloud(object):
     """ Wrapper for point cloud data.

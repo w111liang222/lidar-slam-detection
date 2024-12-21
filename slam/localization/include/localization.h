@@ -35,7 +35,7 @@ class Localization : public SlamBase {
   void setInitPoseRange(PoseRange &r) override;
   void setInitPose(const Eigen::Matrix4d &t) override;
   int getEstimatePose(Eigen::Matrix4d &t) override;
-  void feedInsData(std::shared_ptr<RTKType> ins) override;
+  void feedInsData(bool rtk_valid, std::shared_ptr<RTKType> ins) override;
   void feedImuData(ImuType &imu) override;
   void feedPointData(const uint64_t &timestamp, std::map<std::string, PointCloudAttrPtr> &points) override;
   void feedImageData(const uint64_t &timestamp,

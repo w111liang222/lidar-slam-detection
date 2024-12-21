@@ -31,6 +31,8 @@ export default function ColorMapViewer({ config, mannual }: IProps) {
   return (
     <Pointcloud2
       maxNum={maxNum}
+      begin={0}
+      end={points ? points.points.length : 0}
       color={config.color}
       size={config.size}
       points={points}

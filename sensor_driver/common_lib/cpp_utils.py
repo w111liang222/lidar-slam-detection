@@ -15,6 +15,9 @@ def set_logger_level(level):
 def set_message_core(enable):
     cpp_utils_ext.set_message_core(enable)
 
+def publish_message(filename):
+    return cpp_utils_ext.publish_message(filename)
+
 def get_projection_forward(lat0, lon0, lat1, lon1):
     return cpp_utils_ext.get_projection_forward(lat0, lon0, lat1, lon1).tolist()
 

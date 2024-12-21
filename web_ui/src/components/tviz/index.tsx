@@ -279,7 +279,7 @@ export default function TViz({}: Props) {
       <div style={{ position: "relative" }}>
         <div className="tviz-right">
           <Canvas linear={true}>
-            <gridHelper args={[500, 50, 0x111111, 0x111111]} visible={true} rotation-x={Math.PI / 2} />
+            <gridHelper args={[10000, 1000, 0x444444, 0x444444]} visible={true} rotation-x={Math.PI / 2} />
             <Controls position={[0, 0, 0]} enable={true} />
             {Array.from(messageList).map(([message, type]) => {
               if (messageEnable.get(message) == false) {

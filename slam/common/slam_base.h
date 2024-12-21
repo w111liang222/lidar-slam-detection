@@ -83,7 +83,7 @@ class SlamBase {
     virtual void preprocessPoints(PointCloud::Ptr &points_in, PointCloud::Ptr &points_out) {
       pcl::transformPointCloud(*points_in, *points_out, mStaticTrans);
     }
-    virtual void feedInsData(std::shared_ptr<RTKType> ins) = 0;
+    virtual void feedInsData(bool rtk_valid, std::shared_ptr<RTKType> ins) = 0;
     virtual void feedImuData(ImuType &imu) {
       return;
     }
