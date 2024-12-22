@@ -16,6 +16,15 @@ RsDecodeDifop::RsDecodeDifop(const std::string& name, const int& packageLenth) :
   case LidarType::RSHELIOS:
     mech_const_param_ = getConstParamHelios();
     break;    
+  case LidarType::RSM1:
+    rs_lidar_const_param_ = getRSM1ConstantParam();
+    cos_lookup_table_ = initTrigonometricLookupTable([](const double rad) -> double { return std::cos(rad); });
+    sin_lookup_table_ = initTrigonometricLookupTable([](const double rad) -> double { return std::sin(rad); });
+    max_pkt_num_ = SINGLE_PKT_NUM;
+    last_pkt_cnt_ = 1;
+    last_pkt_time_ = 0;
+    msop_pkt_len_ = MEMS_MSOP_LEN;
+    difop_pkt_len_ = MEMS_DIFOP_LEN;
   default:
     break;
   }

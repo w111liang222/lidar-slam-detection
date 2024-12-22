@@ -17,6 +17,13 @@
 class RsDecodeDifop {
  public:
   constexpr static int32_t RS_ONE_ROUND = 36000;
+  const size_t MEMS_MSOP_LEN = 1210;
+  const size_t MEMS_DIFOP_LEN = 256;
+
+  const uint32_t SINGLE_PKT_NUM = 630;
+  const uint32_t DUAL_PKT_NUM = 1260;
+  const int ANGLE_OFFSET = 32768;
+
   enum LidarType  ///< LiDAR type
   {
     RS16 = 1,
@@ -71,7 +78,7 @@ class RsDecodeDifop {
       str = "RSP48";
       break;
       case LidarType::RSM1:
-      str = "RSM1";
+      str = "RS-LiDAR-M1";
       break;
       case LidarType::RSM2:
       str = "RSM2";
@@ -127,7 +134,7 @@ class RsDecodeDifop {
     {
         return LidarType::RSP48;
     }
-    else if (type == "RSM1")
+    else if (type == "RS-LiDAR-M1")
     {
         return LidarType::RSM1;
     }
@@ -150,6 +157,28 @@ class RsDecodeDifop {
   bool ReceiveDifop(const int& port);
   void Decode();
   void DecodeDifop(char buf[]);
+
+  inline std::vector<float> initTrigonometricLookupTable(const std::function<double(const double)>& func)
+  {
+    std::vector<float> temp_table = std::vector<float>(2 * RS_ONE_ROUND, 0.0);
+
+    for (int i = 0; i < 2 * RS_ONE_ROUND; i++)
+    {
+      const double rad = RS_TO_RADS(static_cast<double>(i - RS_ONE_ROUND) * RS_ANGLE_RESOLUTION);
+      temp_table[i] = (float)func(rad);
+    }
+    return temp_table;
+  }
+
+  inline float checkCosTable(const int& angle)
+  {
+    return cos_lookup_table_[angle + RS_ONE_ROUND];
+  }
+  inline float checkSinTable(const int& angle)
+  {
+    return sin_lookup_table_[angle + RS_ONE_ROUND];
+  }
+
   ChanAngles GetChanAngles() {return chan_angles_;}
   RSDecoderMechConstParam GetMechConstParam() {return mech_const_param_;}
   inline void GetAzDiff(const RSHELIOSMsopPkt* pkt, const uint16_t& blk,
@@ -252,6 +281,18 @@ class RsDecodeDifop {
 
     return param;
   }  
+ 
+  inline const LidarConstantParameter getRSM1ConstantParam()
+  {
+    LidarConstantParameter ret_param;
+    ret_param.MSOP_ID = 0xA55AAA55;
+    ret_param.DIFOP_ID = 0x555511115A00FFA5;
+    ret_param.BLOCKS_PER_PKT = 25;
+    ret_param.CHANNELS_PER_BLOCK = 5;
+    ret_param.LASER_NUM = 5;
+    ret_param.DIS_RESOLUTION = 0.005;
+    return ret_param;
+  }
  
   template <typename T_Difop>
     inline void decodeDifopCommon(const T_Difop& pkt) {
@@ -359,6 +400,16 @@ class RsDecodeDifop {
   float temperature_; // lidar temperature
 
   bool angles_ready_ = false; // is vert_angles/horiz_angles ready from csv file/difop packet?
+
+  std::vector<float> cos_lookup_table_;
+  std::vector<float> sin_lookup_table_;
+public:
+  LidarConstantParameter rs_lidar_const_param_;
+  uint32_t msop_pkt_len_;
+  uint32_t difop_pkt_len_;
+  uint32_t max_pkt_num_;
+  uint32_t last_pkt_cnt_;
+  double last_pkt_time_;
 };
 
 #endif // _RS_DECODE_DIFOP_H_

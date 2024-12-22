@@ -8,6 +8,9 @@
 #include <arpa/inet.h>
 
 #define RS_SWAP_SHORT(x) ((((x)&0xFF) << 8) | (((x)&0xFF00) >> 8))
+#define RS_TO_RADS(x) ((x) * (M_PI) / 180)
+
+static const float RS_ANGLE_RESOLUTION = 0.01;
 
 /** LS-C-16 decoder variable **/
 static const int RAW_SCAN_SIZE = 3;
@@ -317,6 +320,23 @@ struct RSDecoderConstParam
   float TEMPERATURE_RES;
 };
 
+typedef struct
+{
+  uint64_t MSOP_ID;
+  uint64_t DIFOP_ID;
+  uint64_t BLOCK_ID;
+  uint32_t PKT_RATE;
+  uint16_t BLOCKS_PER_PKT;
+  uint16_t CHANNELS_PER_BLOCK;
+  uint16_t LASER_NUM;
+  float DSR_TOFFSET;
+  float FIRING_FREQUENCY;
+  float DIS_RESOLUTION;
+  float RX;
+  float RY;
+  float RZ;
+} LidarConstantParameter;
+
 typedef struct RSDecoderParam  ///< LiDAR decoder parameter
 {
   bool config_from_file = false; ///< Internal use only for debugging
@@ -478,6 +498,103 @@ typedef struct
   unsigned int index;
   uint16_t tail;
 } RSHELIOSMsopPkt;
+
+typedef struct
+{
+  uint8_t num[6];
+} RSSn;
+
+typedef struct
+{
+  uint16_t distance;
+  uint16_t pitch;
+  uint16_t yaw;
+  uint8_t intensity;
+  uint8_t point_attribute;
+  uint8_t elongation;
+} RSM1Channel;
+
+typedef struct
+{
+  uint8_t time_offset;
+  uint8_t return_seq;
+  RSM1Channel channel[5];
+} RSM1Block;
+
+typedef struct
+{
+  uint32_t id;
+  uint16_t pkt_cnt;
+  uint16_t protocol_version;
+  uint8_t return_mode;
+  uint8_t time_mode;
+  RSTimestampUTC timestamp;
+  uint8_t reserved[10];
+  uint8_t lidar_type;
+  int8_t temperature;
+} RSM1MsopHeader;
+
+typedef struct
+{
+  RSM1MsopHeader header;
+  RSM1Block blocks[25];
+  uint8_t reserved[3];
+} RSM1MsopPkt;
+
+typedef struct
+{
+  uint8_t ip_local[4];
+  uint8_t ip_remote[4];
+  uint8_t mac[6];
+  uint8_t msop_port[2];
+  uint8_t difop_port[2];
+} RSM1DifopEther;
+
+typedef struct
+{
+  uint8_t horizontal_fov_start[2];
+  uint8_t horizontal_fov_end[2];
+  uint8_t vertical_fov_start[2];
+  uint8_t vertical_fov_end[2];
+} RSM1DifopFov;
+
+typedef struct
+{
+  uint8_t pl_ver[5];
+  uint8_t ps_ver[5];
+} RSM1DifopVerInfo;
+
+typedef struct
+{
+  uint8_t current_1[3];
+  uint8_t current_2[3];
+  uint16_t voltage_1;
+  uint16_t voltage_2;
+  uint8_t reserved[10];
+} RSM1DifopRunSts;
+
+typedef struct
+{
+  uint8_t param_sign;
+  uint16_t data;
+} RSM1DifopCalibration;
+
+typedef struct
+{
+  uint64_t id;
+  uint8_t reserved_1;
+  uint8_t frame_rate;
+  RSM1DifopEther ether;
+  RSM1DifopFov fov_setting;
+  RSM1DifopVerInfo ver_info;
+  RSSn sn;
+  uint8_t return_mode;
+  RSTimeInfo time_info;
+  RSM1DifopRunSts status;
+  uint8_t diag_reserved[40];
+  RSM1DifopCalibration cali_param[20];
+  uint8_t reserved_2[71];
+} RSM1DifopPkt;
 
 class ChanAngles
 {

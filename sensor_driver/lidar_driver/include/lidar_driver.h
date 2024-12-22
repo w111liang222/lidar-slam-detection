@@ -46,6 +46,7 @@ class LidarDriver {
     RS_Ruby_Lite,
     RS_Helios_16P,
     RS_Helios,
+    RS_LiDAR_M1,
     Livox_Mid_360,
     Custom,
   };
@@ -87,6 +88,7 @@ class LidarDriver {
   void packagePrase_RS_Ruby_Lite(char buf[]);
   void packagePrase_RS_Helios_16P(char buf[]);
   void packagePrase_RS_Helios(char buf[]);
+  void packagePrase_RS_LiDAR_M1(char buf[]);
   void packagePrase_Livox_Mid_360(char buf[]);
   void packagePrase_Custom(char buf[]);
 

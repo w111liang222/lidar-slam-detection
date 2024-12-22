@@ -108,6 +108,14 @@ void LidarDriver::setParseFun() {
                          getLidarNameByType(LidarType), packageLenth);
       break;
     }
+    case lidarType::RS_LiDAR_M1: {
+      parseFun = std::bind(&LIDAR::LidarDriver::packagePrase_RS_LiDAR_M1, this,
+                           std::placeholders::_1);
+      packageLenth =  1210;
+      rs_decode_difop_ = std::make_shared<RsDecodeDifop>(
+                         getLidarNameByType(LidarType), packageLenth);
+      break;
+    }
     case lidarType::Ouster_OS1: {
       parseFun = std::bind(&LIDAR::LidarDriver::packagePrase_Ouster_OS, this,
                            std::placeholders::_1);
@@ -243,6 +251,8 @@ LidarDriver::lidarType LidarDriver::getLidarTypeByName(std::string name) {
     return lidarType::RS_Helios_16P;
   } else if (name.compare("RS-Helios") == 0) {
     return lidarType::RS_Helios;
+  } else if (name.compare("RS-LiDAR-M1") == 0) {
+    return lidarType::RS_LiDAR_M1;
   } else if (name.compare("Livox-Mid-360") == 0) {
     return lidarType::Livox_Mid_360;    
   } else if (name.compare("Custom") == 0) {
@@ -280,6 +290,9 @@ std::string LidarDriver::getLidarNameByType(lidarType type) {
     }
     case lidarType::RS_Helios: {
       return "RS-Helios";
+    }
+    case lidarType::RS_LiDAR_M1: {
+      return "RS-LiDAR-M1";
     }
     case lidarType::Livox_Mid_360: {
       return "Livox-Mid-360";
@@ -1226,6 +1239,63 @@ void LidarDriver::packagePrase_RS_Helios(char buf[1248]) {
     return;
   }
   azimuthForRSHelios = azimuth;
+}
+
+void LidarDriver::packagePrase_RS_LiDAR_M1(char buf[1210]) {
+  if (receveSize != packageLenth) {
+    LOG_ERROR("{}:RS-LiDAR-M1 receive wrong size package len {} != {}", AffinityCpu, receveSize, packageLenth);
+    return;
+  }    
+  float pointTime = float(getMonotonicTime() - scanMonotonicTime);
+
+  int azimuth = 0;
+  int height = rs_decode_difop_->rs_lidar_const_param_.LASER_NUM;
+  const RSM1MsopPkt* mpkt_ptr = (RSM1MsopPkt*)buf;
+
+  for (size_t blk_idx = 0; blk_idx < rs_decode_difop_->rs_lidar_const_param_.BLOCKS_PER_PKT; blk_idx++)
+  {
+    const RSM1Block& blk = mpkt_ptr->blocks[blk_idx];
+    for (size_t channel_idx = 0; channel_idx < rs_decode_difop_->rs_lidar_const_param_.CHANNELS_PER_BLOCK; channel_idx++)
+    {
+      const RSM1Channel& channel = blk.channel[channel_idx];
+
+      bool pointValid = false;
+      float distance = RS_SWAP_SHORT(channel.distance) * rs_decode_difop_->rs_lidar_const_param_.DIS_RESOLUTION;
+      if (distance <= 200.0 && distance >= 0.2)
+      {
+        int pitch = RS_SWAP_SHORT(channel.pitch) - rs_decode_difop_->ANGLE_OFFSET;
+        int yaw = RS_SWAP_SHORT(channel.yaw) - rs_decode_difop_->ANGLE_OFFSET;
+        float x = distance * rs_decode_difop_->checkCosTable(pitch) * rs_decode_difop_->checkCosTable(yaw);
+        float y = distance * rs_decode_difop_->checkCosTable(pitch) * rs_decode_difop_->checkSinTable(yaw);
+        float z = distance * rs_decode_difop_->checkSinTable(pitch);
+
+        uint8_t intensity = channel.intensity;
+        if (pointsInROI(x, y, z)) {
+          pointCloud->emplace_back(x);
+          pointCloud->emplace_back(y);
+          pointCloud->emplace_back(z);
+          pointCloud->emplace_back(intensity / 255.0f);
+          pointCloudAttr->emplace_back(pointTime);
+          pointCloudAttr->emplace_back(float(channel_idx));
+        }
+      }
+    }
+  }
+
+  unsigned int pkt_cnt = RS_SWAP_SHORT(mpkt_ptr->header.pkt_cnt);
+
+  // TODO whatif packet loss or seq unorder
+  if (pkt_cnt == rs_decode_difop_->max_pkt_num_ || pkt_cnt < rs_decode_difop_->last_pkt_cnt_)
+  {
+    rs_decode_difop_->last_pkt_cnt_ = 1;
+    LidarScan *scan = new LidarScan("RS-LiDAR-M1", scanStartTime, 2, pointCloud, pointCloudAttr);
+    scanQueue.enqueue(scan);
+    resetPoints();
+    scanStartTime = getCurrentTime();
+    scanMonotonicTime = getMonotonicTime();
+    return;
+  }
+  rs_decode_difop_->last_pkt_cnt_ = pkt_cnt;
 }
 
 void LidarDriver::CopyCartesianHighRawPoint(char buf[], RawPacket& raw_packet,
