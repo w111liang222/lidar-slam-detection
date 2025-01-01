@@ -60,7 +60,7 @@ NVIDIA Container Toolkit is needed to install firstly [Installation](https://doc
 
 A x86_64 docker image is provided to test.
 ```bash
-sudo docker pull 15liangwang/lsd-cuda118 # sudo docker pull 15liangwang/auto-ipu, if you don't have GPU
+sudo docker pull 15liangwang/lsd-cuda118 # sudo docker pull 15liangwang/lsd-cpu, if you don't have GPU
 sudo docker run --gpus all -it -d --net=host --privileged --shm-size=4g --name="LSD" -v /media:/root/exchange 15liangwang/lsd-cuda118
 sudo docker exec -it LSD /bin/bash
 ```
