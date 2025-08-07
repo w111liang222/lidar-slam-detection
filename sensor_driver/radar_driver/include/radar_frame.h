@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 #include <map>
 #include "radar_types.h"

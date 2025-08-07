@@ -1,6 +1,7 @@
 #include "slam.h"
 
 #include <sys/prctl.h>
+#include <boost/algorithm/string/replace.hpp>
 
 #include "rtkm.h"
 #include "fastlio.h"

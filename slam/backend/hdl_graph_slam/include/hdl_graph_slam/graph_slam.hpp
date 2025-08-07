@@ -4,6 +4,7 @@
 #define GRAPH_SLAM_HPP
 
 #include <memory>
+#include <Eigen/Dense>
 
 #include <g2o/core/hyper_graph.h>
 

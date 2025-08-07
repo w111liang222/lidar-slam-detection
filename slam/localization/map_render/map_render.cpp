@@ -2,6 +2,7 @@
 
 #include <omp.h>
 #include <unordered_set>
+#include <boost/optional.hpp>
 #include <pcl/common/transforms.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/search/impl/search.hpp>
